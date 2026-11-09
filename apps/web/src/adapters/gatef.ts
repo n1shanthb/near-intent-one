@@ -1,9 +1,9 @@
 /**
- * Gate F integration boundary.
- * Recorded F4 evidence is available; live Ledger remains blocked until Gate H.
+ * Gate F/H handoff — recorded F4 cycle + Ledger wizard for owner ops.
  */
 
-import { F4_EXECUTION } from "../data/evidenceSnapshot";
+import { F4_EXECUTION, HARDWARE_OWNERSHIP } from "../data/evidenceSnapshot";
+import { H3_EXECUTION } from "../data/evidenceSnapshot";
 
 export type OwnerMethod =
   | "set_policy"
@@ -12,7 +12,7 @@ export type OwnerMethod =
   | "set_trusted_quote_signer";
 
 export type LedgerHandoffResult =
-  | { status: "ready_for_ledger"; requestId: string; summary: string }
+  | { status: "ready_for_ledger"; requestId: string; summary: string; wizardPath: string }
   | { status: "blocked"; reason: string };
 
 export type LedgerApprovalResult =
@@ -31,6 +31,7 @@ export type UnattendedReceipt = {
   amountIn?: string;
   trustModel: "trusted_attestor";
   source: "recorded_verified_evidence" | "live";
+  label?: string;
 };
 
 export interface GateFLedgerHandoff {
@@ -43,25 +44,33 @@ export interface GateFLedgerHandoff {
 
 export interface GateFAgentCycle {
   getLastUnattendedReceipt(): Promise<UnattendedReceipt | null>;
+  getLatestStrategyReceipt(): Promise<UnattendedReceipt | null>;
 }
 
-/** Ledger path still blocked (F3/G/H). */
 export const gateFLedger: GateFLedgerHandoff = {
   async prepareOwnerCall({ method }) {
+    if (!HARDWARE_OWNERSHIP.verified) {
+      return {
+        status: "blocked",
+        reason: "Hardware ownership not verified.",
+      };
+    }
     return {
-      status: "blocked",
-      reason: `Ledger NOT CONNECTED / NOT PROVEN (Gate F3/G BLOCKED; Gate H in progress). Requested ${method} will not be treated as approved.`,
+      status: "ready_for_ledger",
+      requestId: `owner-${method}-${Date.now()}`,
+      wizardPath: "/setup/ledger",
+      summary: `Ownership VERIFIED (${HARDWARE_OWNERSHIP.ledgerPublicKey}). Open Ledger setup to physically sign ${method}. Proposed JSON is NOT approved until the device confirms. Mandate is currently revoked at epoch ${HARDWARE_OWNERSHIP.revokeVerified.mandate_epoch} — unrevoke only via Ledger if needed.`,
     };
   },
   async awaitHardwareApproval() {
     return {
       status: "unavailable",
-      reason: "Physical Ledger confirmation not demonstrated.",
+      reason:
+        "Complete signing in /setup/ledger with the physical device. This UI does not forge approvals.",
     };
   },
 };
 
-/** Returns recorded F4 PASS receipt — not a live agent poll. */
 export const gateFAgent: GateFAgentCycle = {
   async getLastUnattendedReceipt() {
     return {
@@ -76,6 +85,23 @@ export const gateFAgent: GateFAgentCycle = {
       amountIn: F4_EXECUTION.amountIn,
       trustModel: "trusted_attestor",
       source: "recorded_verified_evidence",
+      label: "F4",
+    };
+  },
+  async getLatestStrategyReceipt() {
+    return {
+      operationId: H3_EXECUTION.operationId,
+      correlationId: "45adf4ce-1a01-4d37-bc0e-3cf6d20251d4",
+      settlement: "Success",
+      nearProposeTx: H3_EXECUTION.proposeTx,
+      mpcSignTx: H3_EXECUTION.mpcSignTx,
+      evmBroadcastTx: H3_EXECUTION.sepoliaTx,
+      nearSettlementTx: H3_EXECUTION.nearSettlementTxs[0],
+      reconcileTx: H3_EXECUTION.reconcileTx,
+      amountIn: "1000000",
+      trustModel: "trusted_attestor",
+      source: "recorded_verified_evidence",
+      label: "H3",
     };
   },
 };
