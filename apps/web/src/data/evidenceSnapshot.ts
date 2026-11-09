@@ -1,12 +1,34 @@
 import { CONFIG } from "../lib/config";
 
 /**
- * Curated RECORDED VERIFIED EVIDENCE from Gates F4 / G.
- * Hashes match EVIDENCE.md / evidence/live — not fabricated.
- * Distinct from CURRENT LIVE READS via RPC.
+ * Curated RECORDED VERIFIED EVIDENCE from Gates F4 / G / H.
+ * Distinct from CURRENT LIVE READS via RPC / device session.
  */
 
-export const EVIDENCE_AS_OF = "2026-11-09T13:24:00Z";
+export const EVIDENCE_AS_OF = "2026-11-09T14:46:00Z";
+
+export const HARDWARE_OWNERSHIP = {
+  verified: true,
+  phase: "Hardware-only ownership verified",
+  ledgerPublicKey: "ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh",
+  derivationPath: "44'/397'/0'/0'/3'",
+  nearAppVersion: "2.6.1",
+  ownerAccount: CONFIG.ownerAccount,
+  policyAccount: CONFIG.policyContract,
+  setPolicyTx: "7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb",
+  revokeTx: "EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9",
+  removeOwnerSoftwareTx: "cC32MZm8DUizXndrR7gfWoCRowDcTRwPCZ4UcPM3fi7",
+  removePolicySoftwareTx: "EQZX8PBqJpwhVN3BA39CdkN6X3DqwDNADsZjdp1Xo3ok",
+  revokeVerified: { revoked: true, mandate_epoch: 19 },
+  note: "Ownership VERIFIED on-chain does not imply the Ledger is currently CONNECTED in this browser.",
+};
+
+/** Post–H1 revoke proof — do not auto-unrevoke. */
+export const MANDATE_AFTER_H1 = {
+  revoked: true,
+  mandate_epoch: 19,
+  note: "Hardware revoke proved ownership. Further agent/MPC demos need Ledger unrevoke.",
+};
 
 export const F4_EXECUTION = {
   gate: "F4",
@@ -85,13 +107,72 @@ export const F4_EXECUTION = {
   mpcSignTx: "57PFgc6bxUyfhEidrHdGuMrZ1YxHuX19H5yMCU3ubqA8",
 };
 
+/** Deterministic strategy — NOT LLM trading intelligence. */
+export const H3_DECISION = {
+  choice: "TRADE" as const,
+  strategy_id: "origin-usdc-to-wnear-v1",
+  timestamp: "2026-11-09T13:46:05.757Z",
+  amount_in: "1000000",
+  amountInDisplay: "1 USDC",
+  rationale:
+    "Quote viable: minOut=279036267004249282582560, capacity ok, mandate active. Proceed via attestor→policy→MPC.",
+  rejection_code: null as string | null,
+  checks: [
+    { ok: true, name: "mandate_active" },
+    { ok: true, name: "risk_capacity", headroom: "100000000" },
+    { ok: true, name: "quote_present" },
+    { ok: true, name: "amount_match" },
+    {
+      ok: true,
+      name: "min_out_floor",
+      minOut: "279036267004249282582560",
+      floor: "1",
+    },
+    { ok: true, name: "relative_rate", skipped: true },
+    { ok: true, name: "quote_ttl" },
+  ],
+  quote_summary: {
+    correlationId: "45adf4ce-1a01-4d37-bc0e-3cf6d20251d4",
+    depositAddress: "0xE0078C1cf5De5A96afE976F0D8dCc4E8D20897a6",
+    amountIn: "1000000",
+    minAmountOut: "279036267004249282582560",
+    deadline: "2026-11-09T14:31:05.423Z",
+  },
+  source: "live_gate_h" as const,
+  ai_used: false,
+  ai_note:
+    "Deterministic strategy engine (packages/strategy/decide.mjs). AI not used as enforcement.",
+};
+
+export const H3_EXECUTION = {
+  gate: "H3",
+  status: "PASS" as const,
+  operationId: "h3-1794231966936",
+  proposeTx: "Ev1Uy7eQ4Zf8jG8WyC8cAKp9S3VhDiQrn94wngt9tkoD",
+  mpcSignTx: "CGbXc3cHHv1jWGeaK4Xj2mAqE29NQ2UhmrgaUr9udKPC",
+  sepoliaTx:
+    "0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09",
+  sepoliaStatus: "0x1",
+  tidepoolStatus: "SUCCESS" as const,
+  nearSettlementTxs: [
+    "5mswTKnFdrsRwc5E372fuNrTeExxQ8gRfDPrE9CrmAgr",
+    "3UnDQHnMzUD6WJno5quiMXVLdEUyCuYXQNZZgm2Uh3g7",
+    "E7eYbBNoEXf97HVDLpncQfwW9SAKy2mxpb7S1Rx1BufA",
+  ],
+  reconcileTx: "CFj1Q12DVjEs6SCC2iATjju89hDK6Lzaz5TLBmauEeZ1",
+  reconcileActor: "nio-c-recon-857107.testnet",
+  trustModel: "trusted_attestor_not_tidepool_maker" as const,
+  verification: "trusted_offchain_watchdog_not_onchain_proof" as const,
+  attestationId: "9a14e20f2481d76819629b8352c4a35a03f3684dbe08d4f5197e9abb51dd57bf",
+};
+
 export const GATE_G_ACCOUNTING = {
   gate: "G",
   accountingStatus: "PASS" as const,
-  ledgerStatus: "BLOCKED" as const,
-  overall: "BLOCKED" as const,
+  ledgerStatus: "PASS" as const,
+  overall: "PASS" as const,
   verification: "recorded_verified_evidence" as const,
-  asOf: EVIDENCE_AS_OF,
+  asOf: "2026-11-09T13:24:00Z",
   snapshot: {
     reserved_pending_exposure: "0",
     realized_exposure: "2000000",
@@ -101,16 +182,15 @@ export const GATE_G_ACCOUNTING = {
     revoked: false,
     signing_revoked: false,
   },
-  reconciler: "nio-c-agent-857107.testnet",
+  reconciler: "nio-c-recon-857107.testnet",
   reconcileNote:
-    "evidence_hash stored on-chain; verified_onchain=false — owner/reconciler must check receipts off-chain",
+    "H2: reconciler ≠ trading agent. evidence_hash stored; verified_onchain=false.",
   cleanupTx: "9MeJmCE5b1nzcdK6fMMft8vMx6Nx5GizYYWQZDDDzqUE",
   ledger: {
-    connected: false,
-    proven: false,
-    label: "NOT CONNECTED / NOT PROVEN",
-    softwareFullAccessRemaining: 1,
-    note: "Physical Ledger set_policy/revoke not demonstrated. Gate H owns hardware path.",
+    ownershipVerified: true,
+    label: "OWNERSHIP VERIFIED",
+    softwareFullAccessRemaining: 0,
+    note: HARDWARE_OWNERSHIP.note,
   },
 };
 
@@ -131,18 +211,18 @@ export const FROZEN_POLICY = {
 };
 
 export const PORTFOLIO_RECORDED = {
-  label: "Post–Gate F4 / G recorded snapshot",
+  label: "Post–Gate H3 recorded settlement",
   verification: "recorded_verified_evidence" as const,
   asOf: EVIDENCE_AS_OF,
-  note: "Not a live wallet poll. Switch to Live mode for current RPC reads.",
+  note: "Not a live wallet poll. H3 added another 1 USDC ORIGIN_CHAIN cycle after F4.",
   chains: [
     {
       chain: "Ethereum Sepolia",
       tokens: [
         {
           symbol: "USDC",
-          balance: "expended 1 USDC in F4",
-          note: "Deposit tx 0xe49d5ff8… (see Activity)",
+          balance: "F4 + H3 deposits executed",
+          note: "See Evidence for 0xe49d5ff8… and 0xba28b97b…",
         },
       ],
     },
@@ -151,8 +231,8 @@ export const PORTFOLIO_RECORDED = {
       tokens: [
         {
           symbol: "wNEAR",
-          balance: "≈0.5605",
-          note: "Intents balance after F4 SUCCESS (560545791483368286640000 raw)",
+          balance: "credited after SUCCESS settles",
+          note: "MPC EVM identity holds intents balance",
         },
       ],
     },
@@ -188,15 +268,8 @@ export const ADVERSARIAL_DEMOS = [
   },
 ];
 
-export function agentStatusFromRecorded(): "ready" | "idle" {
-  const s = GATE_G_ACCOUNTING.snapshot;
-  if (
-    !s.revoked &&
-    s.economically_settled &&
-    s.unresolved_pending === 0 &&
-    s.reserved_pending_exposure === "0"
-  ) {
-    return "ready";
-  }
-  return "idle";
+/** Agent readiness after full H1 revoke proof (current recorded end-state). */
+export function agentStatusFromRecorded(): "revoked" | "ready" | "idle" {
+  if (MANDATE_AFTER_H1.revoked) return "revoked";
+  return "ready";
 }
