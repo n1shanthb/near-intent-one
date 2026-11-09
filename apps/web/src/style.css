@@ -726,3 +726,127 @@ legend {
   border-radius: 10px;
   background: var(--bg);
 }
+
+.onboarding h2 {
+  font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+  max-width: 28ch;
+}
+
+.onboard-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  margin-top: 1rem;
+}
+
+@media (min-width: 900px) {
+  .onboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.onboard-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 100%;
+}
+
+.onboard-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.onboard-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 400;
+}
+
+/* Ledger wizard */
+.ledger-wizard .ledger-input {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.ledger-dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+}
+.ledger-dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+.ledger-dl dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.ledger-dl dd {
+  margin: 0;
+  word-break: break-all;
+}
+.ledger-pre {
+  overflow: auto;
+  max-height: 280px;
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.ledger-key-block {
+  margin: 0.85rem 0 1rem;
+}
+.row.gap {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+.row.gap.wrap {
+  flex-wrap: wrap;
+}
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+button.danger {
+  background: color-mix(in srgb, var(--danger) 88%, black);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--danger) 60%, white);
+}
+button.danger:disabled {
+  opacity: 0.45;
+}
+.alert.danger {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--line));
+  background: color-mix(in srgb, var(--danger) 14%, var(--panel));
+}
+.alert.warn {
+  border-color: color-mix(in srgb, var(--warn) 50%, var(--line));
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid;
+}
+.badge-ok {
+  background: color-mix(in srgb, var(--ok) 22%, transparent);
+  color: var(--ok);
+}
