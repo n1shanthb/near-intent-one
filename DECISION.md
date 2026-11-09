@@ -16,11 +16,11 @@ Rule: no fabricated hashes; failed receipts ≠ SUCCESS; Tidepool ≠ production
 | **E3** Revoke vs broadcast | **PASS** | Exported ECDSA survives NEAR revoke |
 | **F1** Trust / signing boundary | **PASS** | Trusted attestor (not Tidepool maker verify) |
 | **F2** Revocation recovery | **PASS** | Reconcile + narrow cancel; E3 preserved |
-| **F3** Ledger owner proof | **BLOCKED** | No physical Ledger session in agent env |
+| **F3** Ledger owner proof | **PASS** | Completed via Gate H1 browser wizard |
 | **F4** Unattended trade cycle | **PASS** | Full settle under frozen policy |
-| **G** Ledger + accounting harden | **BLOCKED** | Accounting/reconciler PASS; Ledger hardware BLOCKED |
-| **H** Hardware + agent backend | **BLOCKED** | H2/H3/H4 + upgrade auth PASS; Ledger still BLOCKED |
-| **Ledger-only owner keys** | **BLOCKED** | Software FullAccess still present |
+| **G** Ledger + accounting harden | **PASS** | Accounting + Ledger ownership closed in H1 |
+| **H** Hardware + agent backend | **PASS** | H1–H4 complete; see `GATE_H.md` |
+| **Ledger-only owner keys** | **PASS** | Owner + policy: Ledger FullAccess only |
 | **Mainnet trading** | **BLOCKED** | Requires explicit approval |
 
 ## Gate F detail
@@ -61,19 +61,19 @@ See `GATE_G.md`.
 
 - F2 leftover `reserved=1000000` / `unresolved=1` traced to abandoned never-signed `f1-1794229262329` (**correctly pending**, not false Success). Reconciler Expired → `reserved=0` (`9MeJmCE5b1nzcdK6fMMft8vMx6Nx5GizYYWQZDDDzqUE`).
 - `reconcile_pending` stores `evidence_hash` only; `verified_onchain:false`. Trust = owner or owner-pinned reconciler after off-chain receipt check.
-- Narrow reconciler (`nio-c-agent-857107.testnet`) can settle pending; cannot `set_policy`/`revoke`.
-- Ledger add-then-remove software FullAccess flow prepared; physical txs **BLOCKED**.
+- Narrow reconciler role introduced in G; H2 moved it off the trading agent to `nio-c-recon-857107.testnet`.
+- Ledger ownership closed in **H1** (hardware-only).
 - F1 attestor limitation + E3 post-revoke EVM execution **preserved**.
 
 ## Gate H detail
 
 See `GATE_H.md`.
 
-- **H1 Ledger BLOCKED** — no physical device; software FullAccess remains.
-- **H1 upgrade authority PASS** — policy contract FullAccess consolidated to owner key (dedicated contract software key removed). Compromised owner software key can still upgrade until Ledger.
-- **H2 PASS** — reconciler `nio-c-recon-857107.testnet` ≠ agent; off-chain receipt checks before reconcile; never deadline-only Expire of Signed ops.
-- **H3 PASS** — deterministic TRADE decision + live settle [`0xba28b97b…`](https://sepolia.etherscan.io/tx/0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09); reconciler reconcile `CFj1Q12DVjEs6SCC2iATjju89hDK6Lzaz5TLBmauEeZ1`.
-- **H4 PASS** — local git + `packages/agent-api` interfaces; `apps/web` untouched; no public push.
+- **H1 Ledger PASS** — path `44'/397'/0'/0'/3'`; pubkey `ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh`; `set_policy` `7SrK8M8e…`; `revoke` `EndhGnPp…` (`revoked=true`, epoch 19); software keys removed from owner + policy.
+- **H1 upgrade authority PASS** — policy FullAccess is Ledger-only.
+- **H2 PASS** — reconciler `nio-c-recon-857107.testnet` ≠ agent; off-chain receipt checks before reconcile.
+- **H3 PASS** — deterministic TRADE + Sepolia [`0xba28b97b…`](https://sepolia.etherscan.io/tx/0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09).
+- **H4 PASS** — local git + `packages/agent-api` + Ledger wizard in `apps/web`.
 
 ## Product unlock
 
@@ -89,4 +89,4 @@ Constraints that remain:
 - Do not claim Tidepool-maker-verified quotes until maker pubkey is pinned and verified.
 - Do not claim instant cross-chain cancellation; E3/F2 show exported ECDSA survives NEAR revoke (cancel is a **nonce race**, not cryptographic erase).
 - No mainnet trading without explicit approval.
-- F3 Ledger-only ownership still required before production-hardening claims.
+- Mandate may be revoked after H1 proof — Ledger **unrevoke** before further agent/MPC demos.
