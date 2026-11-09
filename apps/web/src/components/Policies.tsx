@@ -9,7 +9,7 @@ import { gateFLedger } from "../adapters/gatef";
 const EXAMPLE =
   "Allow trading on Ethereum and NEAR, only USDC, ETH and NEAR. Maximum $10 per trade, $50 per day, 1% slippage and stop at 5% drawdown.";
 
-export function Policies() {
+export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
   const [text, setText] = useState(EXAMPLE);
   const [chains, setChains] = useState({ ethereum: true, near: true });
   const [tokens, setTokens] = useState({ USDC: true, ETH: true, NEAR: true });
@@ -238,16 +238,19 @@ export function Policies() {
                       ? prep.summary
                       : prep.reason
                   );
+                  if (prep.status === "ready_for_ledger") onOpenLedger?.();
                 }}
               >
-                Hardware authorization preview
+                Open Ledger signing flow
               </button>
             </div>
             {hash && <p className="mono small">sha256 {hash}</p>}
             {handoffMsg && <p className="warn">{handoffMsg}</p>}
             <p className="muted small">
-              Status: <strong>PROPOSED — NOT APPROVED</strong>. Ledger confirmation
-              required before mandate change.
+              Status: <strong>PROPOSED — NOT APPROVED</strong>. Ownership is
+              VERIFIED historically; this JSON is not live until the physical
+              Ledger confirms in the wizard. Mandate may be revoked — unrevoke
+              only via Ledger.
             </p>
           </>
         ) : (
