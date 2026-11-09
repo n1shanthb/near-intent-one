@@ -1,7 +1,12 @@
-import { ADVERSARIAL_DEMOS, GATE_G_ACCOUNTING } from "../data/evidenceSnapshot";
+import {
+  ADVERSARIAL_DEMOS,
+  GATE_G_ACCOUNTING,
+  HARDWARE_OWNERSHIP,
+} from "../data/evidenceSnapshot";
 import { SECURITY_DEMOS } from "../data/receipts";
+import { CONFIG } from "../lib/config";
 
-export function Security() {
+export function Security({ onOpenLedger }: { onOpenLedger?: () => void }) {
   return (
     <div className="stack">
       <section className="card alert">
@@ -13,20 +18,51 @@ export function Security() {
           </strong>
         </p>
         <p className="muted">
-          NEAR mandate revoke blocks new MPC signing. It does not erase an
-          already-exported ECDSA signature on Sepolia.
+          Hardware revoke proof:{" "}
+          <a
+            href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.revokeTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {HARDWARE_OWNERSHIP.revokeTx.slice(0, 14)}…
+          </a>{" "}
+          → revoked=true epoch {HARDWARE_OWNERSHIP.revokeVerified.mandate_epoch}.
         </p>
       </section>
 
       <section className="card">
         <div className="card-head">
-          <h3>Ledger ownership</h3>
-          <span className="badge badge-warn">{GATE_G_ACCOUNTING.ledger.label}</span>
+          <h3>Ledger-only authority</h3>
+          <span className="badge badge-pass">{GATE_G_ACCOUNTING.ledger.label}</span>
         </div>
-        <p>{GATE_G_ACCOUNTING.ledger.note}</p>
-        <p className="muted small">
-          Software FullAccess keys remaining:{" "}
-          {GATE_G_ACCOUNTING.ledger.softwareFullAccessRemaining}
+        <dl className="kv">
+          <dt>Ledger key</dt>
+          <dd className="mono">{HARDWARE_OWNERSHIP.ledgerPublicKey}</dd>
+          <dt>set_policy</dt>
+          <dd className="mono">
+            <a
+              href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.setPolicyTx}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {HARDWARE_OWNERSHIP.setPolicyTx}
+            </a>
+          </dd>
+          <dt>Software FA left</dt>
+          <dd>{GATE_G_ACCOUNTING.ledger.softwareFullAccessRemaining}</dd>
+        </dl>
+        <p className="muted small">{HARDWARE_OWNERSHIP.note}</p>
+        <button type="button" onClick={() => onOpenLedger?.()}>
+          Open Ledger setup wizard
+        </button>
+      </section>
+
+      <section className="card">
+        <h3>Separate reconciler (H2)</h3>
+        <p>
+          Reconciler <span className="mono">{GATE_G_ACCOUNTING.reconciler}</span> is
+          not the trading agent. Contract stores evidence_hash with
+          verified_onchain=false.
         </p>
       </section>
 
@@ -44,16 +80,6 @@ export function Security() {
               <p className="muted">{"detail" in d ? d.detail : d.how}</p>
             </li>
           ))}
-        </ul>
-      </section>
-
-      <section className="card">
-        <h3>Claims we do not make</h3>
-        <ul>
-          <li>Tidepool maker signatures verified on-chain</li>
-          <li>Revoke cancels already-exportable EVM transactions</li>
-          <li>Ledger-only ownership (still BLOCKED)</li>
-          <li>Production 1Click equivalence to Tidepool sandbox</li>
         </ul>
       </section>
     </div>
