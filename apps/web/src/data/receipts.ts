@@ -137,14 +137,50 @@ export const RECEIPTS: EvidenceReceipt[] = [
   {
     id: "gate-g-accounting",
     gate: "G",
-    title: "Accounting settle · Ledger blocked",
-    result: "PASS_LIMITATION",
+    title: "Accounting settle",
+    result: "PASS",
     summary:
-      "reserved=0 · unresolved=0 · economically_settled=true. Ledger hardware NOT PROVEN (Gate H).",
+      "reserved=0 · unresolved=0 · economically_settled=true. Ledger closed in H1.",
     links: [
       {
         label: "Cleanup reconcile",
         href: `${CONFIG.nearblocks}/txns/9MeJmCE5b1nzcdK6fMMft8vMx6Nx5GizYYWQZDDDzqUE`,
+      },
+    ],
+  },
+  {
+    id: "gate-h1",
+    gate: "H1",
+    title: "Ledger-only ownership",
+    result: "PASS",
+    summary:
+      "Hardware set_policy + revoke + software key removal. Owner+policy FullAccess = Ledger only.",
+    links: [
+      {
+        label: "set_policy",
+        href: `${CONFIG.nearblocks}/txns/7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb`,
+      },
+      {
+        label: "revoke",
+        href: `${CONFIG.nearblocks}/txns/EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9`,
+      },
+    ],
+  },
+  {
+    id: "gate-h3",
+    gate: "H3",
+    title: "Deterministic strategy TRADE",
+    result: "PASS",
+    summary:
+      "decide.mjs TRADE → MPC CGbXc3cH… → Sepolia 0xba28b97b… → Tidepool SUCCESS → reconcile CFj1Q12D…",
+    links: [
+      {
+        label: "Sepolia H3",
+        href: `${CONFIG.etherscan}/tx/0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09`,
+      },
+      {
+        label: "NEAR MPC",
+        href: `${CONFIG.nearblocks}/txns/CGbXc3cHHv1jWGeaK4Xj2mAqE29NQ2UhmrgaUr9udKPC`,
       },
     ],
   },
