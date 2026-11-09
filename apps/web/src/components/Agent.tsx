@@ -1,14 +1,31 @@
 import { useEffect, useState } from "react";
 import { CONFIG } from "../lib/config";
-import { F4_EXECUTION, FROZEN_POLICY, GATE_G_ACCOUNTING } from "../data/evidenceSnapshot";
+import {
+  F4_EXECUTION,
+  FROZEN_POLICY,
+  GATE_G_ACCOUNTING,
+  H3_DECISION,
+  H3_EXECUTION,
+} from "../data/evidenceSnapshot";
 import { gateHStrategy, type StrategyDecisionLog } from "../adapters/gateh";
 
 export function AgentPanel() {
-  const [strategy, setStrategy] = useState<StrategyDecisionLog | null>(null);
+  const [decision, setDecision] = useState<StrategyDecisionLog | null>(null);
 
   useEffect(() => {
-    void gateHStrategy.getLatestDecision().then(setStrategy);
+    void gateHStrategy.getLatestDecision().then(setDecision);
   }, []);
+
+  const d = decision ?? {
+    ...H3_DECISION,
+    execution: {
+      operationId: H3_EXECUTION.operationId,
+      mpcSignTx: H3_EXECUTION.mpcSignTx,
+      sepoliaTx: H3_EXECUTION.sepoliaTx,
+      tidepoolStatus: H3_EXECUTION.tidepoolStatus,
+      reconcileTx: H3_EXECUTION.reconcileTx,
+    },
+  };
 
   return (
     <div className="stack">
@@ -18,103 +35,116 @@ export function AgentPanel() {
           <span className="badge badge-recorded">NO PRIVATE KEY</span>
         </div>
         <p>
-          Agent <span className="mono">{CONFIG.agentAccount}</span> proposes under
-          frozen owner policy. The <strong>policy contract</strong>{" "}
-          <span className="mono">{CONFIG.policyContract}</span> owns the MPC path and
-          requests Chain Signatures. Agent cannot set_policy, revoke, or choose an
-          alternate EIP-155 digest.
+          Agent <span className="mono">{CONFIG.agentAccount}</span> proposes.
+          Policy <span className="mono">{CONFIG.policyContract}</span> owns MPC.
+          Reconciler <span className="mono">{GATE_G_ACCOUNTING.reconciler}</span> ≠
+          agent (H2).
         </p>
+      </section>
+
+      <section className="card feature-card">
+        <div className="card-head">
+          <h3>H3 deterministic decision</h3>
+          <span className="badge badge-pass">{d.choice}</span>
+        </div>
+        <p className="warn">
+          Deterministic autonomous strategy — <strong>not</strong> LLM-generated
+          trading intelligence. {H3_DECISION.ai_note}
+        </p>
+        <dl className="kv dense">
+          <dt>Strategy</dt>
+          <dd className="mono">{d.strategy_id}</dd>
+          <dt>When</dt>
+          <dd>{d.timestamp}</dd>
+          <dt>Amount</dt>
+          <dd>
+            {d.amount_in} base ({H3_DECISION.amountInDisplay})
+          </dd>
+          <dt>Rationale</dt>
+          <dd>{d.rationale}</dd>
+          <dt>Correlation</dt>
+          <dd className="mono">{d.quote_summary?.correlationId ?? "—"}</dd>
+          <dt>Deposit</dt>
+          <dd className="mono">{d.quote_summary?.depositAddress ?? "—"}</dd>
+          <dt>Min out</dt>
+          <dd className="mono">{d.quote_summary?.minAmountOut ?? "—"}</dd>
+        </dl>
+        <h4>Risk checks observed</h4>
+        <ul className="chip-row">
+          {d.checks.map((c) => (
+            <li key={c.name}>
+              {c.ok ? "✓" : "✗"} {c.name}
+              {c.headroom != null ? ` · headroom ${String(c.headroom)}` : ""}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="card">
         <div className="card-head">
-          <h3>Recorded F4 execution</h3>
-          <span className="badge badge-pass">UNATTENDED PASS</span>
+          <h3>H3 execution evidence</h3>
+          <span className="badge badge-pass">SUCCESS</span>
         </div>
-        <dl className="kv dense">
-          <dt>Operation</dt>
-          <dd className="mono">{F4_EXECUTION.operationId}</dd>
-          <dt>Quote / correlation</dt>
-          <dd className="mono">{F4_EXECUTION.correlationId}</dd>
-          <dt>Amount in</dt>
-          <dd>
-            {F4_EXECUTION.amountInDisplay} ({F4_EXECUTION.amountIn} base)
-          </dd>
-          <dt>Min out</dt>
-          <dd className="mono">{F4_EXECUTION.minAmountOut}</dd>
-          <dt>Deposit</dt>
-          <dd className="mono">{F4_EXECUTION.depositAddress}</dd>
-          <dt>Attestor</dt>
-          <dd className="mono">{F4_EXECUTION.attestorPublicKey}</dd>
-          <dt>Trust model</dt>
-          <dd>{F4_EXECUTION.trustModel}</dd>
-          <dt>Policy epoch</dt>
-          <dd>
-            {F4_EXECUTION.policyEpoch} · unchanged={String(F4_EXECUTION.policyUnchanged)}
-          </dd>
-          <dt>Tidepool</dt>
-          <dd>{F4_EXECUTION.tidepoolStatus}</dd>
-          <dt>Intents wNEAR</dt>
-          <dd>{F4_EXECUTION.intentsWnearDisplay}</dd>
-        </dl>
+        <ol className="proof-ol">
+          <li>
+            Propose{" "}
+            <a
+              href={`${CONFIG.nearblocks}/txns/${H3_EXECUTION.proposeTx}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {H3_EXECUTION.proposeTx.slice(0, 12)}…
+            </a>
+          </li>
+          <li>
+            MPC{" "}
+            <a
+              href={`${CONFIG.nearblocks}/txns/${H3_EXECUTION.mpcSignTx}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {H3_EXECUTION.mpcSignTx.slice(0, 12)}…
+            </a>
+          </li>
+          <li>
+            Sepolia{" "}
+            <a
+              href={`${CONFIG.etherscan}/tx/${H3_EXECUTION.sepoliaTx}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              0xba28b97b…
+            </a>{" "}
+            status {H3_EXECUTION.sepoliaStatus}
+          </li>
+          <li>Tidepool {H3_EXECUTION.tidepoolStatus}</li>
+          <li>
+            Reconcile by {H3_EXECUTION.reconcileActor}{" "}
+            <a
+              href={`${CONFIG.nearblocks}/txns/${H3_EXECUTION.reconcileTx}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {H3_EXECUTION.reconcileTx.slice(0, 12)}…
+            </a>
+          </li>
+        </ol>
+        <p className="muted small">
+          Verification model: {H3_EXECUTION.verification}
+        </p>
+      </section>
 
-        <h4>On-chain constraints (frozen)</h4>
+      <section className="card">
+        <h3>Policy constraints (frozen at trade time)</h3>
         <ul className="chip-row">
           <li>max trade {FROZEN_POLICY.max_trade_value}</li>
           <li>slippage {FROZEN_POLICY.max_slippage_bps} bps</li>
           <li>pending cap {FROZEN_POLICY.max_pending_exposure}</li>
         </ul>
-
-        <h4>Proof chain</h4>
-        <ol className="proof-ol">
-          {F4_EXECUTION.steps.map((s) => (
-            <li key={s.id}>
-              <strong>{s.label}</strong> — {s.detail}
-              {s.href && (
-                <>
-                  {" "}
-                  <a href={s.href} target="_blank" rel="noreferrer">
-                    explorer
-                  </a>
-                </>
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3>Reconciler / exposure (Gate G)</h3>
-          <span className="badge badge-pass">ACCOUNTING PASS</span>
-        </div>
-        <dl className="kv">
-          <dt>Reserved</dt>
-          <dd>{GATE_G_ACCOUNTING.snapshot.reserved_pending_exposure}</dd>
-          <dt>Unresolved</dt>
-          <dd>{GATE_G_ACCOUNTING.snapshot.unresolved_pending}</dd>
-          <dt>Economically settled</dt>
-          <dd>{String(GATE_G_ACCOUNTING.snapshot.economically_settled)}</dd>
-          <dt>Reconciler</dt>
-          <dd className="mono">{GATE_G_ACCOUNTING.reconciler}</dd>
-        </dl>
-        <p className="muted small">{GATE_G_ACCOUNTING.reconcileNote}</p>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3>Strategy decision log</h3>
-          <span className="badge badge-warn">AWAITING GATE H</span>
-        </div>
-        {strategy ? (
-          <pre className="code">{JSON.stringify(strategy, null, 2)}</pre>
-        ) : (
-          <p className="muted">
-            No AI decision trace invented. When Gate H emits genuine strategy
-            logs (input → trade/no-trade → rationale → policy result → outcome),
-            they will appear here.
-          </p>
-        )}
+        <p className="muted small">
+          Earlier F4 cycle: {F4_EXECUTION.operationId} also SUCCESS under attestor
+          trust.
+        </p>
       </section>
     </div>
   );
