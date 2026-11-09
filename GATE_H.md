@@ -2,54 +2,61 @@
 
 Date: 2026-11-09  
 Network: NEAR **testnet** / Sepolia only (no mainnet)  
-Artifacts: `evidence/live/gate-h-evidence.json`, `gate-h-decision.json`  
-Script: `scripts/gate-h.mjs`  
+Artifacts: `evidence/live/gate-h-evidence.json`, `gate-h-decision.json`, `gate-h1-ledger-export.json`  
+Script: `scripts/gate-h.mjs` · Wizard: `apps/web` → `/setup/ledger`  
 Preserved: Gate G accounting PASS; F1 attestor trust; E3 post-revoke EVM execution
 
 ## Verdicts
 
 | Check | Status |
 |-------|--------|
-| H1 Ledger physical ownership | **BLOCKED** |
-| H1 Contract upgrade authority | **PASS** (software owner still upgrade-capable until Ledger) |
+| H1 Ledger physical ownership | **PASS** |
+| H1 Contract upgrade authority | **PASS** (Ledger-only FullAccess on policy) |
 | H2 Separate reconciler + off-chain verify | **PASS** |
 | H3 Genuine decision loop | **PASS** |
 | H4 Repo + integration contract | **PASS** |
-| **Gate H overall** | **BLOCKED** (Ledger incomplete) |
+| **Gate H overall** | **PASS** |
 
 ---
 
 ## H1 — Hardware + upgrade authority
 
-### Ledger — BLOCKED
+### Ledger — PASS (hardware-only ownership verified)
 
-| Item | Result |
-|------|--------|
-| Physical device session | **Not available** |
-| Hardware `set_policy` tx | `null` |
-| Hardware `revoke` tx | `null` |
-| Owner software FullAccess remaining | **1** (`ed25519:9itHoXewdGq3fK8DYmHwoo32MdP3QdjJpgPPamxTNvvt`) |
-| Seed phrases | Never requested |
-| Prepared flow | `scripts/ledger/01`–`05` |
+Wizard: [http://127.0.0.1:5173/setup/ledger](http://127.0.0.1:5173/setup/ledger)  
+Device: NEAR app **2.6.1** · path `44'/397'/0'/0'/3'`  
+Ledger pubkey: `ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh`  
+Seed phrases: never requested
 
-### Access-key audit (after H1 mitigation)
+| Step | Result | Tx |
+|------|--------|-----|
+| ADD_KEY owner (software migrate) | ok | `4pgYEJwXLfZXPTP9RzXGQrp2A9vLhfzujGBriwEctdL9` |
+| ADD_KEY policy (software migrate) | ok | `31uwXK2fFbhu9PMLFTBfuRTAHSKWh3FfiaSyGQXEKSvG` |
+| Hardware `set_policy` | **SUCCESS** | [`7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb`](https://testnet.nearblocks.io/txns/7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb) |
+| Hardware `revoke` | **VERIFIED** `revoked=true` epoch **19** | [`EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9`](https://testnet.nearblocks.io/txns/EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9) |
+| DELETE_KEY owner software | Ledger-signed | [`cC32MZm8DUizXndrR7gfWoCRowDcTRwPCZ4UcPM3fi7`](https://testnet.nearblocks.io/txns/cC32MZm8DUizXndrR7gfWoCRowDcTRwPCZ4UcPM3fi7) |
+| DELETE_KEY policy software | Ledger-signed | [`EQZX8PBqJpwhVN3BA39CdkN6X3DqwDNADsZjdp1Xo3ok`](https://testnet.nearblocks.io/txns/EQZX8PBqJpwhVN3BA39CdkN6X3DqwDNADsZjdp1Xo3ok) |
+| Unrevoke | optional / not required for PASS | `null` |
+
+**Phase:** Hardware-only ownership verified · `hardware_ownership_pass: true`
+
+### Access-key audit (final)
 
 | Account | FullAccess keys |
 |---------|-----------------|
-| `nio-c-owner-857107.testnet` | `ed25519:9itHoXewdGq3fK8DYmHwoo32MdP3QdjJpgPPamxTNvvt` (software) |
-| `nio-c-policy-857107.testnet` | **same owner key only** |
-| `nio-c-agent-857107.testnet` | `ed25519:7uNfAuj8jHDJawVppU8sVgxufDyFySZmcqMGtBMeHUXY` |
-| `nio-c-recon-857107.testnet` | dedicated reconciler software key |
+| `nio-c-owner-857107.testnet` | **Ledger only** `ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh` |
+| `nio-c-policy-857107.testnet` | **Ledger only** `ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh` |
+| `nio-c-agent-857107.testnet` | `ed25519:7uNfAuj8jHDJawVppU8sVgxufDyFySZmcqMGtBMeHUXY` (agent; unchanged) |
+| `nio-c-recon-857107.testnet` | dedicated reconciler software key (unchanged) |
 
-### Upgrade authority (critical)
+Software FullAccess `ed25519:9itHoXewdGq3fK8DYmHwoo32MdP3QdjJpgPPamxTNvvt` **removed** from owner and policy.
 
-**Risk:** Whoever holds **FullAccess on the policy contract account** can `DeployContract` (replace WASM), bypass policy checks, and still drive the contract-controlled MPC signer path.
+### Upgrade authority
 
-**Before Gate H:** contract had dedicated FullAccess `ed25519:G1cuNDdAcrYsJtt3jPdcVc9aQQ3jpCmdU7RXvyCG4VMS` (software in `.near-credentials`).
+**Risk (still true in principle):** FullAccess on the policy contract can `DeployContract` and bypass policy.  
+**Mitigation now:** that FullAccess is the **Ledger** key only — upgrades require physical device confirmation. Former dedicated contract software key and owner software key are gone.
 
-**Mitigation applied:** dedicated contract FullAccess removed; upgrade authority consolidated onto the **owner** FullAccess key. Confirmed live: contract keys = owner pk only.
-
-**Remaining risk (disclosed):** until Ledger owns the owner account, a compromised **owner software key** can still upgrade the contract. Ledger completion (`scripts/ledger/05-contract-upgrade-authority.INSTRUCTIONS.md`) is required to close this.
+**Note:** Mandate is currently **revoked** (`epoch=19`) from the hardware revoke proof. Use wizard **Unrevoke with Ledger** before further agent/MPC demos.
 
 ---
 
@@ -73,8 +80,6 @@ Preserved: Gate G accounting PASS; F1 attestor trust; E3 post-revoke EVM executi
 
 Contract still stores `evidence_hash` with `verified_onchain:false`.
 
-Rule demos in evidence: signed-without-receipt → refuse; Reserved/None → may Expire; already Success → duplicate blocked.
-
 ---
 
 ## H3 — Autonomous strategy
@@ -89,7 +94,7 @@ Decision artifact: `evidence/live/gate-h-decision.json`
 | Amount | `1000000` (1 USDC) |
 | Rationale | Quote viable; capacity ok; mandate active |
 | minAmountOut observed | `279036267004249282582560` |
-| AI used as enforcement | **No** (optional only; unused) |
+| AI used as enforcement | **No** |
 
 ### Execution trace (F4 path reuse)
 
@@ -98,13 +103,9 @@ Decision artifact: `evidence/live/gate-h-decision.json`
 | Operation | `h3-1794231966936` |
 | Propose | `Ev1Uy7eQ4Zf8jG8WyC8cAKp9S3VhDiQrn94wngt9tkoD` |
 | MPC sign | `CGbXc3cHHv1jWGeaK4Xj2mAqE29NQ2UhmrgaUr9udKPC` |
-| Sepolia | [`0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09`](https://sepolia.etherscan.io/tx/0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09) status `0x1` |
+| Sepolia | [`0xba28b97b…`](https://sepolia.etherscan.io/tx/0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09) status `0x1` |
 | Tidepool | **SUCCESS** |
-| Off-chain verify | origin ok + tidepool ok → Success |
-| Reconcile (reconciler actor) | `CFj1Q12DVjEs6SCC2iATjju89hDK6Lzaz5TLBmauEeZ1` |
-| Evidence hash stored | `5mswTKnFdrsRwc5E372fuNrTeExxQ8gRfDPrE9CrmAgr` (`verified_onchain:false`) |
-
-No fabricated P/L. Contract remained the enforcement boundary.
+| Reconcile (reconciler) | `CFj1Q12DVjEs6SCC2iATjju89hDK6Lzaz5TLBmauEeZ1` |
 
 ---
 
@@ -112,30 +113,25 @@ No fabricated P/L. Contract remained the enforcement boundary.
 
 | Item | Result |
 |------|--------|
-| Root `.git` | Present (ours; nested clone git removed) |
-| `.gitignore` | Covers `.near-credentials/`, `.env*`, `node_modules/`, `*.wasm`, attestor seeds, `evidence/live/*` |
+| Root `.git` | Present |
+| `.gitignore` | Credentials / `.env` / attestor seeds ignored |
 | Public push | **Not performed** |
-| `apps/web` edited | **No** |
+| Ledger wizard | `apps/web` `/setup/ledger` |
 | Typed interfaces | `packages/agent-api/types.ts` |
-| API doc | `packages/agent-api/API.md` |
-
-Surfaces documented: policy/epoch, exposure, decisions, quote auth, MPC signing, settlement, Ledger state, revocation/reconciler, upgrade authority.
 
 ---
 
 ## Remaining risks
 
-1. **Ledger BLOCKED** — owner (and thus contract upgrade) still software FullAccess.  
-2. **`evidence_hash` not on-chain verified** — reconciler/owner watchdog trust.  
-3. **F1** — Tidepool maker signatures still not independently verified.  
-4. **E3** — exported ECDSA survives NEAR revoke.  
+1. **`evidence_hash` not on-chain verified** — reconciler/owner watchdog trust.  
+2. **F1** — Tidepool maker signatures still not independently verified.  
+3. **E3** — exported ECDSA survives NEAR revoke.  
+4. **Single Ledger key** — loss of device/seed without backup = loss of owner/upgrade control (operational, not a gate FAIL).
 
 ## Reproduction
 
 ```powershell
-cd E:\near-intent-one
-node scripts/gate-h.mjs
-# Ledger (local interactive only):
-node scripts/ledger/01-print-owner-keys.mjs
-# follow scripts/ledger/02–05 with physical device
+cd E:\near-intent-one\apps\web
+npm run dev
+# http://127.0.0.1:5173/setup/ledger
 ```
