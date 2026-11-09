@@ -3,6 +3,8 @@ import {
   ADVERSARIAL_DEMOS,
   F4_EXECUTION,
   GATE_G_ACCOUNTING,
+  H3_EXECUTION,
+  HARDWARE_OWNERSHIP,
 } from "../data/evidenceSnapshot";
 import { RECEIPTS } from "../data/receipts";
 
@@ -11,8 +13,38 @@ export function Activity() {
     <div className="stack">
       <section className="card">
         <div className="card-head">
-          <h3>F4 execution timeline</h3>
+          <h3>H3 strategy settle</h3>
           <span className="badge badge-recorded">RECORDED VERIFIED</span>
+        </div>
+        <div className="proof-links">
+          <a
+            href={`${CONFIG.etherscan}/tx/${H3_EXECUTION.sepoliaTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Sepolia 0xba28b97b…
+          </a>
+          <a
+            href={`${CONFIG.nearblocks}/txns/${H3_EXECUTION.mpcSignTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            MPC CGbXc3cH…
+          </a>
+          <a
+            href={`${CONFIG.nearblocks}/txns/${H3_EXECUTION.reconcileTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Reconcile CFj1Q12D…
+          </a>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3>F4 unattended settle</h3>
+          <span className="badge badge-pass">PASS</span>
         </div>
         <div className="timeline-v">
           {F4_EXECUTION.steps.map((s, i) => (
@@ -33,29 +65,47 @@ export function Activity() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3>H1 Ledger proofs</h3>
+          <span className="badge badge-pass">OWNERSHIP VERIFIED</span>
+        </div>
         <div className="proof-links">
           <a
-            href={`${CONFIG.etherscan}/tx/${F4_EXECUTION.sepoliaTx}`}
+            href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.setPolicyTx}`}
             target="_blank"
             rel="noreferrer"
           >
-            Sepolia 0xe49d5ff8…
+            set_policy
           </a>
           <a
-            href={`${CONFIG.nearblocks}/txns/${F4_EXECUTION.nearSettlementTxs[0]}`}
+            href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.revokeTx}`}
             target="_blank"
             rel="noreferrer"
           >
-            NEAR B6uEASpp…
+            revoke
+          </a>
+          <a
+            href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.removeOwnerSoftwareTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            remove owner software
+          </a>
+          <a
+            href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.removePolicySoftwareTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            remove policy software
           </a>
         </div>
       </section>
 
       <section className="card">
-        <div className="card-head">
-          <h3>Adversarial rejects</h3>
-          <span className="badge badge-warn">SECURITY</span>
-        </div>
+        <h3>Adversarial rejects</h3>
         <ul className="demo-list">
           {ADVERSARIAL_DEMOS.map((d) => (
             <li key={d.id}>
@@ -70,18 +120,14 @@ export function Activity() {
       </section>
 
       <section className="card">
-        <div className="card-head">
-          <h3>Gate G accounting</h3>
-          <span className="badge badge-pass">RESERVED = 0</span>
-        </div>
-        <p className="muted small">As of {GATE_G_ACCOUNTING.asOf}</p>
+        <h3>Gate G accounting snapshot</h3>
         <pre className="code">
           {JSON.stringify(GATE_G_ACCOUNTING.snapshot, null, 2)}
         </pre>
       </section>
 
       <section className="card">
-        <h3>Gate index (B–G)</h3>
+        <h3>Gate index</h3>
         <div className="receipt-grid">
           {RECEIPTS.map((r) => (
             <div key={r.id} className="receipt">
@@ -93,28 +139,15 @@ export function Activity() {
               </header>
               <strong>{r.title}</strong>
               <p className="muted small">{r.summary}</p>
+              {r.links.map((l) => (
+                <div key={l.href}>
+                  <a href={l.href} target="_blank" rel="noreferrer">
+                    {l.label}
+                  </a>
+                </div>
+              ))}
             </div>
           ))}
-          <div className="receipt">
-            <header className="row between">
-              <span className="eyebrow">Gate F4</span>
-              <span className="badge badge-pass">PASS</span>
-            </header>
-            <strong>Unattended ORIGIN_CHAIN settle</strong>
-            <p className="muted small">
-              Sepolia 0xe49d5ff8… · Tidepool SUCCESS · NEAR B6uEASpp…
-            </p>
-          </div>
-          <div className="receipt">
-            <header className="row between">
-              <span className="eyebrow">Gate G</span>
-              <span className="badge badge-warn">BLOCKED (Ledger)</span>
-            </header>
-            <strong>Accounting PASS · Ledger NOT PROVEN</strong>
-            <p className="muted small">
-              reserved=0 · economically_settled=true · hardware pending Gate H
-            </p>
-          </div>
         </div>
       </section>
     </div>
