@@ -1,0 +1,31 @@
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+target/
+**/target/
+.near-credentials/
+**/.near-credentials/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.wasm
+.DS_Store
+coverage/
+.turbo/
+.vercel/
+apps/web/.vite/
+
+# Live evidence may contain attestor seeds / private operational detail
+evidence/live/*
+!evidence/live/.gitkeep
+
+gate-f-attestor.seed.json
+evidence/live/gate-f-attestor.seed.json
+**/attestor*.seed.json
+
+# Worktrees / vendor clones (reference only; no nested git)
+worktrees/
+vendor/near-hackathon-prompt-examples/
