@@ -652,19 +652,23 @@ node scripts/gate-f-security.mjs
 
 | Check | Status |
 |-------|--------|
-| H1 Ledger | **BLOCKED** |
+| H1 Ledger | **PASS** |
 | H1 Upgrade authority | **PASS** |
 | H2 Reconciler trust | **PASS** |
 | H3 Decision loop | **PASS** |
 | H4 Repo / API | **PASS** |
-| Gate H overall | **BLOCKED** |
+| Gate H overall | **PASS** |
 
 ## Highlights
 
 | Item | Evidence |
 |------|----------|
-| Contract upgrade keys | Owner FullAccess only on `nio-c-policy-857107.testnet` |
-| Reconciler | `nio-c-recon-857107.testnet` (`9J7ys87unn1ETpHD73bS7RXFrC1sExSi1XvqQkCAZPwY`) |
+| Ledger pubkey / path | `ed25519:9omQYtUWotq8AbBhYbfbG7BUbDPjpKRCgeyLQAW48Xjh` · `44'/397'/0'/0'/3'` |
+| Hardware `set_policy` | `7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb` |
+| Hardware `revoke` | `EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9` (`revoked=true`, epoch 19) |
+| DELETE_KEY owner/policy software | `cC32MZm8…` / `EQZX8PBq…` |
+| Final FA keys | Ledger-only on owner + policy |
+| Reconciler | `nio-c-recon-857107.testnet` |
 | H3 Sepolia | `0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09` |
-| H3 reconcile | `CFj1Q12DVjEs6SCC2iATjju89hDK6Lzaz5TLBmauEeZ1` (reconciler actor) |
 | Interfaces | `packages/agent-api/types.ts`, `API.md` |
+| Export | `evidence/live/gate-h1-ledger-export.json` |
