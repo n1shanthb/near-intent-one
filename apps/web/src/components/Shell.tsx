@@ -7,7 +7,8 @@ export type NavId =
   | "policies"
   | "predict"
   | "activity"
-  | "security";
+  | "security"
+  | "ledger";
 
 const NAV: { id: NavId; label: string }[] = [
   { id: "demo", label: "Judge demo" },
@@ -17,6 +18,7 @@ const NAV: { id: NavId; label: string }[] = [
   { id: "predict", label: "Predict" },
   { id: "activity", label: "Evidence" },
   { id: "security", label: "Security" },
+  { id: "ledger", label: "Ledger setup" },
 ];
 
 export function Shell({
@@ -71,7 +73,7 @@ export function Shell({
             </select>
           </label>
           <p className="muted small mode-hint">
-            {mode === "verified" && "Hashes from Gates B–G evidence packs."}
+            {mode === "verified" && "Hashes from Gates B–H evidence packs."}
             {mode === "simulation" && "Predict only — never VERIFIED P/L."}
             {mode === "live" && "Read-only RPC / dry quotes. No funded trades."}
           </p>
