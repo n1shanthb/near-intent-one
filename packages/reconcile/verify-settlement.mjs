@@ -179,9 +179,22 @@ export function deriveSettlementState({
 
   const signed = ["Signed", "Signing"].includes(pendingOp.signing_state);
   const reservedOnly = pendingOp.signing_state === "Reserved";
+  const isOwnerWithdraw = String(pendingOp.intent_payload || "").startsWith(
+    "withdraw:"
+  );
 
   // Already-signed: must not Expired just for deadline — require origin or Tidepool fact.
   if (signed) {
+    // Owner withdraw path: Sepolia ERC-20 receipt is authoritative (no Tidepool).
+    // Do not treat Signed as Received without a verified origin transfer.
+    if (isOwnerWithdraw && originVerified?.ok) {
+      return {
+        ok: true,
+        settlement_state: "Success",
+        evidence_hash: originTxHash || originVerified.receipt?.transactionHash,
+        notes: ["signed+origin_ok+owner_withdraw_no_tidepool"],
+      };
+    }
     if (originVerified?.ok && tidepoolVerified?.status === "SUCCESS") {
       return {
         ok: true,
@@ -243,6 +256,9 @@ export async function verifyBeforeReconcile({
   depositAddress,
   chainId = 11155111,
 }) {
+  const isOwnerWithdraw = String(pendingOp?.intent_payload || "").startsWith(
+    "withdraw:"
+  );
   const origin = originTxHash
     ? await verifyOriginReceipt({
         txHash: originTxHash,
