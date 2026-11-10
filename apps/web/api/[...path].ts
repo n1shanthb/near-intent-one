@@ -1,7 +1,7 @@
 /**
  * Production Vercel BFF — allowlisted proxy to OCI NIO API.
+ * Mounted at /api/* ; expects /api/v1/...
  * Credentials stay server-side (GATE_I_API_KEY). Never trust browser auth headers.
- * No TLS bypass. No funded execution / Gate K signing.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -21,10 +21,7 @@ const ALLOWED_EXACT = new Set([
 ]);
 
 function apiBase(): string {
-  const raw =
-    process.env.NIO_API_BASE ||
-    process.env.GATE_I_UPSTREAM ||
-    "";
+  const raw = process.env.NIO_API_BASE || process.env.GATE_I_UPSTREAM || "";
   return raw.replace(/\/$/, "");
 }
 
@@ -36,38 +33,38 @@ function liveAiEnabled(): boolean {
   return process.env.NIO_PUBLIC_LIVE_AI === "true";
 }
 
-function resolveApiPath(req: VercelRequest): string {
-  // Prefer URL path — more reliable than catch-all query on Vite+Vercel.
+/** Normalize to path under /v1 (e.g. /gate-j/health). */
+function resolveV1Path(req: VercelRequest): string | null {
   try {
     const host = req.headers.host || "localhost";
-    const rawUrl = req.url || "/";
-    const u = new URL(rawUrl, `https://${host}`);
+    const u = new URL(req.url || "/", `https://${host}`);
     let p = u.pathname;
-    if (p.startsWith("/api/v1")) p = p.slice("/api/v1".length);
-    if (!p || p === "") return "/";
-    return p.startsWith("/") ? p : `/${p}`;
+    if (p.startsWith("/api/v1")) {
+      p = p.slice("/api/v1".length) || "/";
+    } else if (p.startsWith("/api/")) {
+      // /api/v1/... via catch-all query fallback
+      const parts = req.query.path;
+      const arr = Array.isArray(parts) ? parts : parts ? [parts] : [];
+      if (arr[0] !== "v1") return null;
+      p = "/" + arr.slice(1).join("/");
+    } else {
+      return null;
+    }
+    if (!p.startsWith("/")) p = `/${p}`;
+    return p === "/" ? "/" : p.replace(/\/+$/, "") || "/";
   } catch {
-    /* fall through */
+    return null;
   }
-  const parts = req.query.path as string[] | string | undefined;
-  if (!parts) return "/";
-  const arr = Array.isArray(parts) ? parts : [parts];
-  return (
-    "/" +
-    arr.map((p) => String(p).replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/")
-  );
 }
 
 function pathAllowed(method: string, apiPath: string): boolean {
   const key = `${method.toUpperCase()} ${apiPath}`;
   if (ALLOWED_EXACT.has(key)) return true;
   if (method === "GET" && /^\/portfolios\/[^/]+$/.test(apiPath)) {
-    const id = apiPath.split("/")[2];
-    return DEMO_PORTFOLIOS.has(id);
+    return DEMO_PORTFOLIOS.has(apiPath.split("/")[2]);
   }
   if (method === "GET" && /^\/portfolios\/[^/]+\/balances$/.test(apiPath)) {
-    const id = apiPath.split("/")[2];
-    return DEMO_PORTFOLIOS.has(id);
+    return DEMO_PORTFOLIOS.has(apiPath.split("/")[2]);
   }
   return false;
 }
@@ -89,7 +86,9 @@ function readRawBody(req: VercelRequest): Promise<Buffer> {
   });
 }
 
-function sanitizeDecideBody(raw: Buffer): { ok: true; body: Buffer } | { ok: false; reason: string } {
+function sanitizeDecideBody(
+  raw: Buffer
+): { ok: true; body: Buffer } | { ok: false; reason: string } {
   let parsed: Record<string, unknown> = {};
   if (raw.length) {
     try {
@@ -98,15 +97,12 @@ function sanitizeDecideBody(raw: Buffer): { ok: true; body: Buffer } | { ok: fal
       return { ok: false, reason: "invalid_json" };
     }
   }
-
-  // Hard public-demo constraints
   if (parsed.allow_execute === true || parsed.confirm_funded_trade === true) {
     return { ok: false, reason: "funded_execution_forbidden" };
   }
   if (parsed.acceptance_override === true || parsed.gate_k_execute === true) {
     return { ok: false, reason: "gate_k_execution_forbidden" };
   }
-
   const scenario = parsed.scenario;
   const isFixture =
     typeof scenario === "string" &&
@@ -116,7 +112,6 @@ function sanitizeDecideBody(raw: Buffer): { ok: true; body: Buffer } | { ok: fal
     if (!liveAiEnabled()) {
       return { ok: false, reason: "public_live_ai_disabled" };
     }
-    // Fixed demo portfolio only — ignore client weaker mandates
     delete parsed.mandate;
     delete parsed.allow_detached_mandate;
     delete parsed.allow_fixture_mandate;
@@ -131,15 +126,15 @@ function sanitizeDecideBody(raw: Buffer): { ok: true; body: Buffer } | { ok: fal
     delete parsed.portfolio_id;
     delete parsed.mandate;
   } else {
-    // Fit / other decide variants — still force dry-run
     parsed.dry_run = true;
     parsed.allow_execute = false;
   }
-
   return { ok: true, body: Buffer.from(JSON.stringify(parsed), "utf8") };
 }
 
-function sanitizeFitBody(raw: Buffer): { ok: true; body: Buffer } | { ok: false; reason: string } {
+function sanitizeFitBody(
+  raw: Buffer
+): { ok: true; body: Buffer } | { ok: false; reason: string } {
   let parsed: Record<string, unknown> = {};
   if (raw.length) {
     try {
@@ -156,7 +151,6 @@ function sanitizeFitBody(raw: Buffer): { ok: true; body: Buffer } | { ok: false;
 }
 
 function stripSecretsFromJson(text: string): string {
-  // Defense in depth — never echo upstream secrets if mishandled
   return text
     .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, "[redacted]")
     .replace(/"OPENROUTER_API_KEY"\s*:\s*"[^"]*"/g, '"OPENROUTER_API_KEY":"[redacted]"')
@@ -173,7 +167,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const method = (req.method || "GET").toUpperCase();
-  const apiPath = resolveApiPath(req);
+  const apiPath = resolveV1Path(req);
+  if (!apiPath) {
+    res.status(404).json({ reason: "not_found", hint: "Use /api/v1/..." });
+    return;
+  }
 
   if (!pathAllowed(method, apiPath)) {
     res.status(403).json({
@@ -193,7 +191,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return;
   }
-
   if (!/^https:\/\//i.test(base)) {
     res.status(503).json({
       reason: "upstream_must_be_https",
@@ -201,8 +198,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return;
   }
-
-  // Reject known self-signed IP production path
   if (base.includes("129.225.72.169")) {
     res.status(503).json({
       reason: "self_signed_oci_ip_forbidden",
@@ -246,11 +241,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     "content-type": "application/json",
   };
   if (key) headers["x-api-key"] = key;
-  // Strip any browser-supplied credentials — never forward them
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
   try {
     const upstream = await fetch(`${base}${apiPath}`, {
       method,
@@ -259,23 +252,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       signal: controller.signal,
       cache: "no-store",
     });
-
     const buf = Buffer.from(await upstream.arrayBuffer());
     if (buf.length > MAX_RESPONSE) {
       res.status(502).json({ reason: "upstream_response_too_large" });
       return;
     }
-
-    let text = buf.toString("utf8");
-    text = stripSecretsFromJson(text);
-
-    // Live AI: require may_sign=false when response is a decide payload
+    let text = stripSecretsFromJson(buf.toString("utf8"));
     if (apiPath === "/gate-j/decide" && method === "POST") {
       try {
         const json = JSON.parse(text) as {
           enforcement?: { may_sign?: boolean };
           summary?: { may_sign?: boolean };
-          dry_run?: boolean;
         };
         const maySign =
           json.enforcement?.may_sign ?? json.summary?.may_sign ?? false;
@@ -287,13 +274,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return;
         }
       } catch {
-        /* non-JSON handled below */
+        /* ignore */
       }
     }
-
-    const ct = upstream.headers.get("content-type") || "application/json";
     res.status(upstream.status);
-    res.setHeader("content-type", ct);
+    res.setHeader(
+      "content-type",
+      upstream.headers.get("content-type") || "application/json"
+    );
     res.setHeader("Cache-Control", "no-store");
     res.send(text);
   } catch (e) {
