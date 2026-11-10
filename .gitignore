@@ -6,9 +6,12 @@ target/
 **/target/
 .near-credentials/
 **/.near-credentials/
+.gate-i-data/
+**/.gate-i-data/
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.pem
 *.key
 *.wasm
