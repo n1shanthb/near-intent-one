@@ -1,0 +1,235 @@
+/* NIO adapters on top of AXIS MIT presentation styles */
+:root {
+  --font-geist-sans: "Geist", "Geist Sans", Arial, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-geist-sans);
+  background: #fff;
+  color: #000;
+}
+
+.mono {
+  font-family: var(--font-geist-mono);
+}
+
+.landing-wordmark-btn,
+.landing-nav button,
+.landing-nav-link,
+.landing-mobile-nav button,
+.landing-footer button,
+.landing-text-link,
+.landing-preview-link,
+.landing-hero-how {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.landing-nav-link:hover,
+.landing-footer button:hover {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+
+.landing-text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  font-weight: 500;
+  font-size: 16px;
+  border-bottom: 1px solid currentColor;
+  min-height: 44px;
+  padding: 5px 0;
+  margin-top: 26px;
+}
+
+.nio-preview-pipeline {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.nio-preview-pipeline > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 1px solid #ecece6;
+}
+.nio-preview-pipeline dt {
+  color: #000;
+  opacity: 0.55;
+}
+.nio-preview-pipeline dd {
+  margin: 0;
+  font-weight: 550;
+  text-align: right;
+}
+
+/* Sidebar uses buttons instead of Next Link */
+.axis-layout .axis-sidebar nav button,
+.axis-layout .axis-brand {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  color: #000;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.axis-layout .axis-brand {
+  min-height: 36px;
+  padding-inline: 8px;
+  font-size: 35px;
+  line-height: 1;
+  letter-spacing: -1.8px;
+  font-weight: 700;
+}
+.axis-layout .axis-sidebar nav button:hover {
+  background: #f0f3ff;
+  border-color: #e1e7ff;
+}
+.axis-layout .axis-sidebar nav button[aria-current="page"] {
+  background: #1743ff;
+  color: #fff;
+  box-shadow: 0 4px 10px #1743ff1c;
+}
+.axis-layout .axis-sidebar nav button[aria-current="page"] svg {
+  color: #fff;
+}
+
+.axis-layout[data-collapsed="true"] {
+  --axis-sidebar-width: 76px;
+}
+.axis-layout[data-collapsed="true"] .axis-nav-label,
+.axis-layout[data-collapsed="true"] .axis-brand-label,
+.axis-layout[data-collapsed="true"] .axis-sidebar-footer > div {
+  display: none;
+}
+.axis-layout[data-collapsed="true"] .axis-sidebar nav button {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.nio-pipeline {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+.nio-pipeline-stage {
+  border: 1px solid var(--axis-box-border, #00000029);
+  border-radius: 11px;
+  background: #fff;
+  padding: 14px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nio-pipeline-stage .mono {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.nio-pipeline-stage strong {
+  font-size: 14px;
+}
+.nio-live-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid #1743ff;
+  border-radius: 13px;
+  background: #1743ff;
+  color: #fff;
+}
+.nio-live-banner p {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 640px;
+}
+.nio-live-banner .axis-button {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+.nio-live-banner .axis-badge {
+  background: #ffffff22;
+  border-color: #ffffff55;
+  color: #fff;
+}
+
+.legacy-embed .card,
+.legacy-embed section {
+  border: 1px solid var(--axis-box-border, #00000029);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: var(--axis-elevation, 0 3px 12px #202b4b05);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.legacy-embed .hero-demo {
+  background: #1743ff;
+  color: #fff;
+  border-color: #1743ff;
+}
+.legacy-embed .hero-demo .muted,
+.legacy-embed .hero-demo .lede,
+.legacy-embed .hero-demo p {
+  color: #fff;
+}
+.legacy-embed .banner-ok {
+  background: #eef9f2;
+  border: 1px solid #cfe9d9;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.legacy-embed .banner-block {
+  background: #fff3f1;
+  border: 1px solid #f0d2cc;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 1100px) {
+  .nio-pipeline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .nio-pipeline {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .axis-layout * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
