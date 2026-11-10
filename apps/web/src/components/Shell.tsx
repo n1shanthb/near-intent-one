@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
+import { JourneyStrip } from "./JourneyStrip";
 
 export type NavId =
+  | "welcome"
+  | "portfolio"
+  | "funds"
   | "demo"
   | "overview"
   | "agent"
@@ -10,15 +14,18 @@ export type NavId =
   | "security"
   | "ledger";
 
-const NAV: { id: NavId; label: string }[] = [
-  { id: "demo", label: "Judge demo" },
-  { id: "overview", label: "Overview" },
-  { id: "agent", label: "Agent" },
-  { id: "policies", label: "Policies" },
-  { id: "predict", label: "Predict" },
-  { id: "activity", label: "Evidence" },
-  { id: "security", label: "Security" },
-  { id: "ledger", label: "Ledger setup" },
+const NAV: { id: NavId; label: string; group?: string }[] = [
+  { id: "welcome", label: "Welcome", group: "product" },
+  { id: "portfolio", label: "Portfolio", group: "product" },
+  { id: "funds", label: "Deposit / Withdraw", group: "product" },
+  { id: "policies", label: "Policies", group: "product" },
+  { id: "agent", label: "Agent", group: "product" },
+  { id: "activity", label: "Activity", group: "product" },
+  { id: "security", label: "Security", group: "product" },
+  { id: "ledger", label: "Ledger setup", group: "product" },
+  { id: "demo", label: "Judge demo", group: "evidence" },
+  { id: "overview", label: "Overview", group: "evidence" },
+  { id: "predict", label: "Predict (illustrative)", group: "evidence" },
 ];
 
 export function Shell({
@@ -27,6 +34,7 @@ export function Shell({
   mode,
   onMode,
   walletSlot,
+  gateISlot,
   children,
 }: {
   active: NavId;
@@ -34,8 +42,12 @@ export function Shell({
   mode: "verified" | "simulation" | "live";
   onMode: (m: "verified" | "simulation" | "live") => void;
   walletSlot: ReactNode;
+  gateISlot?: ReactNode;
   children: ReactNode;
 }) {
+  const product = NAV.filter((n) => n.group === "product");
+  const evidence = NAV.filter((n) => n.group === "evidence");
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -47,7 +59,19 @@ export function Shell({
           </div>
         </div>
         <nav>
-          {NAV.map((item) => (
+          <p className="nav-group">Product (testnet)</p>
+          {product.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={active === item.id ? "nav active" : "nav"}
+              onClick={() => onNav(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+          <p className="nav-group">Recorded / illustrative</p>
+          {evidence.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -59,8 +83,9 @@ export function Shell({
           ))}
         </nav>
         <div className="sidebar-foot">
+          {gateISlot}
           <label className="mode-label">
-            Data mode
+            Evidence mode
             <select
               value={mode}
               onChange={(e) =>
@@ -83,11 +108,16 @@ export function Shell({
       <div className="main-col">
         <header className="topbar">
           <div>
-            <p className="eyebrow">NEAR HACKATHON · defi · security · agents</p>
+            <p className="eyebrow">NEAR TESTNET ONLY · user product + judge evidence</p>
             <h1>{NAV.find((n) => n.id === active)?.label}</h1>
           </div>
           <span className={`mode-pill mode-${mode}`}>{mode}</span>
         </header>
+        {["welcome", "portfolio", "funds", "policies", "agent", "activity", "security"].includes(
+          active
+        ) ? (
+          <JourneyStrip active={active} onNav={onNav} />
+        ) : null}
         <div className="content">{children}</div>
       </div>
     </div>

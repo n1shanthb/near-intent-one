@@ -60,6 +60,20 @@ export function Demo({
         <li className="card">
           <span className="demo-n">3</span>
           <div>
+            <h3>Gate J Mandate Fitter (hero)</h3>
+            <p>
+              Open <strong>Agent</strong> and run dry-run scenarios A/B/C — ALLOWED,
+              ADAPTED ($100→$20), REJECTED — against the real deterministic Fitter.
+              AI never overrides NEAR policy.
+            </p>
+            <button type="button" className="ghost" onClick={() => onNav("agent")}>
+              Open Agent journey
+            </button>
+          </div>
+        </li>
+        <li className="card">
+          <span className="demo-n">4</span>
+          <div>
             <h3>Real H3 strategy TRADE</h3>
             <p>
               {H3_DECISION.rationale} Amount {H3_DECISION.amountInDisplay}. Not an

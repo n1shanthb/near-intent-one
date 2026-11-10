@@ -7,10 +7,67 @@ import {
   HARDWARE_OWNERSHIP,
 } from "../data/evidenceSnapshot";
 import { RECEIPTS } from "../data/receipts";
+import {
+  RECORDED_TRADE_PASS,
+  RECORDED_WITHDRAW_RECEIVED,
+  RECORDED_WITHDRAW_SIGNED,
+} from "../lib/withdrawLifecycle";
+import { useProductSession } from "../state/ProductSession";
+import { GateIBanner } from "./GateIBanner";
 
 export function Activity() {
+  const { portfolio, gateI, authMode } = useProductSession();
+
   return (
     <div className="stack">
+      <section className="card">
+        <div className="card-head">
+          <h3>Current live state</h3>
+          <span className="badge badge-warn">LIVE GATE I</span>
+        </div>
+        <GateIBanner />
+        <dl className="kv dense">
+          <dt>Connected auth</dt>
+          <dd>{authMode ?? "unset"}</dd>
+          <dt>Gate I</dt>
+          <dd>{gateI.status}</dd>
+          <dt>Portfolio</dt>
+          <dd className="mono">{portfolio?.portfolio_id ?? "none"}</dd>
+          <dt>Owner</dt>
+          <dd className="mono">{portfolio?.owner_account ?? "—"}</dd>
+          <dt>Policy</dt>
+          <dd className="mono">{portfolio?.policy_contract ?? "—"}</dd>
+          <dt>MPC / Intents</dt>
+          <dd className="mono">{portfolio?.intents_signer_id ?? "—"}</dd>
+        </dl>
+        <p className="muted small">
+          Ordinary-wallet Gate I owners are independent of the historic Ledger demo
+          proof on <span className="mono">{CONFIG.policyContract}</span>.
+        </p>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3>Recorded Gate F–I evidence</h3>
+          <span className="badge badge-recorded">NOT CURRENT RUNTIME</span>
+        </div>
+        <p className="muted">
+          Early NEAR auth{" "}
+          <a href={RECORDED_WITHDRAW_SIGNED.explorer} target="_blank" rel="noreferrer">
+            {RECORDED_WITHDRAW_SIGNED.near_tx.slice(0, 14)}…
+          </a>{" "}
+          = Signed. Closure PASS Sepolia withdraw{" "}
+          <a href={RECORDED_WITHDRAW_RECEIVED.explorer} target="_blank" rel="noreferrer">
+            {RECORDED_WITHDRAW_RECEIVED.sepolia_tx.slice(0, 14)}…
+          </a>{" "}
+          = <strong>Received</strong> ({RECORDED_WITHDRAW_RECEIVED.amount}). Trade{" "}
+          <a href={RECORDED_TRADE_PASS.explorer} target="_blank" rel="noreferrer">
+            {RECORDED_TRADE_PASS.sepolia_tx.slice(0, 14)}…
+          </a>{" "}
+          Tidepool SUCCESS. Demo <span className="mono">nio-c-*</span> untouched.
+        </p>
+      </section>
+
       <section className="card">
         <div className="card-head">
           <h3>H3 strategy settle</h3>
@@ -69,9 +126,12 @@ export function Activity() {
 
       <section className="card">
         <div className="card-head">
-          <h3>H1 Ledger proofs</h3>
+          <h3>H1 Ledger proofs (demo custody)</h3>
           <span className="badge badge-pass">OWNERSHIP VERIFIED</span>
         </div>
+        <p className="muted small">
+          Historic hardware demo — separate from new ordinary-wallet Gate I owners.
+        </p>
         <div className="proof-links">
           <a
             href={`${CONFIG.nearblocks}/txns/${HARDWARE_OWNERSHIP.setPolicyTx}`}
@@ -124,6 +184,17 @@ export function Activity() {
         <pre className="code">
           {JSON.stringify(GATE_G_ACCOUNTING.snapshot, null, 2)}
         </pre>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3>Illustrative Predict</h3>
+          <span className="badge badge-warn">SIMULATION — NOT VERIFIED P/L</span>
+        </div>
+        <p className="muted">
+          Open Predict from the sidebar for scenario charts. Never treated as live
+          Gate I settlement.
+        </p>
       </section>
 
       <section className="card">

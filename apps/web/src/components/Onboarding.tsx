@@ -12,7 +12,7 @@ export function Onboarding({
   return (
     <section className="card onboarding">
       <p className="eyebrow">Choose how to enter</p>
-      <h2>Three paths. No false hardware claims.</h2>
+      <h2>Entry paths. No false hardware claims.</h2>
       <div className="onboard-grid">
         <button type="button" className="onboard-card" onClick={() => onNav("ledger")}>
           <strong>Connect Ledger</strong>
@@ -25,14 +25,25 @@ export function Onboarding({
         <button
           type="button"
           className="onboard-card"
-          onClick={() => (walletConnected ? onNav("overview") : onSignIn())}
+          onClick={() =>
+            walletConnected ? onNav("portfolio") : onSignIn()
+          }
         >
           <strong>Connect NEAR Wallet</strong>
           <p>
-            Standard testnet wallet. Read-only browsing. Does not claim control of the
-            demo policy contract. Owner writes stay Ledger-gated.
+            Tested testnet wallet path for a personal Gate I portfolio. Does not
+            claim control of the shared demo policy. No Ledger prompts for ordinary
+            wallets.
           </p>
           <span className="badge badge-warn">NO HARDWARE CLAIM</span>
+        </button>
+        <button type="button" className="onboard-card" onClick={() => onNav("welcome")}>
+          <strong>Open user product</strong>
+          <p>
+            Full connect → portfolio → deposit → policy → trade → withdraw journey
+            (blocks honestly until Gate I is hosted).
+          </p>
+          <span className="badge badge-pass">PRODUCT</span>
         </button>
         <button type="button" className="onboard-card" onClick={() => onNav("demo")}>
           <strong>Explore Demo</strong>

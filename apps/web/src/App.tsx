@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNearWallet } from "near-connect-hooks";
 import { Shell, type NavId } from "./components/Shell";
+import { Welcome } from "./components/Welcome";
+import { Portfolio } from "./components/Portfolio";
+import { Funds } from "./components/Funds";
 import { Demo } from "./components/Demo";
 import { Overview } from "./components/Overview";
 import { AgentPanel } from "./components/Agent";
@@ -8,6 +11,7 @@ import { Policies } from "./components/Policies";
 import { PredictView } from "./components/Predict";
 import { Activity } from "./components/Activity";
 import { Security } from "./components/Security";
+import { ProductSessionProvider, useProductSession } from "./state/ProductSession";
 
 const LedgerWizard = lazy(async () => {
   await import("./polyfills");
@@ -24,17 +28,31 @@ function pathIsLedgerWizard(pathname: string): boolean {
   );
 }
 
-export default function App() {
-  const initialLedger = pathIsLedgerWizard(window.location.pathname);
-  const [nav, setNav] = useState<NavId>(initialLedger ? "ledger" : "demo");
+function pathToNav(pathname: string): NavId | null {
+  if (pathIsLedgerWizard(pathname)) return "ledger";
+  if (pathname === "/welcome" || pathname.endsWith("/welcome")) return "welcome";
+  if (pathname === "/portfolio" || pathname.endsWith("/portfolio")) return "portfolio";
+  if (pathname === "/funds" || pathname.endsWith("/funds")) return "funds";
+  return null;
+}
+
+function AppInner() {
+  const fromPath = pathToNav(window.location.pathname);
+  const [nav, setNav] = useState<NavId>(fromPath ?? "welcome");
   const [mode, setMode] = useState<"verified" | "simulation" | "live">(
     "verified"
   );
   const { signedAccountId, signIn, signOut, loading } = useNearWallet();
+  const { gateI, syncOwner, clearSession } = useProductSession();
+
+  useEffect(() => {
+    syncOwner(signedAccountId ?? null);
+  }, [signedAccountId, syncOwner]);
 
   useEffect(() => {
     const onPop = () => {
-      if (pathIsLedgerWizard(window.location.pathname)) setNav("ledger");
+      const id = pathToNav(window.location.pathname);
+      if (id) setNav(id);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -42,9 +60,15 @@ export default function App() {
 
   const onNav = (id: NavId) => {
     setNav(id);
-    if (id === "ledger") {
-      window.history.pushState({}, "", "/setup/ledger");
-    } else if (window.location.pathname.includes("/ledger")) {
+    const pathMap: Partial<Record<NavId, string>> = {
+      ledger: "/setup/ledger",
+      welcome: "/welcome",
+      portfolio: "/portfolio",
+      funds: "/funds",
+    };
+    if (pathMap[id]) {
+      window.history.pushState({}, "", pathMap[id]);
+    } else if (window.location.pathname !== "/") {
       window.history.pushState({}, "", "/");
     }
   };
@@ -57,11 +81,23 @@ export default function App() {
       onNav={onNav}
       mode={mode}
       onMode={setMode}
+      gateISlot={
+        <p className={`gate-pill gate-${gateI.status}`}>
+          Gate I · {gateI.status}
+        </p>
+      }
       walletSlot={
         loading ? (
           <span className="muted small">Wallet…</span>
         ) : signedAccountId ? (
-          <button type="button" className="ghost nav" onClick={() => void signOut()}>
+          <button
+            type="button"
+            className="ghost nav"
+            onClick={() => {
+              clearSession();
+              void signOut();
+            }}
+          >
             {signedAccountId}
           </button>
         ) : (
@@ -71,6 +107,9 @@ export default function App() {
         )
       }
     >
+      {nav === "welcome" && <Welcome onNav={onNav} />}
+      {nav === "portfolio" && <Portfolio onNav={onNav} />}
+      {nav === "funds" && <Funds onNav={onNav} />}
       {nav === "demo" && (
         <Demo
           onNav={onNav}
@@ -90,12 +129,25 @@ export default function App() {
       {nav === "policies" && <Policies onOpenLedger={() => onNav("ledger")} />}
       {nav === "predict" && <PredictView />}
       {nav === "activity" && <Activity />}
-      {nav === "security" && <Security onOpenLedger={() => onNav("ledger")} />}
+      {nav === "security" && (
+        <Security
+          onOpenLedger={() => onNav("ledger")}
+          onOpenFunds={() => onNav("funds")}
+        />
+      )}
       {nav === "ledger" && (
         <Suspense fallback={<p className="muted">Loading Ledger wizard…</p>}>
           <LedgerWizard />
         </Suspense>
       )}
     </Shell>
+  );
+}
+
+export default function App() {
+  return (
+    <ProductSessionProvider>
+      <AppInner />
+    </ProductSessionProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ADVERSARIAL_DEMOS,
   GATE_G_ACCOUNTING,
@@ -5,16 +6,45 @@ import {
 } from "../data/evidenceSnapshot";
 import { SECURITY_DEMOS } from "../data/receipts";
 import { CONFIG } from "../lib/config";
+import { useProductSession } from "../state/ProductSession";
+import { GateIBanner } from "./GateIBanner";
+import { isWithdrawDeliveryEnabled } from "../adapters/gatei";
 
-export function Security({ onOpenLedger }: { onOpenLedger?: () => void }) {
+export function Security({
+  onOpenLedger,
+  onOpenFunds,
+}: {
+  onOpenLedger?: () => void;
+  onOpenFunds?: () => void;
+}) {
+  const { portfolio, authMode, gateI } = useProductSession();
+  const [pauseMsg, setPauseMsg] = useState<string | null>(null);
+  const withdrawProven = isWithdrawDeliveryEnabled();
+
+  const pauseOrRevoke = (kind: "pause" | "revoke") => {
+    if (!portfolio) {
+      setPauseMsg("No personal portfolio — open Welcome → Portfolio first.");
+      return;
+    }
+    if (gateI.status !== "available") {
+      setPauseMsg(
+        `Gate I unavailable — ${kind} trading is blocked (no fake success).`
+      );
+      return;
+    }
+    setPauseMsg(
+      `POST /portfolios/${portfolio.portfolio_id}/${kind} awaiting Chat 1 Gate I. Auth mode: ${authMode ?? "unset"}.`
+    );
+  };
+
   return (
     <div className="stack">
       <section className="card alert">
         <h3>Revocation model (Gate E3 — preserved)</h3>
         <p>
           <strong>
-            Revocation prevents new authorizations. Previously signed transactions
-            may remain executable.
+            Revocation prevents new authorizations. Previously signed EVM
+            transactions may remain executable.
           </strong>
         </p>
         <p className="muted">
@@ -32,7 +62,69 @@ export function Security({ onOpenLedger }: { onOpenLedger?: () => void }) {
 
       <section className="card">
         <div className="card-head">
-          <h3>Ledger-only authority</h3>
+          <h3>Your portfolio controls</h3>
+          <span className="badge badge-warn">TESTNET</span>
+        </div>
+        <GateIBanner action="Pause / revoke" />
+        <dl className="kv dense">
+          <dt>Current owner</dt>
+          <dd className="mono">
+            {portfolio?.owner_account ?? "— (no personal portfolio)"}
+          </dd>
+          <dt>Upgrade / policy authority</dt>
+          <dd className="mono">
+            {portfolio?.policy_contract ?? "—"}
+          </dd>
+          <dt>Pending exposure</dt>
+          <dd>
+            {gateI.status === "available" && portfolio
+              ? "Request via Gate I balances / agent (live when API online)"
+              : "Unavailable until Gate I reports verified reconciliation"}
+          </dd>
+          <dt>Reconciliation</dt>
+          <dd>
+            {portfolio?.reconciler_account
+              ? `Reconciler ${portfolio.reconciler_account}`
+              : "Not assigned — Gate I deploy pending"}
+          </dd>
+        </dl>
+        <div className="row gap wrap">
+          <button type="button" onClick={() => pauseOrRevoke("pause")}>
+            Pause trading
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => pauseOrRevoke("revoke")}
+          >
+            Revoke mandate
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={!withdrawProven}
+            onClick={() => onOpenFunds?.()}
+          >
+            {withdrawProven
+              ? "Withdraw / recovery"
+              : "Withdraw blocked until proven"}
+          </button>
+          {authMode === "ledger" || !authMode ? (
+            <button type="button" className="ghost" onClick={() => onOpenLedger?.()}>
+              Ledger wizard
+            </button>
+          ) : null}
+        </div>
+        {pauseMsg ? <p className="warn">{pauseMsg}</p> : null}
+        <p className="muted small">
+          Recovery: use Deposit / Withdraw when Gate I proves the path. Ordinary
+          wallets do not receive Ledger approval chrome.
+        </p>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3>Demo Ledger-only authority (recorded)</h3>
           <span className="badge badge-pass">{GATE_G_ACCOUNTING.ledger.label}</span>
         </div>
         <dl className="kv">
@@ -52,9 +144,6 @@ export function Security({ onOpenLedger }: { onOpenLedger?: () => void }) {
           <dd>{GATE_G_ACCOUNTING.ledger.softwareFullAccessRemaining}</dd>
         </dl>
         <p className="muted small">{HARDWARE_OWNERSHIP.note}</p>
-        <button type="button" onClick={() => onOpenLedger?.()}>
-          Open Ledger setup wizard
-        </button>
       </section>
 
       <section className="card">

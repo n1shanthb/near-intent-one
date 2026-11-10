@@ -5,16 +5,20 @@ import { policyPreviewHash } from "../policy/hash";
 import { CONSTRAINT_META, KNOWN_ASSETS } from "../policy/schema";
 import { FROZEN_POLICY } from "../data/evidenceSnapshot";
 import { gateFLedger } from "../adapters/gatef";
+import { useProductSession } from "../state/ProductSession";
+import { GateIBanner } from "./GateIBanner";
 
 const EXAMPLE =
   "Allow trading on Ethereum and NEAR, only USDC, ETH and NEAR. Maximum $10 per trade, $50 per day, 1% slippage and stop at 5% drawdown.";
 
 export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
+  const { authMode, portfolio, gateI } = useProductSession();
   const [text, setText] = useState(EXAMPLE);
   const [chains, setChains] = useState({ ethereum: true, near: true });
   const [tokens, setTokens] = useState({ USDC: true, ETH: true, NEAR: true });
   const [hash, setHash] = useState<string | null>(null);
   const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
+  const isLedger = authMode === "ledger";
 
   const composed = useMemo(() => {
     const chainBits = [
@@ -51,6 +55,25 @@ export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
 
   return (
     <div className="policies">
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <GateIBanner action="Personal portfolio policy deploy" />
+        <dl className="kv dense">
+          <dt>Target</dt>
+          <dd className="mono">
+            {portfolio?.policy_contract ??
+              "No personal portfolio — compiler preview only (demo frozen policy)"}
+          </dd>
+          <dt>Auth mode</dt>
+          <dd>
+            {authMode ?? "unset"} ·{" "}
+            {isLedger
+              ? "owner writes require physical Ledger"
+              : "ordinary wallet — no Ledger approval UI"}
+          </dd>
+          <dt>Gate I</dt>
+          <dd>{gateI.status}</dd>
+        </dl>
+      </section>
       <section className="card grow">
         <div className="card-head">
           <h3>Typed policy compiler</h3>
@@ -58,9 +81,9 @@ export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
         </div>
         <p className="muted">
           Deterministic natural-language → Zod schema builder. Ambiguous requests
-          are rejected. This is <strong>not</strong> a conversational AI until a
-          real LLM integration ships. Proposed policies are <strong>never</strong>{" "}
-          on-chain approved without Ledger confirmation (currently NOT PROVEN).
+          are rejected. Preview shows precisely what the contract would enforce.
+          Confirmation uses the connected owner path — Ledger only when auth mode
+          is hardware.
         </p>
 
         <div className="selector-grid">
@@ -216,7 +239,7 @@ export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
                 )}
               </tbody>
             </table>
-            <div className="row">
+            <div className="row gap wrap">
               <button
                 type="button"
                 className="ghost"
@@ -226,31 +249,50 @@ export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
               >
                 Preview hash
               </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const prep = await gateFLedger.prepareOwnerCall({
-                    method: "set_policy",
-                    args: result.onChainPayload,
-                  });
-                  setHandoffMsg(
-                    prep.status === "ready_for_ledger"
-                      ? prep.summary
-                      : prep.reason
-                  );
-                  if (prep.status === "ready_for_ledger") onOpenLedger?.();
-                }}
-              >
-                Open Ledger signing flow
-              </button>
+              {isLedger ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const prep = await gateFLedger.prepareOwnerCall({
+                      method: "set_policy",
+                      args: result.onChainPayload,
+                    });
+                    setHandoffMsg(
+                      prep.status === "ready_for_ledger"
+                        ? prep.summary
+                        : prep.reason
+                    );
+                    if (prep.status === "ready_for_ledger") onOpenLedger?.();
+                  }}
+                >
+                  Confirm on Ledger
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!portfolio || gateI.status !== "available"}
+                  onClick={() => {
+                    setHandoffMsg(
+                      !portfolio
+                        ? "Create a personal portfolio first."
+                        : gateI.status !== "available"
+                          ? "Gate I unavailable — wallet set_policy blocked (no fake success)."
+                          : "Gate I set_policy for ordinary wallets is pending Chat 1 API — blocked honestly."
+                    );
+                  }}
+                >
+                  Confirm with connected wallet
+                </button>
+              )}
             </div>
             {hash && <p className="mono small">sha256 {hash}</p>}
             {handoffMsg && <p className="warn">{handoffMsg}</p>}
             <p className="muted small">
-              Status: <strong>PROPOSED — NOT APPROVED</strong>. Ownership is
-              VERIFIED historically; this JSON is not live until the physical
-              Ledger confirms in the wizard. Mandate may be revoked — unrevoke
-              only via Ledger.
+              Status: <strong>PROPOSED — NOT APPROVED</strong> until the authorized
+              owner path confirms.{" "}
+              {isLedger
+                ? "Hardware users see Ledger prompts only."
+                : "Ordinary wallets never show a misleading Ledger approval state."}
             </p>
           </>
         ) : (
