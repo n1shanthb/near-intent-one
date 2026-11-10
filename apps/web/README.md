@@ -1,23 +1,33 @@
-# near-intent-one — product UI
-
-Judge-facing autonomous trading control center.
+# near-intent-one — testnet product UI
 
 **Your hardware wallet sets the rules. Your AI trades across chains. NEAR enforces the boundaries.**
 
-Tracks: `defi` · `security` · `agents`
+Tracks: `defi` · `security` · `agents`  
+Network: **testnet only**  
+Gate I: **PASS** (see `GATE_I.md`) — deposit / Sepolia withdraw Received / trade closed.
 
-## Run locally
+## Product journey
+
+Connect → Portfolio → Deposit → Policy → Agent → Activity → Withdraw
+
+Personal funds never use shared demo custody (`nio-c-policy-857107.testnet`).
+
+## Gate I API (Chat 1)
+
+| Env | Value |
+|-----|-------|
+| `VITE_GATE_I_API_BASE` | `http://129.225.72.169:8787/v1` (OCI) or `http://127.0.0.1:8787/v1` |
+| `VITE_GATE_I_WITHDRAW_PROVEN` | `true` (authorized 2026-11-10 after Sepolia `0x2d11b9a6…`) |
 
 ```powershell
 cd E:\near-intent-one\apps\web
+# .env.local / .env.example already point at OCI + withdraw proven
 npm install
 npm run dev
 ```
 
-- App: http://127.0.0.1:5173  
-- Ledger wizard: http://127.0.0.1:5173/setup/ledger  
-
-`/api/ledger-migrate` exists **only** on the Vite dev server (localhost). It is **not** part of the static production build and never ships private keys to the browser.
+- Welcome: http://127.0.0.1:5173/welcome  
+- Contract: `docs/GATE_I_INTEGRATION.md` · OCI: `docs/GATE_I_OCI.md`
 
 ## Build / test
 
@@ -27,55 +37,33 @@ npm run build
 npm run preview
 ```
 
-## Deploy (static)
+## Public beta deploy
 
-Deploy `apps/web/dist` to Vercel/Netlify/Cloudflare Pages.
-
-```powershell
-npm run build
-# deploy dist/
-```
-
-Configure SPA fallback (`vercel.json` included). Do **not** enable any migration API in production.
-
-Optional env:
-
-- `VITE_POLICY_CONTRACT_ID`
-- `VITE_OWNER_ACCOUNT_ID`
-- `VITE_AGENT_ACCOUNT_ID`
+1. Copy `apps/web/.env.production.example` into host env (OCI API + `VITE_GATE_I_WITHDRAW_PROVEN=true`).
+2. Prefer TLS/DNS in front of the OCI IP when available.
+3. `npm run build` → deploy `dist/` (Vercel SPA via `vercel.json`).
+4. Never enable `/api/ledger-migrate` or `GATE_I_ALLOW_SERVER_OWNER_SIGN` in production.
 
 ## Entry paths
 
 | Path | Behavior |
 |------|----------|
-| Connect Ledger | Existing wizard · ownership VERIFIED historically · device may be DISCONNECTED |
-| Connect NEAR Wallet | Read-only · no claim of demo-contract ownership |
-| Explore Demo | No wallet · recorded F4/H3/H1 proofs |
+| Connect Ledger | Hardware authorization · separate from Gate I software owners |
+| Connect NEAR wallet | Provisioned Gate I owners A/B · personal portfolio |
+| Explore / Judge demo | Recorded F–H evidence |
+| Predict | Illustrative simulation only |
 
-## Evidence highlights
+## Gate J (Agent page)
 
-| Item | Proof |
-|------|--------|
-| H1 Ledger set_policy | `7SrK8M8eTFBGT6k6VxvaQBTwyMxa5TsdjXUiZkmMX2mb` |
-| H1 Ledger revoke | `EndhGnPpena59sKXkxEoQqAELmT3mjUfHr9DZpSHqRq9` (epoch 19 revoked) |
-| H3 Sepolia | `0xba28b97b8102dc160db6d89243c67e14538aef1cc0f415f7fbb2f9d903446d09` |
-| H3 MPC | `CGbXc3cHHv1jWGeaK4Xj2mAqE29NQ2UhmrgaUr9udKPC` |
-| F4 Sepolia | `0xe49d5ff80fd8533d9719969b50647e49c99845d79fac27d39578e4003552e558` |
+- **LIVE AI / DRY RUN** — `portfolio_id` + `claimed_owner` → backend on-chain mandate (no client policy). OpenRouter stays server-side
+- **Auth** — use `VITE_GATE_I_API_BASE=/api/v1` (Vite BFF injects `GATE_I_API_KEY` from `packages/services/.env`). Never put API keys in `VITE_*`
+- **FIXTURE** — ALLOWED / ADAPTED / REJECTED deterministic Fitter demos
+- **RECORDED** — hosted OCI OpenRouter trace + Gate I/H settlement; never confuse with fixtures
+- See `docs/GATE_J_UI_REPORT.md`
 
-Mandate is **revoked** after H1 proof. Do not auto-unrevoke or run funded trades from this UI.
+## Still limited
 
-## Video recording plan (≈90s)
-
-1. Judge demo landing + three entry cards  
-2. H3 decision + Sepolia/MPC links  
-3. Security: Ledger VERIFIED + E3 limitation  
-4. Brief Ledger wizard screen (device optional)  
-5. Predict labeled ILLUSTRATIVE  
-
-## Unsupported (honest)
-
-- Per-user policy deploy from a random wallet  
-- LLM Copilot (typed Policy Compiler only)  
-- Live mainnet trading  
-- On-chain verification of `evidence_hash`  
-- Auto-unrevoke / auto-funded trades  
+- Arbitrary wallet self-serve portfolio factory  
+- Optional TLS/DNS on OCI API  
+- Ordinary-wallet set_policy / pause / revoke via HTTP (owner signs on-chain)
+- Hosted OCI Gate J routes (Chat 1 redeploy) + public SPA env pointing at HTTPS API  
