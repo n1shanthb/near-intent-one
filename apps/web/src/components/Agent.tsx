@@ -468,7 +468,7 @@ export function AgentPanel() {
         <GateIBanner action="Start / stop agent" />
         {!authOk ? (
           <p className="banner banner-block">
-            Gate J funded / authorize-trade stays disabled until Chat 1 confirms
+            Funded / authorize-trade stays disabled until on-chain mandate hydration is confirmed
             on-chain mandate hydration (
             <span className="mono">VITE_GATE_J_ONCHAIN_MANDATE=true</span>). Fixture
             mandates are never shown as your live policy. Gate I start/stop preserved.

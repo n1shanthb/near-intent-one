@@ -16,30 +16,58 @@ import type {
   WithdrawRequest,
 } from "../types/gateI";
 import { WITHDRAW_LIFECYCLE_STAGES } from "../types/gateI";
+import { apiBase } from "../lib/apiBase";
 
-const base = () =>
-  (import.meta.env.VITE_GATE_I_API_BASE as string | undefined)?.replace(/\/$/, "") ??
-  "";
+const base = () => apiBase();
 
 /** Last successful health payload (for delivery-proven checks). */
 let lastHealth: GateIHealthPayload | null = null;
 
+function humanizeUpstreamDetail(detail: string): string {
+  if (/upstream_unreachable|upstream_timeout|client_timeout|fetch failed|aborted/i.test(detail)) {
+    return "API temporarily unreachable through the public proxy. Recorded evidence remains available.";
+  }
+  if (/VITE_GATE_I|Chat 1/i.test(detail)) {
+    return "API connectivity issue. Recorded evidence remains available.";
+  }
+  return detail;
+}
+
 async function getJson<T>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit & { timeoutMs?: number }
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; data: Record<string, unknown> }> {
   const root = base();
-  if (!root) throw new Error("VITE_GATE_I_API_BASE unset");
-  const res = await fetch(`${root}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) return { ok: false, status: res.status, data: body };
-  return { ok: true, data: body as T };
+  const { timeoutMs, ...rest } = init ?? {};
+  const ms = timeoutMs ?? 12_000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(`${root}${path}`, {
+      ...rest,
+      signal: rest.signal ?? ctrl.signal,
+      headers: {
+        "content-type": "application/json",
+        ...(rest.headers ?? {}),
+      },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return { ok: false, status: res.status, data: body };
+    return { ok: true, data: body as T };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const aborted = /abort/i.test(msg);
+    return {
+      ok: false,
+      status: aborted ? 504 : 502,
+      data: {
+        reason: aborted ? "client_timeout" : "fetch_failed",
+        detail: msg,
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function gateIBaseConfigured(): boolean {
@@ -55,44 +83,41 @@ export async function gateIHealth(): Promise<{
   detail: string;
   payload?: GateIHealthPayload;
 }> {
-  if (!base()) {
-    lastHealth = null;
-    return {
-      status: "unavailable",
-      detail:
-        "Gate I API base not configured (VITE_GATE_I_API_BASE). Personal portfolios blocked.",
-    };
-  }
   try {
     const res = await getJson<GateIHealthPayload>("/health");
     if (!res.ok) {
       lastHealth = null;
+      const raw =
+        typeof res.data.reason === "string"
+          ? res.data.reason
+          : typeof res.data.detail === "string"
+            ? `${res.data.reason ?? "error"}: ${res.data.detail}`
+            : `HTTP ${res.status}`;
       return {
         status: "unavailable",
-        detail:
-          typeof res.data.reason === "string"
-            ? res.data.reason
-            : `Gate I HTTP ${res.status}`,
+        detail: humanizeUpstreamDetail(raw),
       };
     }
     lastHealth = res.data;
     if (res.data.ok) {
       return {
         status: "available",
-        detail: `Gate I reachable · network ${res.data.network ?? "unknown"}`,
+        detail: `API connected · network ${res.data.network ?? "unknown"}`,
         payload: res.data,
       };
     }
     return {
       status: "degraded",
-      detail: "Gate I health returned ok=false",
+      detail: "API health returned ok=false",
       payload: res.data,
     };
   } catch (e) {
     lastHealth = null;
     return {
       status: "unavailable",
-      detail: e instanceof Error ? e.message : String(e),
+      detail: humanizeUpstreamDetail(
+        e instanceof Error ? e.message : String(e)
+      ),
     };
   }
 }
@@ -208,7 +233,7 @@ export async function submitWithdraw(
     return {
       status: "blocked",
       reason:
-        "Withdrawal delivery not proven. A NEAR withdraw_signed authorization is Signed only — not Broadcast/Confirmed/Received. Waiting on Chat 1 Sepolia receipt + destination balance evidence.",
+        "Withdrawal delivery is not unlocked for the public demo. Owner-authorized withdrawals remain blocked here.",
     };
   }
   const res = await getJson<WithdrawReceipt>(

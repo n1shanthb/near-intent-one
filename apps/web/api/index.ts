@@ -340,7 +340,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(503).json({
       reason: "upstream_not_configured",
       detail:
-        "Set NIO_API_BASE to Chat 1 trusted HTTPS hostname (e.g. https://nio-api.example/v1). Self-signed OCI IP is not allowed.",
+        "Set NIO_API_BASE to the trusted HTTPS API hostname (e.g. https://nio-api-hack26.duckdns.org/v1). Self-signed OCI IP is not allowed.",
     });
     return;
   }
@@ -354,7 +354,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (base.includes("129.225.72.169")) {
     res.status(503).json({
       reason: "self_signed_oci_ip_forbidden",
-      detail: "Use Chat 1 DuckDNS/Caddy trusted hostname — not the raw OCI IP.",
+      detail: "Use the DuckDNS/Caddy trusted hostname — not the raw OCI IP.",
     });
     return;
   }
@@ -375,7 +375,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const isLiveDecide =
+    method === "POST" && upstreamPath === "/gate-j/demo-decide";
+  const upstreamTimeoutMs = isLiveDecide
+    ? TIMEOUT_MS
+    : method === "GET" || method === "HEAD"
+      ? 8_000
+      : 20_000;
+  const timer = setTimeout(() => controller.abort(), upstreamTimeoutMs);
   try {
     const upstream = await fetch(`${base}${upstreamPath}`, {
       method,

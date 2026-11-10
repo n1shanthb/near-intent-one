@@ -28,12 +28,12 @@ export function Security({
     }
     if (gateI.status !== "available") {
       setPauseMsg(
-        `Gate I unavailable — ${kind} trading is blocked (no fake success).`
+        `Live API unreachable — ${kind} trading is blocked (no fake success).`
       );
       return;
     }
     setPauseMsg(
-      `POST /portfolios/${portfolio.portfolio_id}/${kind} awaiting Chat 1 Gate I. Auth mode: ${authMode ?? "unset"}.`
+      `${kind} is owner-only. The public demo does not expose this mutation route. Auth mode: ${authMode ?? "unset"}.`
     );
   };
 

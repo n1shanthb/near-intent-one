@@ -4,15 +4,17 @@ import { ProductSessionProvider, useProductSession } from "./state/ProductSessio
 import { Landing } from "./components/nio/Landing";
 import { OverviewPage } from "./components/nio/OverviewPage";
 import { AgentWorkspace } from "./components/nio/AgentWorkspace";
+import { PortfolioPage } from "./components/nio/PortfolioPage";
+import { EvidencePage } from "./components/nio/EvidencePage";
+import { TransactionsPage } from "./components/nio/TransactionsPage";
+import { MandatePage } from "./components/nio/MandatePage";
+import { SecurityPage } from "./components/nio/SecurityPage";
 import { WorkspaceShell, WalletControl } from "./components/nio/WorkspaceShell";
 import { pathToNav, WORKSPACE_PATH, type NavId } from "./components/nio/nav";
-import { Portfolio } from "./components/Portfolio";
 import { Funds } from "./components/Funds";
-import { Policies } from "./components/Policies";
-import { Activity } from "./components/Activity";
-import { Security } from "./components/Security";
 import { fetchDemoStatus } from "./adapters/gatej";
 import { isPublicLiveAiEnabled } from "./lib/publicDemo";
+import { publicApiLabel } from "./lib/apiBase";
 
 const LedgerWizard = lazy(async () => {
   await import("./polyfills");
@@ -79,26 +81,11 @@ function AppInner() {
         <OverviewPage
           onNav={onNav}
           gateIStatus={gateI.status}
+          gateIDetail={gateI.detail}
           demoLabel={demoChip}
         />
       )}
-      {nav === "portfolio" && (
-        <div className="legacy-embed">
-          <Portfolio
-            onNav={(id) =>
-              onNav(
-                id === "funds"
-                  ? "funds"
-                  : id === "policies"
-                    ? "mandate"
-                    : id === "agent"
-                      ? "agent"
-                      : "overview"
-              )
-            }
-          />
-        </div>
-      )}
+      {nav === "portfolio" && <PortfolioPage onNav={onNav} />}
       {nav === "funds" && (
         <div className="legacy-embed">
           <Funds
@@ -114,27 +101,19 @@ function AppInner() {
           />
         </div>
       )}
-      {nav === "agent" && <AgentWorkspace />}
-      {(nav === "mandate" || nav === "policies") && (
-        <div className="legacy-embed">
-          <Policies onOpenLedger={() => onNav("security")} />
-        </div>
-      )}
-      {(nav === "activity" || nav === "evidence") && (
-        <div className="legacy-embed">
-          <Activity />
-        </div>
-      )}
+      {nav === "agent" && <AgentWorkspace onNav={onNav} />}
+      {(nav === "mandate" || nav === "policies") && <MandatePage onNav={onNav} />}
+      {nav === "activity" && <TransactionsPage onNav={onNav} />}
+      {nav === "evidence" && <EvidencePage />}
       {nav === "security" && (
-        <div className="legacy-embed">
-          <Security
-            onOpenLedger={() => onNav("security")}
-            onOpenFunds={() => onNav("funds")}
-          />
+        <>
+          <SecurityPage onNav={onNav} onOpenLedger={() => onNav("ledger")} />
           <Suspense fallback={<p className="axis-supporting">Loading Ledger wizard…</p>}>
-            <LedgerWizard />
+            <div className="legacy-embed" style={{ marginTop: 16 }}>
+              <LedgerWizard />
+            </div>
           </Suspense>
-        </div>
+        </>
       )}
       {nav === "settings" && (
         <section className="axis-panel">
@@ -142,12 +121,11 @@ function AppInner() {
             <h2>Settings</h2>
           </div>
           <p>
-            Public demo mode keeps OpenRouter keys and Gate K signing on OCI.
+            Public demo mode keeps OpenRouter keys and Gate K signing on the trusted host.
             Wallet connection is optional for evidence and Live AI dry-run.
           </p>
           <p className="axis-supporting mono">
-            API base · {import.meta.env.VITE_GATE_I_API_BASE || "/api/v1"} · network{" "}
-            {import.meta.env.VITE_NETWORK || "testnet"}
+            {publicApiLabel()} · network {import.meta.env.VITE_NETWORK || "testnet"}
           </p>
         </section>
       )}

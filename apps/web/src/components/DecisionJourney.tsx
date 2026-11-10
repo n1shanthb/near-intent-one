@@ -1,20 +1,34 @@
 import type { DecisionJourneyStage, GateJDecisionRecord } from "../types/gateJ";
 
 const LABELS: Record<string, string> = {
-  market_research: "1 · Market Research",
-  ai_strategy: "2 · AI Strategy Proposal",
-  mandate_fitting: "3 · Mandate Fitting",
-  risk_review: "4 · Independent Risk Review",
-  policy_validation: "5 · NEAR Policy Validation",
-  execution: "6 · Execution / Enforcement",
-  settlement: "7 · Settlement Verification",
+  market_research: "Market Research",
+  ai_strategy: "AI Strategy",
+  mandate_fitting: "Mandate Fitting",
+  risk_review: "Risk Review",
+  policy_validation: "NEAR Policy Guard",
+  execution: "Enforcement",
+  settlement: "Settlement",
 };
 
 function modeBadge(mode: GateJDecisionRecord["mode"] | undefined) {
-  if (mode === "live_ai") return { cls: "badge-pass", text: "LIVE AI — DRY RUN" };
-  if (mode === "fixture") return { cls: "badge-warn", text: "FIXTURE" };
-  if (mode === "recorded") return { cls: "badge-recorded", text: "RECORDED" };
-  return { cls: "badge-recorded", text: "IDLE" };
+  if (mode === "live_ai") return { cls: "nio-badge nio-badge-running", text: "LIVE AI · DRY RUN" };
+  if (mode === "fixture") return { cls: "nio-badge nio-badge-warn", text: "FIXTURE" };
+  if (mode === "recorded") return { cls: "nio-badge nio-badge-recorded", text: "RECORDED" };
+  return { cls: "nio-badge nio-badge-idle", text: "IDLE" };
+}
+
+function statusClass(status: DecisionJourneyStage["status"]): string {
+  switch (status) {
+    case "done":
+    case "enforced":
+      return "nio-step-done";
+    case "blocked":
+      return "nio-step-blocked";
+    case "skipped":
+      return "nio-step-idle";
+    default:
+      return "nio-step-idle";
+  }
 }
 
 export function DecisionJourney({
@@ -22,80 +36,75 @@ export function DecisionJourney({
 }: {
   record: GateJDecisionRecord | null;
 }) {
-  const stages: DecisionJourneyStage[] =
-    record?.stages ??
-    (Object.keys(LABELS).map((id) => ({
-      id: id as DecisionJourneyStage["id"],
-      label: LABELS[id],
-      status: "pending" as const,
-    })) as DecisionJourneyStage[]);
+  if (!record) {
+    return (
+      <section className="axis-panel nio-journey-panel">
+        <div className="axis-panel-heading">
+          <h2>Decision Journey</h2>
+          <span className="nio-badge nio-badge-idle">IDLE</span>
+        </div>
+        <div className="nio-empty-state">
+          <p>
+            Run Live AI Analysis or a fixture scenario to populate the timeline.
+            Idle agents do not show seven empty pending rows.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
-  const badge = modeBadge(record?.mode);
+  const stages = record.stages ?? [];
+  const badge = modeBadge(record.mode);
   const blockedOk =
-    record?.enforcement?.decision === "BLOCKED" &&
-    record?.safety_story?.blocked_is_success;
+    record.enforcement?.decision === "BLOCKED" &&
+    record.safety_story?.blocked_is_success;
 
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>AI Decision Journey</h3>
-        <span className={`badge ${badge.cls}`}>{badge.text}</span>
+    <section className="axis-panel nio-journey-panel">
+      <div className="axis-panel-heading">
+        <h2>Decision Journey</h2>
+        <span className={badge.cls}>{badge.text}</span>
       </div>
 
-      {record?.safety_story ? (
+      {record.safety_story ? (
         <div
-          className={`safety-story ${blockedOk ? "safety-story-ok" : ""}`}
+          className={`nio-safety-story ${blockedOk ? "ok" : ""}`}
           role="status"
         >
-          <p className="safety-headline">{record.safety_story.headline}</p>
+          <p className="nio-safety-headline">{record.safety_story.headline}</p>
           {blockedOk ? (
-            <p className="muted small">
-              <span className="badge badge-pass">BLOCKED · ENFORCED</span> This is a
-              correct safety outcome — not an application failure.{" "}
+            <p className="axis-supporting">
+              <span className="nio-badge nio-badge-success">BLOCKED · ENFORCED</span>{" "}
+              Correct safety outcome — not an application failure.{" "}
               <span className="mono">may_sign=false</span>
             </p>
           ) : null}
         </div>
       ) : null}
 
-      {record?.models ? (
-        <dl className="kv dense model-row">
-          <dt>Models</dt>
-          <dd className="mono small">
-            Researcher {record.models.researcher ?? "—"} · Strategist{" "}
-            {record.models.strategist ?? "—"} · Critic {record.models.critic ?? "—"}
-          </dd>
-        </dl>
+      {record.models ? (
+        <p className="axis-supporting mono" style={{ marginBottom: 14 }}>
+          Researcher {record.models.researcher ?? "—"} · Strategist{" "}
+          {record.models.strategist ?? "—"} · Critic {record.models.critic ?? "—"}
+        </p>
       ) : null}
 
-      <ol className="journey-stages">
-        {stages.map((s) => (
-          <li
-            key={s.id}
-            className={`stage stage-${s.status}${
-              s.status === "enforced" ? " stage-enforced" : ""
-            }`}
-          >
-            <div className="stage-head">
-              <strong>{LABELS[s.id] ?? s.label}</strong>
-              <span
-                className={`badge ${
-                  s.status === "enforced"
-                    ? "badge-pass"
-                    : s.status === "blocked"
-                      ? "badge-warn"
-                      : "badge-recorded"
-                }`}
-              >
-                {s.status === "enforced" ? "enforced" : s.status}
-              </span>
+      <ol className="nio-timeline">
+        {stages.map((s, i) => (
+          <li key={s.id} className={`nio-timeline-step ${statusClass(s.status)}`}>
+            <div className="nio-timeline-index">{i + 1}</div>
+            <div className="nio-timeline-body">
+              <div className="nio-timeline-head">
+                <strong>{LABELS[s.id] ?? s.label}</strong>
+                <span className="nio-badge nio-badge-idle">{s.status}</span>
+              </div>
+              {s.detail ? <p>{s.detail}</p> : null}
+              {s.at ? <p className="mono axis-supporting">{s.at}</p> : null}
             </div>
-            {s.detail ? <p className="muted small">{s.detail}</p> : null}
-            {s.at ? <p className="mono small muted">{s.at}</p> : null}
           </li>
         ))}
       </ol>
-      {record?.note ? <p className="muted small">{record.note}</p> : null}
+      {record.note ? <p className="axis-supporting">{record.note}</p> : null}
     </section>
   );
 }

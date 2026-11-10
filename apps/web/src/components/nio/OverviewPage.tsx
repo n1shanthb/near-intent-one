@@ -11,12 +11,16 @@ import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 export function OverviewPage({
   onNav,
   gateIStatus,
+  gateIDetail,
   demoLabel,
 }: {
   onNav: (id: NavId) => void;
   gateIStatus: string;
+  gateIDetail: string;
   demoLabel: string;
 }) {
+  const apiOk = gateIStatus === "available";
+
   return (
     <div className="page-enter axis-overview">
       <section className="axis-overview-hero">
@@ -26,33 +30,40 @@ export function OverviewPage({
           </div>
           <h1>Hardware sets rules. AI decides. NEAR enforces.</h1>
           <p>
-            Browse portfolio evidence without a wallet. Run a public Live AI
-            dry-run when quotas allow. Signing and Gate K execution stay off.
+            Browse portfolio evidence without a wallet. Run a public Live AI dry-run when
+            quotas allow. Signing and Gate K execution stay off.
           </p>
-          <button
-            type="button"
-            className="axis-button axis-overview-explore"
-            onClick={() => onNav("agent")}
-          >
-            Open AI Agent
-            <ArrowUpRight size={16} />
-          </button>
+          <div className="axis-actions">
+            <button
+              type="button"
+              className="axis-button axis-overview-explore"
+              onClick={() => onNav("agent")}
+            >
+              Open AI Agent
+              <ArrowUpRight size={16} />
+            </button>
+            <button
+              type="button"
+              className="axis-button secondary"
+              onClick={() => onNav("evidence")}
+            >
+              View Verified Execution
+            </button>
+          </div>
         </div>
         <div className="axis-overview-catalog">
           <div className="axis-overview-catalog-label">Live status</div>
           <dl>
             <div>
-              <dt>Gate I API</dt>
-              <dd style={{ fontSize: 22 }}>{gateIStatus}</dd>
+              <dt>API</dt>
+              <dd style={{ fontSize: 22 }}>{apiOk ? "Connected" : "Unreachable"}</dd>
             </div>
             <div>
               <dt>Live AI demo</dt>
               <dd style={{ fontSize: 22 }}>{demoLabel}</dd>
             </div>
           </dl>
-          <div className="axis-overview-catalog-note">
-            Portfolio demo id · i-a-a4e7 · may_sign forced false
-          </div>
+          <div className="axis-overview-catalog-note">{gateIDetail}</div>
         </div>
       </section>
 
@@ -114,8 +125,7 @@ export function OverviewPage({
             </button>
           </div>
           <p>
-            Demo portfolio <span className="mono">i-a-a4e7</span> hydrates
-            on-chain mandate for Live AI. Public UI cannot mutate policy.
+            Live AI hydrates the demo on-chain mandate. Public UI cannot mutate policy.
           </p>
           <div className="axis-stats" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="axis-stat">
@@ -127,6 +137,9 @@ export function OverviewPage({
               <strong style={{ fontSize: 22 }}>dry-run</strong>
             </div>
           </div>
+          <p className="axis-supporting mono" style={{ marginTop: 10 }}>
+            Technical portfolio id · i-a-a4e7
+          </p>
         </section>
         <section className="axis-panel">
           <div className="axis-panel-heading">
@@ -140,11 +153,11 @@ export function OverviewPage({
             </button>
           </div>
           <p>
-            {GATE_K_FIRST_TRADE.labels.live_ai_execution}.{" "}
-            {GATE_K_FIRST_TRADE.labels.autonomous_safety}.
+            {GATE_K_FIRST_TRADE.proposed_usdc} USDC Sepolia execution with operator-override
+            disclosure. Not autonomous safety-approved.
           </p>
           <p className="axis-supporting mono">
-            Sepolia {GATE_K_FIRST_TRADE.execution.sepolia_tx.slice(0, 18)}…
+            {GATE_K_FIRST_TRADE.execution.sepolia_tx.slice(0, 18)}…
           </p>
           <a
             className="axis-button secondary"

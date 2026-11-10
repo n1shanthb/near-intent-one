@@ -177,8 +177,8 @@ export function Welcome({
         <p className="muted small">
           Hosted API:{" "}
           Same-origin BFF <span className="mono">/api/v1</span> (server credentials).
-          Trusted OCI HTTPS hostname from Chat 1 — never self-signed IP in production.
-          Withdraw proven (<span className="mono">VITE_GATE_I_WITHDRAW_PROVEN=true</span>)
+          Trusted HTTPS API via same-origin BFF — never self-signed IP in production.
+          Withdraw proven when delivery evidence is enabled
           after GATE_I.md B2 PASS.
         </p>
       </section>

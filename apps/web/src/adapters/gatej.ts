@@ -9,6 +9,7 @@ import {
   usdcDisplay,
   type ScenarioId,
 } from "../lib/mandateFitter";
+import { apiBase, usesBff as bffMode } from "../lib/apiBase";
 import type {
   DecisionRunMode,
   FinalDecision,
@@ -33,32 +34,61 @@ const SCENARIO_API: Record<GateJScenarioId, GateJApiScenario> = {
  * Prefer same-origin BFF `/api/v1` (server injects GATE_I_API_KEY).
  * Never put privileged API keys in VITE_*.
  */
-const base = () =>
-  (import.meta.env.VITE_GATE_I_API_BASE as string | undefined)?.replace(/\/$/, "") ??
-  "";
+const base = () => apiBase();
 
 function usesBff(): boolean {
-  const root = base();
-  return root === "/api/v1" || root.endsWith("/api/v1");
+  return bffMode();
+}
+
+function humanizeGateJDetail(detail: string): string {
+  if (/upstream_unreachable|upstream_timeout|client_timeout|fetch failed|aborted/i.test(detail)) {
+    return "Live AI temporarily unreachable through the public proxy. Fixture scenarios and recorded evidence remain available.";
+  }
+  if (/not hosted|Chat 1/i.test(detail)) {
+    return "Live AI routes are not responding. Fixture scenarios remain available.";
+  }
+  return detail;
 }
 
 async function getJson<T>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit & { timeoutMs?: number }
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; data: Record<string, unknown> }> {
   const root = base();
-  if (!root) throw new Error("VITE_GATE_I_API_BASE unset");
-  const res = await fetch(`${root}${path}`, {
-    credentials: "include",
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) return { ok: false, status: res.status, data: body };
-  return { ok: true, data: body as T };
+  const { timeoutMs, ...rest } = init ?? {};
+  const method = (rest.method ?? "GET").toUpperCase();
+  const ms =
+    timeoutMs ??
+    (method === "POST" && path.includes("demo-decide") ? 95_000 : 12_000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(`${root}${path}`, {
+      credentials: "include",
+      ...rest,
+      signal: rest.signal ?? ctrl.signal,
+      headers: {
+        "content-type": "application/json",
+        ...(rest.headers ?? {}),
+      },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return { ok: false, status: res.status, data: body };
+    return { ok: true, data: body as T };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const aborted = /abort/i.test(msg);
+    return {
+      ok: false,
+      status: aborted ? 504 : 502,
+      data: {
+        reason: aborted ? "client_timeout" : "fetch_failed",
+        detail: msg,
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Enable only after hosted API + SPA integration verified. */
@@ -73,8 +103,8 @@ export function authorizationActionsEnabled(): boolean {
 
 export function authModeLabel(): string {
   return usesBff()
-    ? "same-origin BFF (server API key; not in Vite)"
-    : "direct API (public GETs only; mutations need Chat 1 owner session / BFF)";
+    ? "same-origin BFF (server API key)"
+    : "direct API (public GETs only; owner mutations require an authenticated session)";
 }
 
 export async function gateJHealth(): Promise<{
@@ -83,18 +113,13 @@ export async function gateJHealth(): Promise<{
   llm?: Record<string, unknown>;
   auth_required?: boolean;
 }> {
-  if (!base()) {
-    return {
-      available: false,
-      detail: "Gate I/J API base unset — fixture Fitter only.",
-    };
-  }
   try {
     const res = await getJson<{
       ok?: boolean;
       llm?: Record<string, unknown>;
       dry_run_default?: boolean;
       reason?: string;
+      detail?: string;
     }>("/gate-j/health");
     if (res.ok && res.data.ok) {
       const llm = res.data.llm ?? {};
@@ -105,22 +130,37 @@ export async function gateJHealth(): Promise<{
       return {
         available: true,
         detail: configured
-          ? "Gate J intelligence API online (OpenRouter server-side)"
-          : "Gate J online — LLM key not configured on host",
+          ? "Live AI API online (OpenRouter server-side)"
+          : "Live AI API online — LLM key not configured on host",
         llm: llm as Record<string, unknown>,
       };
     }
+    if (res.ok) {
+      return {
+        available: false,
+        detail: humanizeGateJDetail(
+          typeof res.data.reason === "string"
+            ? res.data.reason
+            : "Live AI health returned ok=false"
+        ),
+      };
+    }
+    const raw =
+      typeof res.data.reason === "string"
+        ? res.data.detail
+          ? `${res.data.reason}: ${String(res.data.detail)}`
+          : res.data.reason
+        : `HTTP ${res.status}`;
     return {
       available: false,
-      detail:
-        typeof res.data.reason === "string"
-          ? `Gate J not hosted yet (${res.data.reason}). Fixture Fitter available.`
-          : "Gate J routes not hosted yet (Chat 1). Fixture Fitter available.",
+      detail: humanizeGateJDetail(raw),
     };
   } catch (e) {
     return {
       available: false,
-      detail: e instanceof Error ? e.message : String(e),
+      detail: humanizeGateJDetail(
+        e instanceof Error ? e.message : String(e)
+      ),
     };
   }
 }
@@ -789,41 +829,41 @@ export async function runFixtureScenario(
   scenario: GateJScenarioId,
   portfolioId?: string
 ): Promise<GateJDecisionRecord> {
-  const health = await gateJHealth();
-  if (health.available) {
-    const res = await getJson<GateJDecideApiResponse>("/gate-j/decide", {
-      method: "POST",
-      body: JSON.stringify({
-        scenario: SCENARIO_API[scenario],
-        dry_run: true,
-        use_llm: false,
-        portfolio_id: undefined,
-      }),
-    });
-    if (!res.ok) {
-      if (res.status === 401) {
-        // Fall through to local deterministic Fitter (no privileged key in browser).
-      }
-    } else if (res.data.ok) {
-      const mapped = mapDecideToRecord(res.data, {
-        mode: "fixture",
-        mandateSource: "demo_fixture",
-        portfolioId,
+  try {
+    const health = await gateJHealth();
+    if (health.available) {
+      const res = await getJson<GateJDecideApiResponse>("/gate-j/decide", {
+        method: "POST",
+        timeoutMs: 12_000,
+        body: JSON.stringify({
+          scenario: SCENARIO_API[scenario],
+          dry_run: true,
+          use_llm: false,
+          portfolio_id: undefined,
+        }),
       });
-      // Prefer known fixture mandate amounts from local scenario labels when API omits them
-      const local = GATE_J_SCENARIOS[scenario as ScenarioId];
-      if (mapped.mandate) {
-        mapped.mandate = {
-          ...mapped.mandate,
-          allowed_assets: local.allowed_assets,
-          max_trade_value: local.max_trade_value,
-          max_pending_exposure: local.max_pending_exposure,
-          source: "demo_fixture",
-        };
+      if (res.ok && res.data.ok) {
+        const mapped = mapDecideToRecord(res.data, {
+          mode: "fixture",
+          mandateSource: "demo_fixture",
+          portfolioId,
+        });
+        const local = GATE_J_SCENARIOS[scenario as ScenarioId];
+        if (mapped.mandate) {
+          mapped.mandate = {
+            ...mapped.mandate,
+            allowed_assets: local.allowed_assets,
+            max_trade_value: local.max_trade_value,
+            max_pending_exposure: local.max_pending_exposure,
+            source: "demo_fixture",
+          };
+        }
+        mapped.note = `${local.label} · fixture (not live LLM)`;
+        return mapped;
       }
-      mapped.note = `${local.label} · fixture (not live LLM)`;
-      return mapped;
     }
+  } catch {
+    /* fall through to local deterministic fixture */
   }
 
   return buildLocalFixtureDecision(scenario, portfolioId);

@@ -52,7 +52,9 @@ export function Portfolio({ onNav }: { onNav: (id: NavId) => void }) {
     try {
       const fresh = await getPortfolio(portfolio.portfolio_id);
       if (!fresh) {
-        setError("Could not refresh portfolio — Gate I unavailable.");
+        setError(
+          "Could not refresh portfolio — live API unreachable or portfolio not found."
+        );
         return;
       }
       setPortfolio(fresh);

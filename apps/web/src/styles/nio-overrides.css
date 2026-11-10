@@ -9,16 +9,183 @@ body,
 #root {
   min-height: 100%;
   margin: 0;
-}
-
-body {
+  background: #fff !important;
+  color: #111827;
   font-family: var(--font-geist-sans);
-  background: #fff;
-  color: #000;
 }
 
 .mono {
   font-family: var(--font-geist-mono);
+}
+
+/* -------------------------------------------------------------------------
+   Light remapping for legacy dark theme tokens (style.css).
+   Root cause of black-on-black: dark --panel/--bg + AXIS color:#000 text.
+   ------------------------------------------------------------------------- */
+.axis-layout,
+.legacy-embed,
+.nio-agent-page,
+.nio-evidence-page,
+.nio-portfolio-page,
+.nio-tx-page,
+.nio-mandate-page,
+.nio-security-page {
+  --bg: #f5f6fa;
+  --bg-elev: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f8f9fd;
+  --line: #e4e7ef;
+  --ink: #111827;
+  --muted: #5b6472;
+  --accent: #1743ff;
+  --accent-dim: #0c32df;
+  --warn: #9a6700;
+  --danger: #b42318;
+  --ok: #067647;
+  --font: var(--font-geist-sans);
+  --display: var(--font-geist-sans);
+  --mono: var(--font-geist-mono);
+  --radius: 12px;
+  --shadow: 0 3px 12px #202b4b08;
+  color: var(--ink);
+  background: transparent;
+}
+
+.axis-layout a,
+.legacy-embed a {
+  color: #1743ff;
+}
+.axis-layout a:hover,
+.legacy-embed a:hover {
+  color: #0c32df;
+}
+
+.axis-layout .muted,
+.legacy-embed .muted,
+.axis-layout .axis-supporting {
+  color: #5b6472 !important;
+  opacity: 1;
+}
+
+.axis-layout .banner-ok,
+.legacy-embed .banner-ok {
+  background: #eef9f2;
+  border: 1px solid #cfe9d9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #067647;
+}
+.axis-layout .banner-block,
+.legacy-embed .banner-block,
+.axis-layout .banner-warn,
+.legacy-embed .banner-warn {
+  background: #fff8eb;
+  border: 1px solid #f0d9a8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #7a4d00;
+}
+.axis-layout .banner-block,
+.legacy-embed .banner-block {
+  background: #fff3f1;
+  border-color: #f0d2cc;
+  color: #912018;
+}
+
+.legacy-embed .card,
+.legacy-embed section.card {
+  border: 1px solid var(--axis-box-border, #00000029);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: var(--axis-elevation, 0 3px 12px #202b4b05);
+  padding: 18px;
+  margin-bottom: 16px;
+  color: #111827;
+}
+.legacy-embed .card h3,
+.legacy-embed .card-head h3,
+.legacy-embed .kv dt,
+.legacy-embed .kv dd,
+.legacy-embed p,
+.legacy-embed label {
+  color: #111827;
+}
+.legacy-embed .kv dt {
+  color: #5b6472;
+}
+.legacy-embed input,
+.legacy-embed textarea,
+.legacy-embed select {
+  background: #fff !important;
+  color: #111827 !important;
+  border: 1px solid #d0d5dd !important;
+}
+.legacy-embed .badge {
+  color: #111827;
+  border-color: #d0d5dd;
+  background: #f8f9fc;
+}
+.legacy-embed .badge-pass,
+.legacy-embed .badge-ok,
+.legacy-embed .badge-enforced {
+  color: #067647;
+  background: #eef9f2;
+  border-color: #cfe9d9;
+}
+.legacy-embed .badge-warn,
+.legacy-embed .badge-planned {
+  color: #9a6700;
+  background: #fff8eb;
+  border-color: #f0d9a8;
+}
+.legacy-embed .badge-danger {
+  color: #b42318;
+  background: #fff3f1;
+  border-color: #f0d2cc;
+}
+.legacy-embed .badge-recorded {
+  color: #344054;
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+}
+.legacy-embed button:not(.ghost):not(.danger):not(.nav) {
+  background: #1743ff;
+  color: #fff;
+  border: 1px solid #1743ff;
+}
+.legacy-embed button.ghost {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d0d5dd;
+}
+.legacy-embed button.danger {
+  background: #fff;
+  color: #b42318;
+  border: 1px solid #f0d2cc;
+}
+.legacy-embed button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.legacy-embed .hero-demo {
+  background: #1743ff;
+  color: #fff;
+  border-color: #1743ff;
+}
+.legacy-embed .hero-demo .muted,
+.legacy-embed .hero-demo .lede,
+.legacy-embed .hero-demo p {
+  color: #fff;
+}
+.legacy-embed .stage,
+.legacy-embed .fitter-col,
+.legacy-embed .safety-story,
+.legacy-embed .code,
+.legacy-embed pre,
+.legacy-embed .ledger-pre {
+  background: #f8f9fd !important;
+  color: #111827 !important;
+  border-color: #e4e7ef !important;
 }
 
 .landing-wordmark-btn,
@@ -70,16 +237,15 @@ body {
   border-bottom: 1px solid #ecece6;
 }
 .nio-preview-pipeline dt {
-  color: #000;
-  opacity: 0.55;
+  color: #5b6472;
 }
 .nio-preview-pipeline dd {
   margin: 0;
   font-weight: 550;
   text-align: right;
+  color: #111827;
 }
 
-/* Sidebar uses buttons instead of Next Link */
 .axis-layout .axis-sidebar nav button,
 .axis-layout .axis-brand {
   display: flex;
@@ -131,6 +297,29 @@ body {
   padding-inline: 0;
 }
 
+/* Shared semantic badges */
+.nio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #d0d5dd;
+  background: #f8f9fc;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.nio-badge-success { color: #067647; background: #eef9f2; border-color: #cfe9d9; }
+.nio-badge-warn { color: #9a6700; background: #fff8eb; border-color: #f0d9a8; }
+.nio-badge-danger { color: #b42318; background: #fff3f1; border-color: #f0d2cc; }
+.nio-badge-idle { color: #475467; background: #f2f4f7; border-color: #d0d5dd; }
+.nio-badge-running { color: #175cd3; background: #eff4ff; border-color: #b2ccff; }
+.nio-badge-recorded { color: #344054; background: #eef2ff; border-color: #c7d2fe; }
+
 .nio-pipeline {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -140,19 +329,36 @@ body {
   border: 1px solid var(--axis-box-border, #00000029);
   border-radius: 11px;
   background: #fff;
-  padding: 14px;
-  min-height: 120px;
+  padding: 12px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+}
+.nio-pipeline-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+.nio-pipeline-num {
+  font-family: var(--font-geist-mono);
+  font-size: 12px;
+  color: #5b6472;
 }
 .nio-pipeline-stage .mono {
-  font-size: 12px;
+  font-size: 11px;
   overflow-wrap: anywhere;
+  color: #5b6472;
 }
 .nio-pipeline-stage strong {
   font-size: 14px;
+  color: #111827;
 }
+.nio-pipeline-stage.tone-danger { border-color: #f0d2cc; }
+.nio-pipeline-stage.tone-warn { border-color: #f0d9a8; }
+.nio-pipeline-stage.tone-success { border-color: #cfe9d9; }
+
 .nio-live-banner {
   display: flex;
   flex-wrap: wrap;
@@ -167,14 +373,14 @@ body {
 }
 .nio-live-banner p {
   margin: 0;
-  color: #fff;
+  color: #fff !important;
   font-size: 14px;
   line-height: 1.5;
-  max-width: 640px;
+  max-width: 720px;
 }
 .nio-live-banner .axis-button {
   background: #fff;
-  color: #000;
+  color: #111827;
   border-color: #fff;
 }
 .nio-live-banner .axis-badge {
@@ -182,48 +388,279 @@ body {
   border-color: #ffffff55;
   color: #fff;
 }
+.nio-live-banner .axis-button:disabled {
+  opacity: 0.55;
+}
 
-.legacy-embed .card,
-.legacy-embed section {
-  border: 1px solid var(--axis-box-border, #00000029);
-  border-radius: 13px;
-  background: #fff;
-  box-shadow: var(--axis-elevation, 0 3px 12px #202b4b05);
+.nio-empty-state {
   padding: 18px;
-  margin-bottom: 16px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 10px;
+  background: #fafbfe;
+  color: #5b6472;
 }
-.legacy-embed .hero-demo {
-  background: #1743ff;
-  color: #fff;
-  border-color: #1743ff;
+.nio-empty-state p { margin: 0; color: #5b6472; }
+
+.nio-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
 }
-.legacy-embed .hero-demo .muted,
-.legacy-embed .hero-demo .lede,
-.legacy-embed .hero-demo p {
-  color: #fff;
+.nio-timeline-step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e4e7ef;
+  border-radius: 10px;
+  background: #fff;
 }
-.legacy-embed .banner-ok {
+.nio-timeline-index {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 650;
+  background: #f2f4f7;
+  color: #344054;
+}
+.nio-step-done .nio-timeline-index { background: #eef9f2; color: #067647; }
+.nio-step-blocked .nio-timeline-index { background: #fff3f1; color: #b42318; }
+.nio-timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.nio-timeline-body p {
+  margin: 6px 0 0;
+  color: #344054;
+  font-size: 14px;
+}
+.nio-safety-story {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e4e7ef;
+  background: #f8f9fd;
+  margin-bottom: 14px;
+}
+.nio-safety-story.ok {
+  border-color: #cfe9d9;
   background: #eef9f2;
-  border: 1px solid #cfe9d9;
-  border-radius: 8px;
-  padding: 10px 12px;
 }
-.legacy-embed .banner-block {
-  background: #fff3f1;
-  border: 1px solid #f0d2cc;
-  border-radius: 8px;
-  padding: 10px 12px;
+.nio-safety-headline {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.nio-fitter-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.nio-fitter-col {
+  border: 1px solid #e4e7ef;
+  border-radius: 11px;
+  padding: 14px;
+  background: #fafbfe;
+}
+.nio-fitter-col h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.nio-fitter-result {
+  border-color: #c7d2fe;
+  background: #f5f7ff;
+}
+.nio-kv {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.nio-kv > div {
+  display: grid;
+  gap: 2px;
+}
+.nio-kv dt {
+  font-size: 12px;
+  color: #5b6472;
+  font-weight: 550;
+}
+.nio-kv dd {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.nio-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.nio-scenario-card {
+  text-align: left;
+  border: 1px solid #e4e7ef;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.nio-scenario-card:hover,
+.nio-scenario-card.selected {
+  border-color: #92a9ff;
+  box-shadow: 0 6px 16px #1743ff0c;
+}
+.nio-scenario-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.nio-scenario-letter {
+  font-size: 13px;
+  font-weight: 650;
+  color: #111827;
+}
+.nio-scenario-card p {
+  margin: 0;
+  color: #5b6472;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.nio-gatek-summary .axis-supporting {
+  margin: 8px 0 14px;
+}
+
+.nio-evidence-grid,
+.nio-security-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.nio-disclosure {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff8eb;
+  border: 1px solid #f0d9a8;
+  color: #7a4d00;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.nio-hash-row {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf0f5;
+  font-size: 14px;
+}
+.nio-hash-actions {
+  display: flex;
+  gap: 6px;
+}
+.nio-code-block {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8f9fd;
+  border: 1px solid #e4e7ef;
+  color: #111827;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+.nio-tx-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.nio-row-selected td {
+  background: #f0f3ff !important;
+}
+.nio-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.nio-check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+.nio-check-row label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+  color: #111827;
+}
+.nio-demo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.nio-demo-list-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.axis-button.danger {
+  color: #b42318 !important;
+  background: #fff !important;
+  border-color: #f0d2cc !important;
+}
+.axis-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.axis-layout .axis-overview-hero-copy .axis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+.axis-layout .axis-overview-hero-copy .axis-button.secondary {
+  background: #ffffff22;
+  color: #fff;
+  border-color: #ffffff55;
 }
 
 @media (max-width: 1100px) {
-  .nio-pipeline {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .nio-pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nio-fitter-grid,
+  .nio-scenario-grid,
+  .nio-evidence-grid,
+  .nio-security-grid,
+  .nio-tx-layout,
+  .nio-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .nio-hash-row {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 700px) {
-  .nio-pipeline {
-    grid-template-columns: 1fr;
-  }
+  .nio-pipeline { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

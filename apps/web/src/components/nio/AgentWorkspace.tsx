@@ -10,31 +10,52 @@ import {
 } from "../../adapters/gatej";
 import type { GateJDecisionRecord, GateJHistoryEntry, GateJScenarioId } from "../../types/gateJ";
 import { isPublicLiveAiEnabled } from "../../lib/publicDemo";
+import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { DecisionJourney } from "../DecisionJourney";
 import { MandateFitterPanel } from "../MandateFitter";
-import { GateKEvidence } from "../GateKEvidence";
+import type { NavId } from "./nav";
 
-const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
+const SCENARIOS: {
+  id: GateJScenarioId;
+  letter: string;
+  title: string;
+  blurb: string;
+}[] = [
   {
     id: "A_ALLOWED",
-    title: "A · ALLOWED",
-    blurb: "Fixture proposal already satisfies the mandate.",
+    letter: "A",
+    title: "ALLOWED",
+    blurb: "Proposal already satisfies the mandate.",
   },
   {
     id: "B_ADAPTED",
-    title: "B · ADAPTED",
-    blurb: "Fixture proposes $100; mandate $20; Fitter finds a viable $20 trade.",
+    letter: "B",
+    title: "ADAPTED",
+    blurb: "Proposed $100; fitted down to $20 within the mandate.",
   },
   {
     id: "C_REJECTED",
-    title: "C · REJECTED",
-    blurb: "Fixture proposes $100; mandate $20; strategy needs ≥$50 — refuse.",
+    letter: "C",
+    title: "REJECTED",
+    blurb: "Strategy needs at least $50; mandate allows $20 — refuse.",
   },
 ];
 
-export function AgentWorkspace() {
+function stageTone(
+  status: string,
+  detail?: string | null
+): "idle" | "success" | "warn" | "danger" | "running" {
+  if (status === "idle") return "idle";
+  const d = (detail ?? "").toUpperCase();
+  if (/REJECT|BLOCKED|NO_TRADE|VETO/.test(d)) return "danger";
+  if (/ADAPT|ABSTAIN|WARN/.test(d)) return "warn";
+  if (/ALLOW|APPROVE|DONE|ENFORCE/.test(d) || status === "done") return "success";
+  return "running";
+}
+
+export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
   const publicLiveAi = isPublicLiveAiEnabled();
-  const [gateJ, setGateJ] = useState({ available: false, detail: "Checking Gate J…" });
+  const [gateJ, setGateJ] = useState({ available: false, detail: "Checking Live AI…" });
   const [demoStatus, setDemoStatus] = useState<GateJDemoStatus | null>(null);
   const [record, setRecord] = useState<GateJDecisionRecord | null>(null);
   const [history, setHistory] = useState<GateJHistoryEntry[]>([]);
@@ -76,7 +97,7 @@ export function AgentWorkspace() {
       name: "Researcher",
       model: record?.models?.researcher ?? "google/gemini-2.5-flash",
       status: record ? "done" : "idle",
-      detail: record?.stages?.find((s) => s.id === "market_research")?.detail,
+      detail: record?.stages?.find((s) => s.id === "market_research")?.detail ?? "—",
     },
     {
       name: "Strategist",
@@ -85,13 +106,13 @@ export function AgentWorkspace() {
       detail: record?.proposal?.choice ?? "—",
     },
     {
-      name: "Mandate Fitter",
+      name: "Fitter",
       model: "deterministic_v1",
       status: record ? "done" : "idle",
       detail: record?.fit?.verdict ?? "—",
     },
     {
-      name: "Risk Critic",
+      name: "Critic",
       model: record?.models?.critic ?? "openai/gpt-5.2",
       status: record ? "done" : "idle",
       detail: record?.critic?.verdict ?? "—",
@@ -103,21 +124,24 @@ export function AgentWorkspace() {
       detail: "AI cannot override NEAR",
     },
     {
-      name: "Final Decision",
+      name: "Final",
       model: "enforcement",
       status: record ? "done" : "idle",
       detail: `${record?.enforcement?.decision ?? "—"} · may_sign=${record?.enforcement?.may_sign ?? false}`,
     },
   ];
 
+  const demoAvailable = Boolean(demoStatus?.ok) && !demoStatus?.kill_switch;
+  const clientLeft = demoStatus?.remaining?.client_calls;
+  const globalLeft = demoStatus?.remaining?.global_calls;
+
   return (
-    <div className="page-enter" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="page-enter nio-agent-page">
       <div className="axis-intro">
         <div>
           <h1>AI Agent</h1>
           <p>
-            Analytical console for Researcher → Strategist → Fitter → Critic →
-            Policy Guard. Live runs use demo-decide only.
+            Live multi-agent decisions governed by hardware-authorized NEAR policy.
           </p>
         </div>
         <div className="axis-actions">
@@ -130,16 +154,26 @@ export function AgentWorkspace() {
       <section className="nio-live-banner">
         <div>
           <div className="axis-actions" style={{ marginBottom: 10 }}>
-            <span className="axis-badge">LIVE AI · DRY RUN · NO SIGNING</span>
+            <span className="axis-badge">LIVE AI · DRY RUN</span>
+            <span className="axis-badge">
+              {demoAvailable ? "Demo available" : publicLiveAi ? "Demo paused / exhausted" : "Live AI off"}
+            </span>
+            {typeof globalLeft === "number" ? (
+              <span className="axis-badge">Global remaining {globalLeft}</span>
+            ) : null}
+            {typeof clientLeft === "number" ? (
+              <span className="axis-badge">Your remaining {clientLeft}</span>
+            ) : null}
           </div>
           <p>
-            Gate J: {gateJ.detail}
-            {demoStatus?.ok
-              ? ` · demo available · global remaining ${demoStatus.remaining?.global_calls ?? "—"}`
-              : demoStatus?.reason
-                ? ` · ${demoStatus.reason}`
-                : ""}
+            {gateJ.detail}
+            {demoStatus?.ok === false &&
+            demoStatus.reason &&
+            !/upstream_|fetch failed|aborted|client_timeout/i.test(demoStatus.reason)
+              ? ` · ${demoStatus.reason}`
+              : ""}
           </p>
+          <p>No signing or execution through this public control.</p>
           {msg ? <p role="alert">{msg}</p> : null}
         </div>
         <button
@@ -159,14 +193,22 @@ export function AgentWorkspace() {
       </section>
 
       <div className="nio-pipeline" aria-label="Decision pipeline">
-        {stages.map((s) => (
-          <div key={s.name} className="nio-pipeline-stage">
-            <span className="axis-badge">{s.status}</span>
-            <strong>{s.name}</strong>
-            <span className="mono">{s.model}</span>
-            <span className="axis-supporting">{s.detail}</span>
-          </div>
-        ))}
+        {stages.map((s, i) => {
+          const tone = stageTone(s.status, s.detail);
+          return (
+            <div key={s.name} className={`nio-pipeline-stage tone-${tone}`}>
+              <div className="nio-pipeline-top">
+                <span className="nio-pipeline-num">{String(i + 1).padStart(2, "0")}</span>
+                <span className={`nio-badge nio-badge-${tone === "idle" ? "idle" : tone === "success" ? "success" : tone === "warn" ? "warn" : tone === "danger" ? "danger" : "running"}`}>
+                  {s.status}
+                </span>
+              </div>
+              <strong>{s.name}</strong>
+              <span className="mono">{s.model}</span>
+              <span className="axis-supporting">{s.detail}</span>
+            </div>
+          );
+        })}
       </div>
 
       <DecisionJourney record={record} />
@@ -175,14 +217,14 @@ export function AgentWorkspace() {
       <section className="axis-panel">
         <div className="axis-panel-heading">
           <h2>Fixture scenarios</h2>
-          <span className="axis-badge">DETERMINISTIC · NOT LLM</span>
+          <span className="nio-badge nio-badge-recorded">DETERMINISTIC · NOT LLM</span>
         </div>
-        <div className="axis-overview-actions">
+        <div className="nio-scenario-grid">
           {SCENARIOS.map((s) => (
             <button
               key={s.id}
               type="button"
-              className="axis-overview-action"
+              className={`nio-scenario-card${scenarioBusy === s.id ? " selected" : ""}`}
               disabled={scenarioBusy !== null || liveBusy}
               onClick={() => {
                 setScenarioBusy(s.id);
@@ -193,10 +235,21 @@ export function AgentWorkspace() {
                   .finally(() => setScenarioBusy(null));
               }}
             >
-              <span>
-                <b>{s.title}</b>
-                <small>{s.blurb}</small>
-              </span>
+              <div className="nio-scenario-head">
+                <span className="nio-scenario-letter">Scenario {s.letter}</span>
+                <span
+                  className={`nio-badge ${
+                    s.title === "ALLOWED"
+                      ? "nio-badge-success"
+                      : s.title === "ADAPTED"
+                        ? "nio-badge-warn"
+                        : "nio-badge-danger"
+                  }`}
+                >
+                  {s.title}
+                </span>
+              </div>
+              <p>{s.blurb}</p>
             </button>
           ))}
         </div>
@@ -214,7 +267,7 @@ export function AgentWorkspace() {
       {history.length ? (
         <section className="axis-panel">
           <div className="axis-panel-heading">
-            <h2>Decision history</h2>
+            <h2>Recent decisions</h2>
           </div>
           <div className="axis-table-wrap">
             <table>
@@ -243,7 +296,28 @@ export function AgentWorkspace() {
         </section>
       ) : null}
 
-      <GateKEvidence />
+      <section className="axis-panel nio-gatek-summary">
+        <div className="axis-panel-heading">
+          <h2>Real AI-directed execution</h2>
+          <span className="nio-badge nio-badge-warn">OPERATOR OVERRIDE</span>
+        </div>
+        <p>
+          24.45 USDC · Sepolia · Tidepool {GATE_K_FIRST_TRADE.execution.tidepool_status} ·
+          Reconcile {GATE_K_FIRST_TRADE.execution.reconcile_status}
+        </p>
+        <p className="axis-supporting">
+          Fitter rejected economics, Critic vetoed, and the transaction proceeded only after an
+          explicitly authorized one-time operator acceptance override — not normal autonomous
+          safety-approved execution.
+        </p>
+        <button
+          type="button"
+          className="axis-button secondary"
+          onClick={() => onNav("evidence")}
+        >
+          View complete execution proof
+        </button>
+      </section>
     </div>
   );
 }

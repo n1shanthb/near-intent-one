@@ -276,8 +276,8 @@ export function Policies({ onOpenLedger }: { onOpenLedger?: () => void }) {
                       !portfolio
                         ? "Create a personal portfolio first."
                         : gateI.status !== "available"
-                          ? "Gate I unavailable — wallet set_policy blocked (no fake success)."
-                          : "Gate I set_policy for ordinary wallets is pending Chat 1 API — blocked honestly."
+                          ? "Live API unreachable — set_policy blocked (no fake success)."
+                          : "Personal portfolio management requires an authenticated owner session and is unavailable in public demo mode."
                     );
                   }}
                 >

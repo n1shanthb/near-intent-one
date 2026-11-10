@@ -156,7 +156,7 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
   const confirmWithdraw = async () => {
     if (!deliveryEnabled) {
       setMsg(
-        "Withdrawals stay blocked until VITE_GATE_I_WITHDRAW_PROVEN=true (Chat 1 GATE_I.md B2 PASS)."
+        "Withdrawals stay blocked in the public demo until owner delivery is proven."
       );
       setWithdraw({
         status: "blocked",
@@ -329,9 +329,8 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
         </p>
         {!deliveryEnabled ? (
           <p className="warn">
-            Confirm stays disabled until{" "}
-            <span className="mono">VITE_GATE_I_WITHDRAW_PROVEN=true</span> (Chat 1
-            authorized after GATE_I.md B2 PASS).
+            Confirm stays disabled until owner withdrawal delivery is proven for
+            this deployment.
           </p>
         ) : (
           <p className="muted small">
