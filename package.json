@@ -13,7 +13,16 @@
     "test:pending-exposure": "cd contracts/policy && cargo test pending_exposure",
     "chainsig:public-key": "node scripts/chainsig-public-key.mjs",
     "chainsig:smoke": "node scripts/chainsig-smoke.mjs",
-    "verify-live": "node scripts/verify-live.mjs"
+    "verify-live": "node scripts/verify-live.mjs",
+    "gate-i:provision": "node scripts/gate-i-provision.mjs",
+    "gate-i:isolation": "node scripts/gate-i-isolation.mjs",
+    "gate-i:lifecycle": "node scripts/gate-i-lifecycle.mjs",
+    "gate-i:api": "node packages/services/api-server.mjs",
+    "gate-i:acceptance": "node scripts/gate-i-acceptance.mjs",
+    "gate-j:demo": "node scripts/gate-j-demo.mjs",
+    "gate-j:demo:llm": "node scripts/gate-j-demo.mjs --live-llm",
+    "test:valuation": "node --test packages/valuation/units.test.mjs",
+    "test:gate-j": "node --test packages/gate-j/fitter.test.mjs packages/gate-j/hydrate.test.mjs"
   },
   "engines": {
     "node": ">=20"
