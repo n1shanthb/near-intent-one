@@ -28,6 +28,10 @@ See `.env.production.example`. Defaults: `VITE_GATE_I_API_BASE=/api/v1`, `VITE_P
 
 Deploy from `apps/web` (install/build/output: npm / `dist` / vercel.json).
 
-## Blocked without Chat 1
+## BFF routing note
 
-Until DuckDNS + Caddy trusted hostname is live, BFF returns `503 upstream_not_configured` / rejects self-signed OCI IP. SPA still ships recorded Gate I/J/K evidence offline.
+Non-Next.js Vercel projects do **not** support multi-segment catch-alls (`api/[...path].ts` only matches one segment). Use `api/index.ts` plus rewrite `"/api/(.*)" → "/api"` so `/api/v1/gate-j/*` reaches the BFF.
+
+## Production upstream
+
+`NIO_API_BASE=https://nio-api-hack26.duckdns.org/v1` + `GATE_I_API_KEY` (from `.gate-i-data/oci-api-key.txt`, never `VITE_*`). Keep `NIO_PUBLIC_LIVE_AI=false` until shared rate limits are confirmed.

@@ -1,6 +1,7 @@
 /**
  * Production Vercel BFF — allowlisted proxy to OCI NIO API.
- * Mounted at /api/* ; expects /api/v1/...
+ * Mounted at /api (vercel.json rewrites /api/* → /api).
+ * Expects browser paths /api/v1/... ; original req.url is preserved.
  * Credentials stay server-side (GATE_I_API_KEY). Never trust browser auth headers.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -16,7 +17,9 @@ const ALLOWED_EXACT = new Set([
   "GET /gate-j/scenarios",
   "GET /gate-j/decisions",
   "GET /gate-j/market",
+  "GET /gate-j/demo-status",
   "POST /gate-j/decide",
+  "POST /gate-j/demo-decide",
   "POST /gate-j/fit",
 ]);
 
@@ -42,7 +45,6 @@ function resolveV1Path(req: VercelRequest): string | null {
     if (p.startsWith("/api/v1")) {
       p = p.slice("/api/v1".length) || "/";
     } else if (p.startsWith("/api/")) {
-      // /api/v1/... via catch-all query fallback
       const parts = req.query.path;
       const arr = Array.isArray(parts) ? parts : parts ? [parts] : [];
       if (arr[0] !== "v1") return null;
@@ -112,14 +114,20 @@ function sanitizeDecideBody(
     if (!liveAiEnabled()) {
       return { ok: false, reason: "public_live_ai_disabled" };
     }
+    // Prefer dedicated demo endpoint (server enforces quotas + hard locks).
+    // Body is still sanitized; upstream path rewritten in handler.
     delete parsed.mandate;
     delete parsed.allow_detached_mandate;
     delete parsed.allow_fixture_mandate;
+    delete parsed.acceptance_override;
+    delete parsed.gate_k_execute;
+    delete parsed.confirm_funded_trade;
     parsed.portfolio_id = "i-a-a4e7";
     parsed.claimed_owner = "nio-i-a4e7-a-owner.testnet";
     parsed.use_llm = true;
     parsed.dry_run = true;
     parsed.allow_execute = false;
+    parsed.may_sign = false;
   } else if (isFixture) {
     parsed.dry_run = true;
     parsed.use_llm = false;
@@ -182,6 +190,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  let bodyBuf = Buffer.alloc(0);
+  if (method !== "GET" && method !== "HEAD") {
+    try {
+      bodyBuf = await readRawBody(req);
+    } catch (e) {
+      res.status(413).json({
+        reason: e instanceof Error ? e.message : "body_error",
+      });
+      return;
+    }
+  }
+
+  let upstreamPath = apiPath;
+  if (
+    method === "POST" &&
+    (apiPath === "/gate-j/decide" || apiPath === "/gate-j/demo-decide")
+  ) {
+    const sanitized = sanitizeDecideBody(bodyBuf);
+    if (!sanitized.ok) {
+      res.status(403).json({ reason: sanitized.reason });
+      return;
+    }
+    bodyBuf = sanitized.body;
+    // Route live LLM through OCI demo-decide (persistent quotas / hard dry-run).
+    try {
+      const parsed = JSON.parse(bodyBuf.toString("utf8")) as {
+        use_llm?: boolean;
+      };
+      if (parsed.use_llm === true || apiPath === "/gate-j/demo-decide") {
+        if (!liveAiEnabled()) {
+          res.status(403).json({ reason: "public_live_ai_disabled" });
+          return;
+        }
+        upstreamPath = "/gate-j/demo-decide";
+      }
+    } catch {
+      /* keep path */
+    }
+  }
+  if (method === "POST" && apiPath === "/gate-j/fit") {
+    const sanitized = sanitizeFitBody(bodyBuf);
+    if (!sanitized.ok) {
+      res.status(403).json({ reason: sanitized.reason });
+      return;
+    }
+    bodyBuf = sanitized.body;
+  }
+
   const base = apiBase();
   if (!base) {
     res.status(503).json({
@@ -206,46 +262,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  let bodyBuf = Buffer.alloc(0);
-  if (method !== "GET" && method !== "HEAD") {
-    try {
-      bodyBuf = await readRawBody(req);
-    } catch (e) {
-      res.status(413).json({
-        reason: e instanceof Error ? e.message : "body_error",
-      });
-      return;
-    }
-  }
-
-  if (method === "POST" && apiPath === "/gate-j/decide") {
-    const sanitized = sanitizeDecideBody(bodyBuf);
-    if (!sanitized.ok) {
-      res.status(403).json({ reason: sanitized.reason });
-      return;
-    }
-    bodyBuf = sanitized.body;
-  }
-  if (method === "POST" && apiPath === "/gate-j/fit") {
-    const sanitized = sanitizeFitBody(bodyBuf);
-    if (!sanitized.ok) {
-      res.status(403).json({ reason: sanitized.reason });
-      return;
-    }
-    bodyBuf = sanitized.body;
-  }
-
   const key = apiKey();
   const headers: Record<string, string> = {
     accept: "application/json",
     "content-type": "application/json",
   };
   if (key) headers["x-api-key"] = key;
+  const fwd = req.headers["x-forwarded-for"];
+  const realIp = req.headers["x-real-ip"];
+  if (typeof fwd === "string" && fwd) headers["x-forwarded-for"] = fwd;
+  else if (typeof req.socket?.remoteAddress === "string") {
+    headers["x-forwarded-for"] = req.socket.remoteAddress;
+  }
+  if (typeof realIp === "string" && realIp) headers["x-real-ip"] = realIp;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const upstream = await fetch(`${base}${apiPath}`, {
+    const upstream = await fetch(`${base}${upstreamPath}`, {
       method,
       headers,
       body: method === "GET" || method === "HEAD" ? undefined : bodyBuf,
@@ -258,7 +292,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
     let text = stripSecretsFromJson(buf.toString("utf8"));
-    if (apiPath === "/gate-j/decide" && method === "POST") {
+    if (
+      (apiPath === "/gate-j/decide" ||
+        apiPath === "/gate-j/demo-decide" ||
+        upstreamPath === "/gate-j/demo-decide") &&
+      method === "POST"
+    ) {
       try {
         const json = JSON.parse(text) as {
           enforcement?: { may_sign?: boolean };

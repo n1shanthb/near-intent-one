@@ -128,6 +128,28 @@ export function resetSpendState() {
   spendState.calls = 0;
 }
 
+/**
+ * Seed in-memory spend counters (e.g. from persistent demo daily spend).
+ * Does not clear calls unless provided.
+ */
+export function seedSpendState({ usd = 0, calls } = {}) {
+  spendState.usd = Number(usd) || 0;
+  if (calls !== undefined) spendState.calls = Number(calls) || 0;
+}
+
+/**
+ * Temporarily override GATE_J_LLM_MAX_SPEND_USD for the process env
+ * (demo daily cap). Returns restore fn.
+ */
+export function withMaxSpendUsd(maxUsd) {
+  const prev = process.env.GATE_J_LLM_MAX_SPEND_USD;
+  process.env.GATE_J_LLM_MAX_SPEND_USD = String(maxUsd);
+  return () => {
+    if (prev === undefined) delete process.env.GATE_J_LLM_MAX_SPEND_USD;
+    else process.env.GATE_J_LLM_MAX_SPEND_USD = prev;
+  };
+}
+
 function estimateCostUsd(model, usage) {
   const prices = PRICE_USD_PER_MTOK[model] || { prompt: 2, completion: 8 };
   const prompt = Number(usage?.prompt_tokens || usage?.input_tokens || 0);

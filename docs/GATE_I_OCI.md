@@ -18,13 +18,14 @@
 
 | Endpoint | URL |
 |----------|-----|
-| Trusted (Cloudflare quick tunnel — ephemeral) | `https://consider-deserve-findarticles-carol.trycloudflare.com/v1` |
+| Trusted hostname (DuckDNS + Caddy) | **pending** — see `.gate-i-data/DUCKDNS_SETUP.txt` + `docs/GATE_I_HTTPS_ROLLBACK.md` |
 | OCI origin (self-signed) | `https://129.225.72.169:8787/v1` |
 | Gate I health | `…/health` |
 | Gate J health | `…/gate-j/health` |
+| Gate K health | `…/gate-k/health` |
 | Decide (auth) | `POST …/gate-j/decide` |
 
-Origin TLS is **HTTPS-only on 8787** (self-signed under `.gate-i-data/tls/`). For browser-trusted access without `-k`, front with Cloudflare Tunnel (quick URL above is temporary; use a **named tunnel** + custom hostname for stability).
+Origin TLS is **HTTPS-only on 8787** (self-signed under `.gate-i-data/tls/`). Planned front: **Caddy** on `:443` with DuckDNS + Let's Encrypt (HTTP-01), reverse-proxy to `https://127.0.0.1:8787` (local hop skips verify of self-signed only). Host firewall already allows `80/443`; **OCI security list must also allow TCP 80 + 443**.
 
 Mutations and Gate J LLM/decide require server-side `X-Api-Key` (`.gate-i-data/oci-api-key.txt`). Do **not** embed OpenRouter or signing secrets in Vite.
 

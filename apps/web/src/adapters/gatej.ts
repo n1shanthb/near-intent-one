@@ -548,6 +548,7 @@ export async function runLiveAiDecide(opts: {
     );
   }
 
+  // Dedicated demo endpoint — server forces portfolio/use_llm/dry_run/may_sign.
   // Never send client-defined mandate constraints — backend hydrates on-chain.
   const body = {
     portfolio_id: opts.portfolioId,
@@ -557,7 +558,7 @@ export async function runLiveAiDecide(opts: {
     allow_execute: false,
   };
 
-  const res = await getJson<GateJDecideApiResponse>("/gate-j/decide", {
+  const res = await getJson<GateJDecideApiResponse>("/gate-j/demo-decide", {
     method: "POST",
     body: JSON.stringify(body),
   });

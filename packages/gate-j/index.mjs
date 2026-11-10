@@ -8,7 +8,15 @@ export {
   loadServicesEnv,
   resetSpendState,
   getSpendState,
+  seedSpendState,
+  withMaxSpendUsd,
 } from "./llm.mjs";
+export {
+  createDemoQuota,
+  demoQuotaConfig,
+  clientKeyFromMeta,
+} from "./demoQuota.mjs";
+export { rateLimitCheck, resetRateLimits } from "./rateLimit.mjs";
 export { runResearcherLlm, normalizeResearch } from "./researcher.mjs";
 export { runStrategistLlm, runStrategistFixture } from "./strategist.mjs";
 export { runCriticLlm, runCriticFixture, normalizeCritic } from "./critic.mjs";
@@ -20,5 +28,4 @@ export {
   detectWeakerClientMandate,
 } from "./hydrate.mjs";
 export { verifyPortfolioBalances } from "./balances.mjs";
-export { rateLimitCheck, resetRateLimits } from "./rateLimit.mjs";
 export * from "./fixtures.mjs";

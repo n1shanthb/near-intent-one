@@ -235,9 +235,9 @@ export function AgentPanel() {
         </p>
         {!publicLiveAi ? (
           <p className="banner banner-block">
-            Public live OpenRouter dry-run stays <strong>disabled</strong> until Chat 1
-            provides a trusted OCI HTTPS hostname and shared rate limits are verified.
-            Use recorded hosted trace + fixtures below.
+            Public live OpenRouter dry-run stays <strong>disabled</strong> until shared
+            rate limits / OpenRouter budget are verified (`NIO_PUBLIC_LIVE_AI=true`).
+            Trusted OCI HTTPS is live — use recorded hosted trace + fixtures below.
           </p>
         ) : null}
         <div className="row gap">

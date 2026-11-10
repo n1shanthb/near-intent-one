@@ -30,9 +30,22 @@ function pathIsLedgerWizard(pathname: string): boolean {
 
 function pathToNav(pathname: string): NavId | null {
   if (pathIsLedgerWizard(pathname)) return "ledger";
-  if (pathname === "/welcome" || pathname.endsWith("/welcome")) return "welcome";
-  if (pathname === "/portfolio" || pathname.endsWith("/portfolio")) return "portfolio";
-  if (pathname === "/funds" || pathname.endsWith("/funds")) return "funds";
+  const map: Record<string, NavId> = {
+    "/welcome": "welcome",
+    "/portfolio": "portfolio",
+    "/funds": "funds",
+    "/policies": "policies",
+    "/agent": "agent",
+    "/activity": "activity",
+    "/security": "security",
+    "/demo": "demo",
+    "/overview": "overview",
+    "/predict": "predict",
+  };
+  if (map[pathname]) return map[pathname];
+  for (const [path, id] of Object.entries(map)) {
+    if (pathname.endsWith(path)) return id;
+  }
   return null;
 }
 
@@ -60,17 +73,20 @@ function AppInner() {
 
   const onNav = (id: NavId) => {
     setNav(id);
-    const pathMap: Partial<Record<NavId, string>> = {
+    const pathMap: Record<NavId, string> = {
       ledger: "/setup/ledger",
       welcome: "/welcome",
       portfolio: "/portfolio",
       funds: "/funds",
+      policies: "/policies",
+      agent: "/agent",
+      activity: "/activity",
+      security: "/security",
+      demo: "/demo",
+      overview: "/overview",
+      predict: "/predict",
     };
-    if (pathMap[id]) {
-      window.history.pushState({}, "", pathMap[id]);
-    } else if (window.location.pathname !== "/") {
-      window.history.pushState({}, "", "/");
-    }
+    window.history.pushState({}, "", pathMap[id]);
   };
 
   const walletConnected = Boolean(signedAccountId);

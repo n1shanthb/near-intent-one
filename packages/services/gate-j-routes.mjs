@@ -14,7 +14,12 @@ import {
   getLlmConfig,
   resetSpendState,
   getSpendState,
+  seedSpendState,
+  withMaxSpendUsd,
   usdcRawFromUsd,
+  createDemoQuota,
+  demoQuotaConfig,
+  clientKeyFromMeta,
 } from "../gate-j/index.mjs";
 import {
   hydrateMandateFromChain,
@@ -22,6 +27,19 @@ import {
 } from "../gate-j/hydrate.mjs";
 import { verifyPortfolioBalances } from "../gate-j/balances.mjs";
 import { rateLimitCheck } from "../gate-j/rateLimit.mjs";
+
+const DEMO_FORBIDDEN_BODY_KEYS = Object.freeze([
+  "allow_execute",
+  "confirm_funded_trade",
+  "acceptance_override",
+  "gate_k_execute",
+  "may_sign",
+  "withdraw",
+  "withdrawal",
+  "set_policy",
+  "mutate_policy",
+  "operator_confirm",
+]);
 
 function fixtureMandateFromPortfolio(p, body = {}) {
   return {
@@ -67,6 +85,7 @@ export function createGateJHandlers({
 }) {
   mkdirSync(dataDir, { recursive: true });
   const historyPath = join(dataDir, "gate-j-decisions.json");
+  const demoQuota = createDemoQuota({ dataDir });
 
   const loadHistory = () => {
     if (!existsSync(historyPath)) return [];
@@ -275,7 +294,10 @@ export function createGateJHandlers({
         if (cfg.provider !== "openrouter") {
           return { ok: false, reason: "OPENROUTER_REQUIRED" };
         }
-        resetSpendState();
+        // Demo path seeds persistent daily spend; do not wipe it.
+        if (!meta.preserveSpend) {
+          resetSpendState();
+        }
       }
 
       const resolved = await resolveMandate(body);
@@ -456,8 +478,167 @@ export function createGateJHandlers({
       return {
         ok: true,
         scenarios: ["ALLOWED", "ADAPTED", "REJECTED"],
-        note: "POST /v1/gate-j/decide with { scenario, dry_run: true } for fixtures; live LLM requires portfolio_id + OpenRouter",
+        note: "POST /v1/gate-j/decide with { scenario, dry_run: true } for fixtures; live LLM requires portfolio_id + OpenRouter; public judges use POST /v1/gate-j/demo-decide",
       };
+    },
+
+    demoStatus() {
+      return demoQuota.getStatus();
+    },
+
+    /**
+     * Public judge LIVE AI DRY RUN — server-enforced demo mode.
+     * Ignores/overrides client fields; never signs; fixed portfolio.
+     */
+    async demoDecide(_body = {}, meta = {}) {
+      const cfg = demoQuotaConfig();
+      const body = _body && typeof _body === "object" ? _body : {};
+
+      // Reject obviously dangerous intent keys (defense in depth; we ignore them anyway).
+      for (const k of DEMO_FORBIDDEN_BODY_KEYS) {
+        if (body[k] === true) {
+          return {
+            ok: false,
+            reason: "DEMO_FORBIDDEN_FIELD",
+            field: k,
+            note: "Demo endpoint refuses signing / Gate K / policy mutation fields",
+          };
+        }
+      }
+
+      // Hard-lock identity + modes regardless of browser input.
+      const locked = {
+        portfolio_id: cfg.portfolioId,
+        claimed_owner: cfg.claimedOwner,
+        use_llm: true,
+        dry_run: true,
+        allow_execute: false,
+        confirm_funded_trade: false,
+        acceptance_override: false,
+        gate_k_execute: false,
+        may_sign: false,
+      };
+
+      // Drop client mandate / fixture escapes — hydrate on-chain only.
+      const clientKey = clientKeyFromMeta(meta);
+      const gate = demoQuota.beginRequest({ clientKey });
+      if (!gate.ok) {
+        return {
+          ...gate,
+          demo: true,
+          DRY_RUN: true,
+          no_signing: true,
+          may_sign: false,
+        };
+      }
+
+      const spendBefore = getSpendState().usd;
+      // Seed persistent daily spend into in-memory LLM cap (do NOT reset to 0).
+      seedSpendState({ usd: gate.spend_usd_before });
+      const restoreSpendCap = withMaxSpendUsd(gate.max_spend_usd);
+
+      let counted = false;
+      let out;
+      const started = Date.now();
+      const timeoutMs = cfg.timeoutMs;
+      try {
+        const cfgLlm = getLlmConfig();
+        if (!cfgLlm.configured) {
+          out = { ok: false, reason: "OPENROUTER_NOT_CONFIGURED", demo: true };
+        } else if (cfgLlm.provider !== "openrouter") {
+          out = { ok: false, reason: "OPENROUTER_REQUIRED", demo: true };
+        } else {
+          const decidePromise = this.decide(
+            {
+              ...locked,
+              // Explicitly omit mandate / fixture knobs
+            },
+            { ...meta, preserveSpend: true, demo: true }
+          );
+          let timer;
+          const timed = await Promise.race([
+            decidePromise.then((r) => ({ kind: "ok", r })),
+            new Promise((resolve) => {
+              timer = setTimeout(
+                () => resolve({ kind: "timeout" }),
+                Math.max(5_000, timeoutMs)
+              );
+            }),
+          ]);
+          if (timer) clearTimeout(timer);
+          if (timed.kind === "timeout") {
+            out = {
+              ok: false,
+              reason: "DEMO_TIMEOUT",
+              timeout_ms: timeoutMs,
+              demo: true,
+              DRY_RUN: true,
+              no_signing: true,
+              may_sign: false,
+            };
+          } else {
+            out = timed.r;
+          }
+        }
+
+        // Force response safety flags even if upstream decide shape changes.
+        if (out && typeof out === "object") {
+          out.demo = true;
+          out.demo_mode = true;
+          out.dry_run = true;
+          out.DRY_RUN = true;
+          out.no_signing = true;
+          out.may_sign = false;
+          out.portfolio_id = cfg.portfolioId;
+          out.forced = {
+            use_llm: true,
+            dry_run: true,
+            may_sign: false,
+            portfolio_id: cfg.portfolioId,
+            claimed_owner: cfg.claimedOwner,
+          };
+          if (out.enforcement && typeof out.enforcement === "object") {
+            out.enforcement = { ...out.enforcement, may_sign: false };
+          }
+          if (out.summary && typeof out.summary === "object") {
+            out.summary = { ...out.summary, may_sign: false };
+          }
+          // Strip any accidental secret-ish fields
+          delete out.api_key;
+          delete out.openrouter_api_key;
+        }
+
+        counted = Boolean(out?.ok);
+      } catch (e) {
+        out = {
+          ok: false,
+          reason: "DEMO_PIPELINE_ERROR",
+          detail:
+            e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+          demo: true,
+          DRY_RUN: true,
+          no_signing: true,
+          may_sign: false,
+        };
+      } finally {
+        restoreSpendCap();
+        const spendAfter = getSpendState().usd;
+        const delta = Math.max(0, spendAfter - spendBefore);
+        const released = demoQuota.releaseFlight({
+          clientKey,
+          spendUsdDelta: delta,
+          counted,
+        });
+        if (out && typeof out === "object") {
+          out.demo_quota = released.ok
+            ? released.status
+            : { ok: false, reason: released.reason };
+          out.latency_ms = Date.now() - started;
+          out.client_key_hash = gate.client_key_hash;
+        }
+      }
+
+      return out;
     },
   };
 }
@@ -476,6 +657,12 @@ export async function handleGateJRoute({
   meta = {},
 }) {
   if (method === "GET" && path === "/gate-j/health") {
+    let demo = null;
+    try {
+      demo = handlers.demoStatus?.() || null;
+    } catch {
+      demo = { ok: false, reason: "DEMO_QUOTA_UNAVAILABLE" };
+    }
     json(req, res, 200, {
       ok: true,
       gate: "J",
@@ -483,7 +670,34 @@ export async function handleGateJRoute({
       dry_run_default: true,
       funded_execution: false,
       mandate_hydration: "on_chain_required_for_live_llm",
+      demo,
+      demo_decide: "/v1/gate-j/demo-decide",
     });
+    return true;
+  }
+  if (method === "GET" && path === "/gate-j/demo-status") {
+    const st = handlers.demoStatus();
+    json(req, res, st.ok ? 200 : 503, st);
+    return true;
+  }
+  if (method === "POST" && path === "/gate-j/demo-decide") {
+    const out = await handlers.demoDecide(body, meta);
+    const status = out.ok
+      ? 200
+      : out.reason === "DEMO_QUOTA_UNAVAILABLE" ||
+          out.reason === "DEMO_KILL_SWITCH" ||
+          out.reason === "DEMO_DISABLED"
+        ? 503
+        : out.reason === "DEMO_BUSY" ||
+            out.reason === "DEMO_CLIENT_COOLDOWN" ||
+            out.reason === "DEMO_CLIENT_DAILY_LIMIT" ||
+            out.reason === "DEMO_GLOBAL_DAILY_LIMIT" ||
+            out.reason === "DEMO_SPEND_CAP"
+          ? 429
+          : out.reason === "DEMO_FORBIDDEN_FIELD"
+            ? 403
+            : 400;
+    json(req, res, status, out);
     return true;
   }
   if (method === "GET" && path === "/gate-j/market") {

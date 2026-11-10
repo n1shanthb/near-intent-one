@@ -272,6 +272,8 @@ async function handle(req, res) {
   // /health is always public; Gate J privileged GETs require API key when configured
   const isHealth = req.method === "GET" && path === "/health";
   const isGateJPublicHealth = req.method === "GET" && path === "/gate-j/health";
+  const isGateJDemoStatus =
+    req.method === "GET" && path === "/gate-j/demo-status";
   const isGateKPublicHealth = req.method === "GET" && path === "/gate-k/health";
   const gateJPrivilegedGet =
     req.method === "GET" &&
@@ -281,7 +283,12 @@ async function handle(req, res) {
     (path === "/gate-k/decisions" ||
       path === "/gate-k/autonomous" ||
       path === "/gate-k/pending");
-  if (!isHealth && !isGateJPublicHealth && !isGateKPublicHealth) {
+  if (
+    !isHealth &&
+    !isGateJPublicHealth &&
+    !isGateJDemoStatus &&
+    !isGateKPublicHealth
+  ) {
     const auth = authorize(req, {
       mutating: mutating || gateJPrivilegedGet || gateKPrivilegedGet,
     });
@@ -324,6 +331,9 @@ async function handle(req, res) {
         handlers: gateJ,
         meta: {
           ip: req.socket?.remoteAddress || "",
+          realIp: String(req.headers["x-real-ip"] || ""),
+          forwardedFor: String(req.headers["x-forwarded-for"] || ""),
+          xForwardedFor: String(req.headers["x-forwarded-for"] || ""),
           apiKeyHash: apiKeyHdr ? `k${apiKeyHdr.length}` : "none",
           authenticated: !API_KEY || apiKeyHdr === API_KEY,
         },
