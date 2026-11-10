@@ -160,6 +160,20 @@ pub struct EvmCancelParams {
     pub chain_id: U64,
 }
 
+/// Gate I2: owner recovery/withdrawal ERC-20 transfer. Works while paused or revoked.
+/// Does not grant the agent any signing path.
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct EvmWithdrawParams {
+    pub nonce: U64,
+    pub gas_price: U128,
+    pub gas_limit: U64,
+    pub chain_id: U64,
+    pub token_contract: String,
+    pub to: String,
+    pub amount: U128,
+}
+
 #[near(serializers = [json])]
 #[derive(Clone, Debug)]
 pub struct ExposureSnapshot {
@@ -632,6 +646,132 @@ impl PolicyContract {
                     .with_static_gas(CALLBACK_GAS)
                     .on_cancel_signature(operation_id, epoch),
             )
+    }
+
+    /// Gate I2: owner-only ERC-20 withdraw/recovery. Works while paused or revoked
+    /// (and while active). Destination must be allowlisted. Agent cannot call.
+    #[payable]
+    pub fn owner_request_withdraw_signature(
+        &mut self,
+        operation_id: String,
+        withdraw: EvmWithdrawParams,
+    ) -> Promise {
+        self.assert_owner();
+        require!(
+            env::attached_deposit() >= ONE_YOCTO,
+            "attach at least 1 yoctoNEAR for MPC sign"
+        );
+        require!(
+            self.pending.get(&operation_id).is_none(),
+            "operation_id already exists"
+        );
+        require!(!self.intents_signer_id.is_empty(), "intents_signer_id not configured");
+        require!(withdraw.amount.0 > 0, "amount required");
+        require!(
+            withdraw.gas_limit.0 > 0 && withdraw.gas_limit.0 <= 300_000,
+            "withdraw gas_limit bound"
+        );
+        require!(withdraw.gas_price.0 > 0, "gas_price required");
+        require!(withdraw.chain_id.0 == 11155111, "withdraw chain_id must be Sepolia");
+
+        let to = withdraw.to.trim().to_lowercase();
+        require!(
+            self.limits
+                .allowed_destinations
+                .iter()
+                .any(|d| d.to_lowercase() == to),
+            "withdraw destination not allowlisted"
+        );
+
+        let token = withdraw.token_contract.trim().to_lowercase();
+        let token_addr = evm_auth::parse_hex_address(&token);
+        let to_addr = evm_auth::parse_hex_address(&to);
+        let data = evm_auth::erc20_transfer_data(&to_addr, withdraw.amount.0);
+        let digest = evm_auth::eip155_unsigned_digest(
+            withdraw.nonce.0,
+            withdraw.gas_price.0,
+            withdraw.gas_limit.0,
+            &token_addr,
+            0,
+            &data,
+            withdraw.chain_id.0,
+        );
+        let digest_hex = evm_auth::digest_hex(&digest);
+
+        let op = PendingOp {
+            epoch: self.mandate_epoch,
+            amount_in: withdraw.amount,
+            asset_in: format!("withdraw:{}", token),
+            asset_out: "evm_transfer".into(),
+            destination: to.clone(),
+            min_amount_out: U128(0),
+            requested_at: env::block_timestamp(),
+            intent_deadline: env::block_timestamp().saturating_add(3_600_000_000_000),
+            payload_commitment: digest_hex.clone(),
+            intent_payload: format!("withdraw:{}:{}", token, withdraw.amount.0),
+            signing_state: SigningState::Reserved,
+            settlement_state: SettlementState::None,
+        };
+        self.pending.insert(operation_id.clone(), op);
+
+        let path = self.derivation_path();
+        let request = SignRequest {
+            path,
+            payload_v2: Payload::Ecdsa(digest_hex.clone()),
+            domain_id: DOMAIN_SECP256K1,
+        };
+        let epoch = self.mandate_epoch;
+        let mut op2 = self.pending.get(&operation_id).unwrap().clone();
+        op2.signing_state = SigningState::Signing;
+        self.pending.insert(operation_id.clone(), op2);
+
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"withdraw_sign_requested\",\"operation_id\":\"{}\",\"to\":\"{}\",\"token\":\"{}\",\"amount\":\"{}\",\"digest\":\"{}\",\"paused\":{},\"revoked\":{}}}",
+            operation_id, to, token, withdraw.amount.0, digest_hex, self.paused, self.revoked
+        ));
+
+        ext_mpc::ext(self.mpc_signer.clone())
+            .with_attached_deposit(ONE_YOCTO)
+            .with_static_gas(SIGN_GAS)
+            .sign(request)
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(CALLBACK_GAS)
+                    .on_withdraw_signature(operation_id, epoch),
+            )
+    }
+
+    #[private]
+    pub fn on_withdraw_signature(
+        &mut self,
+        operation_id: String,
+        request_epoch: u64,
+        #[callback_result] result: Result<SignatureResponse, PromiseError>,
+    ) -> Option<SignatureResponse> {
+        let Some(mut op) = self.pending.get(&operation_id).cloned() else {
+            return None;
+        };
+        if request_epoch != op.epoch {
+            op.signing_state = SigningState::RolledBack;
+            self.pending.insert(operation_id, op);
+            return None;
+        }
+        match result {
+            Ok(signature) => {
+                op.signing_state = SigningState::Signed;
+                self.pending.insert(operation_id.clone(), op);
+                env::log_str(&format!(
+                    "EVENT_JSON:{{\"event\":\"withdraw_signed\",\"operation_id\":\"{}\"}}",
+                    operation_id
+                ));
+                Some(signature)
+            }
+            Err(_) => {
+                op.signing_state = SigningState::RolledBack;
+                self.pending.insert(operation_id, op);
+                None
+            }
+        }
     }
 
     #[private]
@@ -1107,10 +1247,63 @@ impl PolicyContract {
         self.limits.clone()
     }
 
+    pub fn get_paused(&self) -> bool {
+        self.paused
+    }
+
+    pub fn get_policy_hash(&self) -> String {
+        self.policy_hash.clone()
+    }
+
+    pub fn get_daily_turnover(&self) -> U128 {
+        U128(self.daily_turnover)
+    }
+
+    /// Gate J: single authoritative mandate snapshot for off-chain fitter hydration.
+    /// Read-only. Never grants signing rights.
+    pub fn get_gate_j_mandate(&self) -> GateJMandateView {
+        let (_, unresolved) = self.count_pending();
+        GateJMandateView {
+            portfolio_id: self.portfolio_id.clone(),
+            owner: self.owner.clone(),
+            agent: self.agent.clone(),
+            policy_hash: self.policy_hash.clone(),
+            mandate_epoch: self.mandate_epoch,
+            paused: self.paused,
+            revoked: self.revoked,
+            signing_revoked: self.revoked,
+            limits: self.limits.clone(),
+            reserved_pending_exposure: U128(self.reserved_pending_exposure),
+            realized_exposure: U128(self.realized_exposure),
+            daily_turnover: U128(self.daily_turnover),
+            unresolved_pending: unresolved,
+            intents_signer_id: self.intents_signer_id.clone(),
+        }
+    }
+
     /// Pure helper for tests / off-chain parity checks.
     pub fn eip191_digest(&self, payload_json: String) -> String {
         Self::eip191_digest_hex(payload_json.as_bytes())
     }
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct GateJMandateView {
+    pub portfolio_id: String,
+    pub owner: AccountId,
+    pub agent: AccountId,
+    pub policy_hash: String,
+    pub mandate_epoch: u64,
+    pub paused: bool,
+    pub revoked: bool,
+    pub signing_revoked: bool,
+    pub limits: PolicyLimits,
+    pub reserved_pending_exposure: U128,
+    pub realized_exposure: U128,
+    pub daily_turnover: U128,
+    pub unresolved_pending: u64,
+    pub intents_signer_id: String,
 }
 
 #[near(serializers = [json])]
