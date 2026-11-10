@@ -94,6 +94,7 @@ export async function hydrateMandateFromChain(opts) {
   let dailyTurnover;
   let pending = [];
   let intentsSigner;
+  let autonomousTrading = false;
 
   try {
     if (usedComposite && composite) {
@@ -113,6 +114,7 @@ export async function hydrateMandateFromChain(opts) {
       policyHash = composite.policy_hash;
       dailyTurnover = u128(composite.daily_turnover);
       intentsSigner = composite.intents_signer_id;
+      autonomousTrading = composite.autonomous_trading === true;
     } else {
       // Fallback assembly from older contracts — paused/policy_hash required or fail closed
       [
@@ -165,6 +167,13 @@ export async function hydrateMandateFromChain(opts) {
       } catch {
         dailyTurnover = "0";
         push("get_daily_turnover", false, { assumed: "0" });
+      }
+      try {
+        autonomousTrading = (await view(policy, "get_autonomous_trading", {})) === true;
+        push("get_autonomous_trading", true, { autonomousTrading });
+      } catch {
+        autonomousTrading = false;
+        push("get_autonomous_trading", false, { default: false });
       }
     }
 
@@ -286,6 +295,7 @@ export async function hydrateMandateFromChain(opts) {
     revoked,
     paused: !!paused,
     signing_revoked: !!snap.signing_revoked,
+    autonomous_trading: !!autonomousTrading,
     allowed_assets: allowedAssets,
     allowed_networks: mapAllowedNetworks(limits.allowed_assets, limits.allowed_destinations),
     allowed_destinations: (limits.allowed_destinations || []).map(String),
