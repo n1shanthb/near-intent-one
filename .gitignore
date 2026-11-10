@@ -32,3 +32,7 @@ evidence/live/gate-f-attestor.seed.json
 # Worktrees / vendor clones (reference only; no nested git)
 worktrees/
 vendor/near-hackathon-prompt-examples/
+
+# AXIS design reference (MIT study copy; do not merge)
+.axis-ref/
+
