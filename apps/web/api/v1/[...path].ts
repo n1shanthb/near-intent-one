@@ -36,10 +36,26 @@ function liveAiEnabled(): boolean {
   return process.env.NIO_PUBLIC_LIVE_AI === "true";
 }
 
-function joinPath(parts: string[] | string | undefined): string {
+function resolveApiPath(req: VercelRequest): string {
+  // Prefer URL path — more reliable than catch-all query on Vite+Vercel.
+  try {
+    const host = req.headers.host || "localhost";
+    const rawUrl = req.url || "/";
+    const u = new URL(rawUrl, `https://${host}`);
+    let p = u.pathname;
+    if (p.startsWith("/api/v1")) p = p.slice("/api/v1".length);
+    if (!p || p === "") return "/";
+    return p.startsWith("/") ? p : `/${p}`;
+  } catch {
+    /* fall through */
+  }
+  const parts = req.query.path as string[] | string | undefined;
   if (!parts) return "/";
   const arr = Array.isArray(parts) ? parts : [parts];
-  return "/" + arr.map((p) => String(p).replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/");
+  return (
+    "/" +
+    arr.map((p) => String(p).replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/")
+  );
 }
 
 function pathAllowed(method: string, apiPath: string): boolean {
@@ -157,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const method = (req.method || "GET").toUpperCase();
-  const apiPath = joinPath(req.query.path as string[] | string | undefined);
+  const apiPath = resolveApiPath(req);
 
   if (!pathAllowed(method, apiPath)) {
     res.status(403).json({
