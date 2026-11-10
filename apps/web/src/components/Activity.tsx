@@ -14,12 +14,15 @@ import {
 } from "../lib/withdrawLifecycle";
 import { useProductSession } from "../state/ProductSession";
 import { GateIBanner } from "./GateIBanner";
+import { GateKEvidence } from "./GateKEvidence";
 
 export function Activity() {
   const { portfolio, gateI, authMode } = useProductSession();
 
   return (
     <div className="stack">
+      <GateKEvidence />
+
       <section className="card">
         <div className="card-head">
           <h3>Current live state</h3>

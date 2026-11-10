@@ -33,7 +33,9 @@ import { useProductSession } from "../state/ProductSession";
 import { GateIBanner } from "./GateIBanner";
 import { DecisionJourney } from "./DecisionJourney";
 import { MandateFitterPanel } from "./MandateFitter";
+import { GateKEvidence } from "./GateKEvidence";
 import { usdcDisplay } from "../lib/mandateFitter";
+import { isPublicLiveAiEnabled } from "../lib/publicDemo";
 
 const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
   {
@@ -73,6 +75,7 @@ export function AgentPanel() {
   const [history, setHistory] = useState<GateJHistoryEntry[]>([]);
   const onchainMandate = isOnchainMandateHydrated();
   const authOk = authorizationActionsEnabled();
+  const publicLiveAi = isPublicLiveAiEnabled();
 
   useEffect(() => {
     void gateHStrategy.getLatestDecision().then(setDecision);
@@ -230,10 +233,22 @@ export function AgentPanel() {
           )}
           {" · "}Live always requests backend hydration via portfolio_id (no weaker client policy).
         </p>
+        {!publicLiveAi ? (
+          <p className="banner banner-block">
+            Public live OpenRouter dry-run stays <strong>disabled</strong> until Chat 1
+            provides a trusted OCI HTTPS hostname and shared rate limits are verified.
+            Use recorded hosted trace + fixtures below.
+          </p>
+        ) : null}
         <div className="row gap">
           <button
             type="button"
-            disabled={liveBusy || !gateJ.available || !portfolio}
+            disabled={
+              liveBusy ||
+              !publicLiveAi ||
+              !gateJ.available ||
+              !portfolio
+            }
             onClick={() => void runLive()}
           >
             {liveBusy ? "Running live AI…" : "Run live AI (dry-run, on-chain mandate)"}
@@ -251,15 +266,15 @@ export function AgentPanel() {
           Hosted OCI evidence: Strategist <strong>NO_TRADE</strong> → Fitter REJECTED → Critic{" "}
           <strong>ABSTAIN</strong> → BLOCKED / may_sign=false (not TRADE/REJECT).
         </p>
-        {!portfolio ? (
+        {publicLiveAi && !portfolio ? (
           <p className="warn small">
             Connect portfolio owner wallet to run live AI (claimed_owner must match).
           </p>
         ) : null}
         {!gateJ.available ? (
           <p className="warn small">
-            Gate J health unreachable from this origin (self-signed TLS or CORS). Use BFF{" "}
-            <span className="mono">/api/v1</span> or recorded hosted trace. Fixtures still work.
+            Gate J health unreachable (upstream not configured or TLS not trusted). Fixtures
+            and recorded evidence still work offline.
           </p>
         ) : null}
       </section>
@@ -508,6 +523,8 @@ export function AgentPanel() {
           </>
         )}
       </section>
+
+      <GateKEvidence />
 
       {/* ── 3. RECORDED ON-CHAIN ─────────────────────────────────────── */}
       <section className="card">

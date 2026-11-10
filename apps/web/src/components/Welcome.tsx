@@ -19,12 +19,17 @@ export function Welcome({
         <p className="eyebrow">Testnet only · personal funds path</p>
         <h2>Connect, fund your own portfolio, set policy, trade, withdraw.</h2>
         <p className="lede">
-          This is the user product. The judge demo (recorded F4/H3) stays under{" "}
-          <button type="button" className="linkish" onClick={() => onNav("demo")}>
-            Judge demo
-          </button>
-          . Personal deposits never use the shared demo custody account.
+          Hardware sets rules. AI trades. NEAR enforces. Open the public judge path
+          without a wallet — recorded Gate I/J/K evidence stays honest and offline-safe.
         </p>
+        <div className="row gap">
+          <button type="button" onClick={() => onNav("agent")}>
+            View Demo
+          </button>
+          <button type="button" className="ghost" onClick={() => onNav("demo")}>
+            Judge evidence pack
+          </button>
+        </div>
       </section>
 
       <GateIBanner action="Creating a personal portfolio" />
@@ -171,10 +176,10 @@ export function Welcome({
         </ul>
         <p className="muted small">
           Hosted API:{" "}
-          <span className="mono">http://129.225.72.169:8787/v1</span> (OCI). Local
-          fallback <span className="mono">http://127.0.0.1:8787/v1</span>. Withdraw
-          proven (<span className="mono">VITE_GATE_I_WITHDRAW_PROVEN=true</span>) after
-          GATE_I.md B2 PASS.
+          Same-origin BFF <span className="mono">/api/v1</span> (server credentials).
+          Trusted OCI HTTPS hostname from Chat 1 — never self-signed IP in production.
+          Withdraw proven (<span className="mono">VITE_GATE_I_WITHDRAW_PROVEN=true</span>)
+          after GATE_I.md B2 PASS.
         </p>
       </section>
     </div>
