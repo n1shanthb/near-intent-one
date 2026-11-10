@@ -8,13 +8,91 @@ import {
   H3_EXECUTION,
 } from "../data/evidenceSnapshot";
 import { gateHStrategy, type StrategyDecisionLog } from "../adapters/gateh";
+import {
+  getAgentState,
+  startAgent,
+  stopAgent,
+} from "../adapters/gatei";
+import {
+  authModeLabel,
+  authorizationActionsEnabled,
+  fetchGateJHistory,
+  gateJHealth,
+  isOnchainMandateHydrated,
+  loadHostedEvidenceRecord,
+  runFixtureScenario,
+  runLiveAiDecide,
+} from "../adapters/gatej";
+import type { AgentRuntimeState } from "../types/gateI";
+import type {
+  GateJDecisionRecord,
+  GateJHistoryEntry,
+  GateJScenarioId,
+} from "../types/gateJ";
+import { useProductSession } from "../state/ProductSession";
+import { GateIBanner } from "./GateIBanner";
+import { DecisionJourney } from "./DecisionJourney";
+import { MandateFitterPanel } from "./MandateFitter";
+import { usdcDisplay } from "../lib/mandateFitter";
+
+const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
+  {
+    id: "A_ALLOWED",
+    title: "A · ALLOWED",
+    blurb: "Fixture proposal already satisfies the mandate.",
+  },
+  {
+    id: "B_ADAPTED",
+    title: "B · ADAPTED",
+    blurb: "Fixture proposes $100; mandate $20; Fitter finds a viable $20 trade.",
+  },
+  {
+    id: "C_REJECTED",
+    title: "C · REJECTED",
+    blurb: "Fixture proposes $100; mandate $20; strategy needs ≥$50 — refuse.",
+  },
+];
 
 export function AgentPanel() {
+  const { portfolio, gateI, boundOwner } = useProductSession();
   const [decision, setDecision] = useState<StrategyDecisionLog | null>(null);
+  const [runtime, setRuntime] = useState<AgentRuntimeState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [gateJ, setGateJ] = useState<{
+    available: boolean;
+    detail: string;
+    llm?: Record<string, unknown>;
+  }>({
+    available: false,
+    detail: "Checking Gate J…",
+  });
+  const [record, setRecord] = useState<GateJDecisionRecord | null>(null);
+  const [scenarioBusy, setScenarioBusy] = useState<GateJScenarioId | null>(null);
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [history, setHistory] = useState<GateJHistoryEntry[]>([]);
+  const onchainMandate = isOnchainMandateHydrated();
+  const authOk = authorizationActionsEnabled();
 
   useEffect(() => {
     void gateHStrategy.getLatestDecision().then(setDecision);
+    void gateJHealth().then(setGateJ);
+    void fetchGateJHistory(12).then(setHistory);
   }, []);
+
+  useEffect(() => {
+    if (!portfolio || gateI.status !== "available") {
+      setRuntime(null);
+      return;
+    }
+    let cancelled = false;
+    void getAgentState(portfolio.portfolio_id).then((s) => {
+      if (!cancelled) setRuntime(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolio, gateI.status]);
 
   const d = decision ?? {
     ...H3_DECISION,
@@ -27,18 +105,424 @@ export function AgentPanel() {
     },
   };
 
+  const refreshGateJ = async () => {
+    const h = await gateJHealth();
+    setGateJ(h);
+    setHistory(await fetchGateJHistory(12));
+  };
+
+  const runStart = async () => {
+    if (!portfolio) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await startAgent(portfolio.portfolio_id);
+      if (!res.ok) setMsg(res.reason ?? "Start blocked");
+      else setRuntime(await getAgentState(portfolio.portfolio_id));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runStop = async () => {
+    if (!portfolio) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await stopAgent(portfolio.portfolio_id);
+      if (!res.ok) setMsg(res.reason ?? "Stop blocked");
+      else setRuntime(await getAgentState(portfolio.portfolio_id));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runLive = async () => {
+    setLiveBusy(true);
+    setMsg(null);
+    try {
+      if (!portfolio?.portfolio_id) {
+        throw new Error(
+          "Connect a Gate I portfolio owner first — live AI requires portfolio_id for on-chain mandate hydration."
+        );
+      }
+      const owner = boundOwner || portfolio.owner_account;
+      if (!owner) {
+        throw new Error("Owner wallet not bound — cannot claim portfolio ownership.");
+      }
+      const rec = await runLiveAiDecide({
+        portfolioId: portfolio.portfolio_id,
+        claimedOwner: owner,
+      });
+      setRecord(rec);
+      setHistory(await fetchGateJHistory(12));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLiveBusy(false);
+    }
+  };
+
+  const showHostedEvidence = () => {
+    setMsg(null);
+    setRecord(loadHostedEvidenceRecord());
+  };
+
+  const runScenario = async (id: GateJScenarioId) => {
+    setScenarioBusy(id);
+    setMsg(null);
+    try {
+      const rec = await runFixtureScenario(id, portfolio?.portfolio_id);
+      setRecord(rec);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setScenarioBusy(null);
+    }
+  };
+
+  const blockedOk =
+    record?.enforcement?.decision === "BLOCKED" &&
+    record?.safety_story?.blocked_is_success;
+
   return (
     <div className="stack">
+      <section className="card hero-demo">
+        <p className="eyebrow">Gate J · signature intelligence</p>
+        <h2>
+          NIO finds the best viable version of an AI strategy within the owner&apos;s
+          rules — and NEAR enforces those rules.
+        </h2>
+        <p className="lede">
+          AI Strategist → Deterministic Mandate Fitter → Independent Risk Critic →
+          NEAR Policy → Enforcement. AI approval never overrides NEAR. OpenRouter
+          stays server-side — never in the browser.
+        </p>
+      </section>
+
+      {/* ── 1. LIVE AI / DRY RUN ─────────────────────────────────────── */}
       <section className="card">
         <div className="card-head">
-          <h3>Constrained agent</h3>
-          <span className="badge badge-recorded">NO PRIVATE KEY</span>
+          <h3>1 · LIVE AI / DRY RUN</h3>
+          <span className="badge badge-pass">REAL OPENROUTER · NO SIGNING</span>
         </div>
+        <p className="muted">
+          Backend <span className="mono">POST /gate-j/decide</span> with{" "}
+          <span className="mono">use_llm:true</span> + <span className="mono">portfolio_id</span>.
+          Never sends client mandate. Auth: {authModeLabel()}. Funded execution disabled.
+        </p>
+        <p className={`banner ${gateJ.available ? "banner-ok" : "banner-block"}`}>
+          Gate J API: {gateJ.detail}
+          <button type="button" className="ghost tiny" onClick={() => void refreshGateJ()}>
+            Retry
+          </button>
+        </p>
+        <p className="muted small">
+          On-chain mandate flag:{" "}
+          {onchainMandate ? (
+            <span className="badge badge-pass">VITE_GATE_J_ONCHAIN_MANDATE=true</span>
+          ) : (
+            <span className="badge badge-warn">false — enable after verified integration</span>
+          )}
+          {" · "}Live always requests backend hydration via portfolio_id (no weaker client policy).
+        </p>
+        <div className="row gap">
+          <button
+            type="button"
+            disabled={liveBusy || !gateJ.available || !portfolio}
+            onClick={() => void runLive()}
+          >
+            {liveBusy ? "Running live AI…" : "Run live AI (dry-run, on-chain mandate)"}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={liveBusy}
+            onClick={showHostedEvidence}
+          >
+            Show recorded hosted OCI trace
+          </button>
+        </div>
+        <p className="muted small">
+          Hosted OCI evidence: Strategist <strong>NO_TRADE</strong> → Fitter REJECTED → Critic{" "}
+          <strong>ABSTAIN</strong> → BLOCKED / may_sign=false (not TRADE/REJECT).
+        </p>
+        {!portfolio ? (
+          <p className="warn small">
+            Connect portfolio owner wallet to run live AI (claimed_owner must match).
+          </p>
+        ) : null}
+        {!gateJ.available ? (
+          <p className="warn small">
+            Gate J health unreachable from this origin (self-signed TLS or CORS). Use BFF{" "}
+            <span className="mono">/api/v1</span> or recorded hosted trace. Fixtures still work.
+          </p>
+        ) : null}
+      </section>
+
+      {/* ── 2. FIXTURE SCENARIOS ─────────────────────────────────────── */}
+      <section className="card">
+        <div className="card-head">
+          <h3>2 · FIXTURE SCENARIOS</h3>
+          <span className="badge badge-warn">DETERMINISTIC FITTER · NOT LLM</span>
+        </div>
+        <p className="muted">
+          ALLOWED / ADAPTED / REJECTED demonstrations using the real Mandate Fitter.
+          Scenario proposals are canned inputs — never labeled as live LLM.
+        </p>
+        <div className="scenario-row">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="onboard-card"
+              disabled={scenarioBusy !== null || liveBusy}
+              onClick={() => void runScenario(s.id)}
+            >
+              <strong>{s.title}</strong>
+              <p>{s.blurb}</p>
+              <span className="badge badge-recorded">
+                {scenarioBusy === s.id ? "Running…" : "Run fixture"}
+              </span>
+            </button>
+          ))}
+        </div>
+        {msg ? <p className="warn">{msg}</p> : null}
+      </section>
+
+      <DecisionJourney record={record} />
+      <MandateFitterPanel record={record} />
+
+      {record ? (
+        <section className="card">
+          <div className="card-head">
+            <h3>Risk · enforcement · transparency</h3>
+            <span className="badge badge-warn">AI ≠ POLICY OVERRIDE</span>
+          </div>
+          {blockedOk ? (
+            <p className="banner banner-ok">
+              Enforcement BLOCKED is a successful safety result (Critic{" "}
+              {record.critic?.verdict ?? "—"} · Strategist{" "}
+              {record.proposal?.choice ?? "—"}). Signing stayed off.
+            </p>
+          ) : null}
+          <dl className="kv dense">
+            <dt>Risk Critic</dt>
+            <dd>
+              <span
+                className={`badge ${
+                  record.critic?.verdict === "APPROVE"
+                    ? "badge-pass"
+                    : record.critic?.verdict === "ABSTAIN"
+                      ? "badge-warn"
+                      : "badge-danger"
+                }`}
+              >
+                {record.critic?.verdict ?? "—"}
+              </span>{" "}
+              · {record.critic?.source} · {record.critic?.model}
+              <div className="muted small">{record.critic?.rationale}</div>
+            </dd>
+            <dt>Enforcement</dt>
+            <dd>
+              <span
+                className={`badge ${
+                  record.enforcement?.decision === "BLOCKED"
+                    ? "badge-pass"
+                    : record.enforcement?.decision === "NO_TRADE"
+                      ? "badge-warn"
+                      : "badge-pass"
+                }`}
+              >
+                {record.enforcement?.decision ?? "—"}
+              </span>
+              <span className="badge badge-recorded">
+                {" "}
+                may_sign={String(record.enforcement?.may_sign ?? false)}
+              </span>
+              <div className="muted small">
+                {(record.enforcement?.reason_codes ?? []).join(", ") ||
+                  record.enforcement?.note}
+              </div>
+            </dd>
+            <dt>Mandate source</dt>
+            <dd>
+              <span className="mono">{record.mandate?.source ?? "—"}</span>
+            </dd>
+            <dt>Policy constraints</dt>
+            <dd>
+              <ul className="tight-list">
+                {(record.policy?.constraints ?? []).map((c) => (
+                  <li key={c.name}>
+                    {c.ok ? "✓" : "✗"} {c.name}
+                    {c.detail ? ` · ${c.detail}` : ""}
+                  </li>
+                ))}
+              </ul>
+              <span className="muted small">
+                near_enforced={String(record.policy?.near_enforced)} ·{" "}
+                {record.policy?.source}
+              </span>
+            </dd>
+            <dt>Execution</dt>
+            <dd>
+              <span
+                className={`badge ${
+                  record.execution?.choice === "BLOCKED"
+                    ? "badge-pass"
+                    : record.execution?.choice === "TRADE"
+                      ? "badge-pass"
+                      : "badge-warn"
+                }`}
+              >
+                {record.execution?.choice ?? "—"}
+              </span>
+              {record.execution?.dry_run ? (
+                <span className="badge badge-recorded"> DRY-RUN</span>
+              ) : null}
+              <div className="muted small">{record.execution?.rationale}</div>
+              <p className="muted small">
+                No on-chain receipts in dry-run. Funded path disabled.
+              </p>
+            </dd>
+            <dt>Market data</dt>
+            <dd className="mono small">
+              {record.proposal?.market_data?.venue ?? "—"} · as_of{" "}
+              {record.proposal?.market_data?.as_of ?? "—"} · freshness_s{" "}
+              {record.proposal?.market_data?.freshness_s ?? "—"}
+            </dd>
+            <dt>Fit summary</dt>
+            <dd>
+              {record.fit?.verdict}: {usdcDisplay(record.fit?.original_amount ?? null)} →{" "}
+              {usdcDisplay(record.fit?.final_amount ?? null)}
+            </dd>
+          </dl>
+        </section>
+      ) : null}
+
+      {history.length > 0 ? (
+        <section className="card">
+          <div className="card-head">
+            <h3>Decision history</h3>
+            <span className="badge badge-recorded">API</span>
+          </div>
+          <ul className="tight-list">
+            {history.map((h, i) => (
+              <li key={`${h.at}-${i}`}>
+                <span className="mono small">{h.at}</span> ·{" "}
+                {h.fitter_outcome ??
+                  (h.summary as { fitter_outcome?: string } | undefined)
+                    ?.fitter_outcome ??
+                  "—"}{" "}
+                ·{" "}
+                {(h.summary as { final_decision?: string } | undefined)
+                  ?.final_decision ??
+                  h.operation_id ??
+                  "—"}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="card">
+        <div className="card-head">
+          <h3>Your agent runtime</h3>
+          <span className="badge badge-warn">LIVE GATE I</span>
+        </div>
+        <GateIBanner action="Start / stop agent" />
+        {!authOk ? (
+          <p className="banner banner-block">
+            Gate J funded / authorize-trade stays disabled until Chat 1 confirms
+            on-chain mandate hydration (
+            <span className="mono">VITE_GATE_J_ONCHAIN_MANDATE=true</span>). Fixture
+            mandates are never shown as your live policy. Gate I start/stop preserved.
+          </p>
+        ) : null}
+        {!portfolio ? (
+          <p className="muted">
+            Create a personal portfolio to control a hosted agent. Historical H3
+            evidence below is separate.
+          </p>
+        ) : (
+          <>
+            <dl className="kv dense">
+              <dt>Portfolio</dt>
+              <dd className="mono">{portfolio.portfolio_id}</dd>
+              <dt>Running</dt>
+              <dd>
+                {runtime
+                  ? runtime.running
+                    ? "yes"
+                    : "no"
+                  : gateI.status !== "available"
+                    ? "unavailable"
+                    : "loading…"}
+              </dd>
+              <dt>Strategy</dt>
+              <dd className="mono">{runtime?.strategy_id ?? "—"}</dd>
+              <dt>Source</dt>
+              <dd>{runtime?.source ?? "unavailable"}</dd>
+            </dl>
+            {runtime?.last_decision ? (
+              <dl className="kv dense">
+                <dt>Last decision</dt>
+                <dd>
+                  <span
+                    className={`badge ${
+                      runtime.last_decision.choice === "TRADE"
+                        ? "badge-pass"
+                        : "badge-warn"
+                    }`}
+                  >
+                    {runtime.last_decision.choice}
+                  </span>
+                </dd>
+                <dt>Rationale</dt>
+                <dd>{runtime.last_decision.rationale}</dd>
+              </dl>
+            ) : (
+              <p className="muted small">No live decision from Gate I yet.</p>
+            )}
+            <div className="row gap">
+              <button
+                type="button"
+                disabled={busy || gateI.status !== "available" || runtime?.running}
+                onClick={() => void runStart()}
+              >
+                Start agent
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy || gateI.status !== "available" || !runtime?.running}
+                onClick={() => void runStop()}
+              >
+                Stop trading
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ── 3. RECORDED ON-CHAIN ─────────────────────────────────────── */}
+      <section className="card">
+        <div className="card-head">
+          <h3>3 · RECORDED ON-CHAIN</h3>
+          <span className="badge badge-recorded">HISTORICAL GATE I / H · NOT LLM</span>
+        </div>
+        <p className="warn">
+          Historical trades below were <strong>not</strong> generated by the new LLM
+          pipeline. They are recorded Gate H/I execution evidence.
+        </p>
         <p>
-          Agent <span className="mono">{CONFIG.agentAccount}</span> proposes.
-          Policy <span className="mono">{CONFIG.policyContract}</span> owns MPC.
-          Reconciler <span className="mono">{GATE_G_ACCOUNTING.reconciler}</span> ≠
-          agent (H2).
+          Demo agent <span className="mono">{CONFIG.agentAccount}</span> · policy{" "}
+          <span className="mono">{CONFIG.policyContract}</span> · reconciler{" "}
+          <span className="mono">{GATE_G_ACCOUNTING.reconciler}</span> ≠ agent (H2).
         </p>
       </section>
 
@@ -62,12 +546,6 @@ export function AgentPanel() {
           </dd>
           <dt>Rationale</dt>
           <dd>{d.rationale}</dd>
-          <dt>Correlation</dt>
-          <dd className="mono">{d.quote_summary?.correlationId ?? "—"}</dd>
-          <dt>Deposit</dt>
-          <dd className="mono">{d.quote_summary?.depositAddress ?? "—"}</dd>
-          <dt>Min out</dt>
-          <dd className="mono">{d.quote_summary?.minAmountOut ?? "—"}</dd>
         </dl>
         <h4>Risk checks observed</h4>
         <ul className="chip-row">
@@ -82,7 +560,7 @@ export function AgentPanel() {
 
       <section className="card">
         <div className="card-head">
-          <h3>H3 execution evidence</h3>
+          <h3>H3 settlement proof</h3>
           <span className="badge badge-pass">SUCCESS</span>
         </div>
         <ol className="proof-ol">
@@ -130,20 +608,8 @@ export function AgentPanel() {
           </li>
         </ol>
         <p className="muted small">
-          Verification model: {H3_EXECUTION.verification}
-        </p>
-      </section>
-
-      <section className="card">
-        <h3>Policy constraints (frozen at trade time)</h3>
-        <ul className="chip-row">
-          <li>max trade {FROZEN_POLICY.max_trade_value}</li>
-          <li>slippage {FROZEN_POLICY.max_slippage_bps} bps</li>
-          <li>pending cap {FROZEN_POLICY.max_pending_exposure}</li>
-        </ul>
-        <p className="muted small">
-          Earlier F4 cycle: {F4_EXECUTION.operationId} also SUCCESS under attestor
-          trust.
+          Frozen limits: max trade {FROZEN_POLICY.max_trade_value}, slippage{" "}
+          {FROZEN_POLICY.max_slippage_bps} bps. Earlier F4: {F4_EXECUTION.operationId}.
         </p>
       </section>
     </div>

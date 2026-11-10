@@ -741,8 +741,347 @@ legend {
 
 @media (min-width: 900px) {
   .onboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+.nav-group {
+  margin: 0.85rem 0 0.25rem;
+  padding: 0 0.55rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gate-pill {
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--line);
+}
+
+.gate-available {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+}
+
+.gate-unavailable,
+.gate-degraded {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
+}
+
+.banner {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  margin: 0;
+}
+
+.banner-block {
+  background: color-mix(in srgb, var(--warn) 10%, var(--panel));
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+
+.banner-ok {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--ok) 10%, var(--panel));
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+  font-size: 0.9rem;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.form-stack label,
+.row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.form-stack input,
+.row label select,
+.form-stack select {
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  display: block;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+
+button.tiny,
+.ghost.tiny {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.linkish {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.onboard-card:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (max-width: 920px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .content {
+    padding: 1rem;
+  }
+  .data-table {
+    font-size: 0.78rem;
+  }
+  .sidebar-foot {
+    gap: 0.65rem;
+  }
+  .journey {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+.journey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.65rem 1.25rem 0;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elev) 80%, transparent);
+}
+
+.journey-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.journey-step.on {
+  color: #07100a;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.journey-step.done {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.journey-n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  font-size: 0.68rem;
+}
+
+.journey-step.on .journey-n {
+  background: #07100a;
+  color: var(--accent);
+}
+
+.lifecycle {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.lifecycle .lc {
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.lifecycle .lc.done {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+}
+
+.lifecycle .lc.current {
+  color: #07100a;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.lede-tight {
+  margin: 0.35rem 0 0.75rem;
+  max-width: 62ch;
+}
+
+.fitter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 980px) {
+  .fitter-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+.fitter-col {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  background: var(--panel-2);
+  min-width: 0;
+}
+
+.fitter-col h4 {
+  margin: 0 0 0.55rem;
+  font-family: var(--display);
+  font-size: 0.95rem;
+}
+
+.fitter-result {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.tight-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.journey-stages {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.stage {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  background: var(--bg);
+}
+
+.stage-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.stage-done {
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+}
+
+.stage-blocked {
+  border-color: color-mix(in srgb, var(--warn, #c9a227) 45%, var(--line));
+}
+
+.stage-enforced {
+  border-color: color-mix(in srgb, var(--ok) 50%, var(--line));
+  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+}
+
+.stage-skipped {
+  opacity: 0.7;
+}
+
+.safety-story {
+  margin: 0.75rem 0 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.safety-story-ok {
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+}
+
+.safety-headline {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+.model-row {
+  margin-top: 0.5rem;
+}
+
+.scenario-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  margin-top: 0.85rem;
+}
+
+@media (min-width: 900px) {
+  .scenario-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.mono.small,
+.small.mono {
+  font-size: 0.78rem;
 }
 
 .onboard-card {

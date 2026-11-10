@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { ledgerMigratePlugin } from "./vite-plugin-ledger-migrate.ts";
+import { gateProxyPlugin } from "./vite-plugin-gate-proxy.ts";
 
 export default defineConfig({
   plugins: [
@@ -15,6 +16,7 @@ export default defineConfig({
     }),
     react(),
     ledgerMigratePlugin(),
+    gateProxyPlugin(),
   ],
   define: {
     global: "globalThis",
