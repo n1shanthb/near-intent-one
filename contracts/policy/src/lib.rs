@@ -1259,7 +1259,25 @@ impl PolicyContract {
         U128(self.daily_turnover)
     }
 
-    /// Gate J: single authoritative mandate snapshot for off-chain fitter hydration.
+    /// Gate K: owner enables/disables unattended AI-directed trading.
+    /// Default OFF (missing storage key). Does not grant per-trade approval bypass of limits.
+    pub fn set_autonomous_trading(&mut self, enabled: bool) {
+        self.assert_owner();
+        require!(!self.revoked, "revoked");
+        env::storage_write(&Self::autonomous_trading_key(), &[u8::from(enabled)]);
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"autonomous_trading\",\"enabled\":{}}}",
+            enabled
+        ));
+    }
+
+    pub fn get_autonomous_trading(&self) -> bool {
+        env::storage_read(&Self::autonomous_trading_key())
+            .map(|b| !b.is_empty() && b[0] != 0)
+            .unwrap_or(false)
+    }
+
+    /// Gate J/K: single authoritative mandate snapshot for off-chain fitter hydration.
     /// Read-only. Never grants signing rights.
     pub fn get_gate_j_mandate(&self) -> GateJMandateView {
         let (_, unresolved) = self.count_pending();
@@ -1272,6 +1290,7 @@ impl PolicyContract {
             paused: self.paused,
             revoked: self.revoked,
             signing_revoked: self.revoked,
+            autonomous_trading: self.get_autonomous_trading(),
             limits: self.limits.clone(),
             reserved_pending_exposure: U128(self.reserved_pending_exposure),
             realized_exposure: U128(self.realized_exposure),
@@ -1298,6 +1317,8 @@ pub struct GateJMandateView {
     pub paused: bool,
     pub revoked: bool,
     pub signing_revoked: bool,
+    /// Owner-toggled Gate K unattended AI trading (default false).
+    pub autonomous_trading: bool,
     pub limits: PolicyLimits,
     pub reserved_pending_exposure: U128,
     pub realized_exposure: U128,
@@ -1317,6 +1338,10 @@ struct ParsedIntent {
 }
 
 impl PolicyContract {
+    fn autonomous_trading_key() -> Vec<u8> {
+        b"gate_k:autonomous_trading".to_vec()
+    }
+
     fn trusted_signer_storage_key(public_key: &str) -> Vec<u8> {
         let mut key = b"tqs:".to_vec();
         key.extend_from_slice(public_key.as_bytes());
