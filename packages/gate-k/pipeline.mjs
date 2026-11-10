@@ -128,12 +128,24 @@ export async function runGateKPipeline(opts) {
     spend: j.spend,
   };
 
-  if (j.enforcement?.decision !== "TRADE" || !j.enforcement?.may_sign) {
+  // Gate J dry-run yields EXECUTE_DRY_RUN (may_sign false). Qualifying when
+  // fitter ALLOWED/ADAPTED with TRADE fitted proposal and enforcement not blocked.
+  const jDecision = j.enforcement?.decision;
+  const fitOutcome = j.fitter_after_critic || j.fitter;
+  const jQualifies =
+    (jDecision === "EXECUTE_DRY_RUN" ||
+      jDecision === "EXECUTE" ||
+      jDecision === "TRADE") &&
+    fitOutcome?.outcome !== "REJECTED" &&
+    fitOutcome?.fitted_proposal?.choice === "TRADE";
+
+  if (!jQualifies) {
     trace.enforcement = {
       decision: "NO_TRADE",
       reason_codes: j.enforcement?.reason_codes || ["GATE_J_BLOCKED"],
       may_sign: false,
       inherited_from: "gate_j",
+      gate_j_decision: jDecision || null,
     };
     trace.finished_at = nowIso();
     return trace;
@@ -141,9 +153,10 @@ export async function runGateKPipeline(opts) {
 
   const fitted =
     (j.fitter_after_critic || j.fitter)?.fitted_proposal ||
+    j.enforcement?.fitted_proposal ||
     j.strategist?.proposal;
 
-  // 2) Gate K safety overlay (≤1 USDC first test, pair, portfolio)
+  // 2) Gate K safety overlay (≤26 USDC first test, pair, portfolio)
   const safety = applyGateKSafety({
     mandate,
     fittedProposal: fitted,
@@ -162,16 +175,22 @@ export async function runGateKPipeline(opts) {
 
   // 3) Economic viability with buffer (preserve Gate J rejection of thin edge)
   const market = j.market || {};
+  const strat = j.strategist?.proposal || {};
   const edgeBps =
-    fitted?.expected_edge_bps ??
-    fitted?.edge_bps ??
-    market.edge_bps ??
-    j.strategist?.proposal?.expected_edge_bps ??
+    Number(fitted?.expected_benefit?.edge_bps) ||
+    Number(strat.expected_benefit?.edge_bps) ||
+    Number(fitted?.expected_edge_bps) ||
     0;
   const feeBps =
-    fitted?.fee_bps ?? market.fee_bps ?? Number(process.env.GATE_K_FEE_BPS || 30);
+    Number(fitted?.estimated_costs?.fee_bps) ||
+    Number(strat.estimated_costs?.fee_bps) ||
+    Number(market.fee_bps) ||
+    Number(process.env.GATE_K_FEE_BPS || 30);
   const impactBps =
-    fitted?.price_impact_bps ?? market.price_impact_bps ?? 5;
+    Number(fitted?.estimated_costs?.price_impact_bps) ||
+    Number(strat.estimated_costs?.price_impact_bps) ||
+    Number(market.price_impact_bps) ||
+    5;
 
   const economic = assessEconomicViability({
     edge_bps: edgeBps,
@@ -191,7 +210,7 @@ export async function runGateKPipeline(opts) {
     return trace;
   }
 
-  // 4) Fresh executable quote
+  // 4) Fresh executable quote + liquidity re-check
   let quoteResult = { ok: false, reason: REASON.NO_FRESH_QUOTE };
   if (quoteFn) {
     quoteResult = await fetchFreshExecutableQuote({
@@ -214,6 +233,25 @@ export async function runGateKPipeline(opts) {
     trace.enforcement = {
       decision: "NO_TRADE",
       reason_codes: [quoteResult.reason || REASON.NO_FRESH_QUOTE],
+      may_sign: false,
+    };
+    trace.finished_at = nowIso();
+    return trace;
+  }
+
+  const economicQuoted = assessEconomicViability({
+    edge_bps: edgeBps,
+    fee_bps: feeBps,
+    price_impact_bps: impactBps,
+    buffer_bps: edgeBufferBps,
+    amount_in: safety.safe_proposal.proposed_size_usdc_raw,
+    amount_out: quoteResult.quote?.amount_out,
+  });
+  trace.economics_quoted = economicQuoted;
+  if (!economicQuoted.ok) {
+    trace.enforcement = {
+      decision: "NO_TRADE",
+      reason_codes: [economicQuoted.reason || "ECONOMIC_NOT_VIABLE"],
       may_sign: false,
     };
     trace.finished_at = nowIso();

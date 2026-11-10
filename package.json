@@ -21,8 +21,13 @@
     "gate-i:acceptance": "node scripts/gate-i-acceptance.mjs",
     "gate-j:demo": "node scripts/gate-j-demo.mjs",
     "gate-j:demo:llm": "node scripts/gate-j-demo.mjs --live-llm",
+    "gate-k:prepare": "node scripts/gate-k-prepare.mjs",
+    "gate-k:prepare:llm": "node scripts/gate-k-prepare.mjs --live-llm",
+    "gate-k:execute-first": "node scripts/gate-k-execute-first.mjs",
+    "gate-k:execute-first:acceptance": "node scripts/gate-k-execute-first.mjs --acceptance",
     "test:valuation": "node --test packages/valuation/units.test.mjs",
-    "test:gate-j": "node --test packages/gate-j/fitter.test.mjs packages/gate-j/hydrate.test.mjs"
+    "test:gate-j": "node --test packages/gate-j/fitter.test.mjs packages/gate-j/hydrate.test.mjs",
+    "test:gate-k": "node --test packages/gate-k/gate-k.test.mjs"
   },
   "engines": {
     "node": ">=20"

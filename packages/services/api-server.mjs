@@ -18,6 +18,7 @@ import { createAttestorService } from "./attestor.mjs";
 import { createAgentService } from "./agent.mjs";
 import { createReconcilerService } from "./reconciler.mjs";
 import { createGateJHandlers, handleGateJRoute } from "./gate-j-routes.mjs";
+import { createGateKHandlers, handleGateKRoute } from "./gate-k-routes.mjs";
 import { loadServicesEnv } from "../gate-j/llm.mjs";
 import {
   assertNotDemo,
@@ -62,6 +63,7 @@ let rpc;
 let agentSvc;
 let reconSvc;
 let gateJ;
+let gateK;
 const startedAt = new Date().toISOString();
 
 function corsHeaders(req) {
@@ -191,18 +193,37 @@ async function boot() {
     });
   }
 
+  const viewFn = (accountId, method, args = {}) =>
+    viewFunction(rpc, accountId, method, args);
+  const fetchUsdcBalance = async (evm) => {
+    const bal = await erc20Balance(USDC_SEPOLIA, evm);
+    return String(bal ?? "0");
+  };
+  const fetchEthBalance = async (evm) => String(await ethBalance(evm));
+  const fetchIntentsUsdc = async (evm) => intentsMtBalance(rpc, evm);
+
   gateJ = createGateJHandlers({
     store,
     evidenceDir: EVIDENCE,
     dataDir: DATA,
-    viewFunction: (accountId, method, args = {}) =>
-      viewFunction(rpc, accountId, method, args),
-    fetchUsdcBalance: async (evm) => {
-      const bal = await erc20Balance(USDC_SEPOLIA, evm);
-      return String(bal ?? "0");
-    },
-    fetchEthBalance: async (evm) => String(await ethBalance(evm)),
-    fetchIntentsUsdc: async (evm) => intentsMtBalance(rpc, evm),
+    viewFunction: viewFn,
+    fetchUsdcBalance,
+    fetchEthBalance,
+    fetchIntentsUsdc,
+  });
+
+  gateK = createGateKHandlers({
+    store,
+    evidenceDir: EVIDENCE,
+    dataDir: DATA,
+    viewFunction: viewFn,
+    fetchUsdcBalance,
+    fetchEthBalance,
+    fetchIntentsUsdc,
+    getNearAccounts,
+    attestor,
+    eth,
+    reconcilerHealth: () => reconSvc?.health() || { ok: false, reason: "not_booted" },
   });
 
   const pending = agentSvc.recoverPending();
@@ -251,12 +272,18 @@ async function handle(req, res) {
   // /health is always public; Gate J privileged GETs require API key when configured
   const isHealth = req.method === "GET" && path === "/health";
   const isGateJPublicHealth = req.method === "GET" && path === "/gate-j/health";
+  const isGateKPublicHealth = req.method === "GET" && path === "/gate-k/health";
   const gateJPrivilegedGet =
     req.method === "GET" &&
     (path === "/gate-j/decisions" || path === "/gate-j/market");
-  if (!isHealth && !isGateJPublicHealth) {
+  const gateKPrivilegedGet =
+    req.method === "GET" &&
+    (path === "/gate-k/decisions" ||
+      path === "/gate-k/autonomous" ||
+      path === "/gate-k/pending");
+  if (!isHealth && !isGateJPublicHealth && !isGateKPublicHealth) {
     const auth = authorize(req, {
-      mutating: mutating || gateJPrivilegedGet,
+      mutating: mutating || gateJPrivilegedGet || gateKPrivilegedGet,
     });
     if (!auth.ok) return json(req, res, 401, { reason: auth.reason });
   }
@@ -273,6 +300,7 @@ async function handle(req, res) {
           attestor: { ok: true, role: "attestor", publicKey: attestor.publicKey },
           reconciler: reconSvc?.health() || { ok: false, reason: "not_booted" },
           gate_j: { ok: true, dry_run_default: true },
+          gate_k: gateK?.health() || { ok: false },
         },
         pending_recoveries: agentSvc?.recoverPending()?.length || 0,
         auth: API_KEY ? "api_key_required_for_mutations" : "open_dev_mode",
@@ -297,10 +325,41 @@ async function handle(req, res) {
         meta: {
           ip: req.socket?.remoteAddress || "",
           apiKeyHash: apiKeyHdr ? `k${apiKeyHdr.length}` : "none",
+          authenticated: !API_KEY || apiKeyHdr === API_KEY,
         },
       });
       if (gateJHandled) return;
       return json(req, res, 404, { reason: "unknown_gate_j_route", path });
+    }
+
+    if (path.startsWith("/gate-k")) {
+      const isGateKPublicHealth = req.method === "GET" && path === "/gate-k/health";
+      const body = mutating ? await readBody(req) : {};
+      const apiKeyHdr =
+        req.headers["x-api-key"] ||
+        (String(req.headers.authorization || "").startsWith("Bearer ")
+          ? String(req.headers.authorization).slice(7)
+          : "");
+      const authenticated = !API_KEY || apiKeyHdr === API_KEY;
+      if (!isGateKPublicHealth && mutating && API_KEY && !authenticated) {
+        return json(req, res, 401, { reason: "unauthorized" });
+      }
+      const gateKHandled = await handleGateKRoute({
+        method: req.method,
+        path,
+        body,
+        json,
+        req,
+        res,
+        handlers: gateK,
+        meta: {
+          ip: req.socket?.remoteAddress || "",
+          apiKeyHash: apiKeyHdr ? `k${apiKeyHdr.length}` : "none",
+          authenticated,
+        },
+      });
+      if (gateKHandled) return;
+      return json(req, res, 404, { reason: "unknown_gate_k_route", path });
     }
 
     if (req.method === "POST" && path === "/portfolios") {
@@ -518,6 +577,7 @@ const onListen = (scheme, port) => {
       listening: `${scheme}://${HOST}:${port}/v1`,
       health: `${scheme}://${HOST}:${port}/v1/health`,
       gate_j_health: `${scheme}://${HOST}:${port}/v1/gate-j/health`,
+      gate_k_health: `${scheme}://${HOST}:${port}/v1/gate-k/health`,
       attestor_public: attestor.publicKey,
       auth: API_KEY ? "mutations_require_api_key" : "open_dev_mode",
       persistence: DATA,

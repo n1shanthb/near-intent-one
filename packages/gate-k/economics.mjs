@@ -31,10 +31,14 @@ export function assessEconomicViability({
   const viable = edge > required;
 
   const ain = BigInt(amount_in || "0");
-  const aout = BigInt(amount_out || "0");
-  const mout = BigInt(min_out || "0");
-  const liquidity_ok = aout > 0n && (mout === 0n || aout >= mout);
   const size_ok = ain > 0n;
+  // amount_out optional until a fresh quote is bound; skip liquidity when omitted
+  let liquidity_ok = true;
+  if (amount_out != null && amount_out !== "") {
+    const aout = BigInt(amount_out || "0");
+    const mout = BigInt(min_out || "0");
+    liquidity_ok = aout > 0n && (mout === 0n || aout >= mout);
+  }
 
   return {
     ok: viable && liquidity_ok && size_ok,

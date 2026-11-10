@@ -351,11 +351,13 @@ export async function hydrateMandateFromChain(opts) {
   }
 
   push("hydrate_complete", true);
+  const revalidate_key = `${mandate.policy_contract}|${mandate.policy_hash}|${mandate.mandate_epoch}|${mandate.paused}|${mandate.revoked}`;
+  mandate.revalidate_key = revalidate_key;
   return {
     ok: true,
     mandate,
     checks,
-    revalidate_key: `${mandate.policy_contract}|${mandate.policy_hash}|${mandate.mandate_epoch}|${mandate.paused}|${mandate.revoked}`,
+    revalidate_key,
   };
 }
 

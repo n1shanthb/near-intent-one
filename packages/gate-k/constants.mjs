@@ -12,7 +12,9 @@ export const DEMO_PREFIX = "nio-c-";
 /** First live AI test overlay — on top of on-chain mandate, never instead. */
 export const FIRST_TEST = Object.freeze({
   portfolio_id: "i-a-a4e7",
-  max_trade_usdc_raw: "1000000", // 1 USDC
+  /** Operator-authorized first-test cap (26 USDC). Confirm flag must match. */
+  max_trade_usdc_raw: "26000000", // 26 USDC
+  max_trade_usdc: 26,
   max_trades: 1,
   pair: { origin: "USDC", destination: "wNEAR" },
   networks: ["sepolia", "sepolia+intents", "near-intents"],
