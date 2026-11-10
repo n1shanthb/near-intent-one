@@ -21,7 +21,9 @@ import {
   isOnchainMandateHydrated,
   loadHostedEvidenceRecord,
   runFixtureScenario,
+  fetchDemoStatus,
   runLiveAiDecide,
+  type GateJDemoStatus,
 } from "../adapters/gatej";
 import type { AgentRuntimeState } from "../types/gateI";
 import type {
@@ -56,7 +58,7 @@ const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
 ];
 
 export function AgentPanel() {
-  const { portfolio, gateI, boundOwner } = useProductSession();
+  const { portfolio, gateI } = useProductSession();
   const [decision, setDecision] = useState<StrategyDecisionLog | null>(null);
   const [runtime, setRuntime] = useState<AgentRuntimeState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -73,6 +75,7 @@ export function AgentPanel() {
   const [scenarioBusy, setScenarioBusy] = useState<GateJScenarioId | null>(null);
   const [liveBusy, setLiveBusy] = useState(false);
   const [history, setHistory] = useState<GateJHistoryEntry[]>([]);
+  const [demoStatus, setDemoStatus] = useState<GateJDemoStatus | null>(null);
   const onchainMandate = isOnchainMandateHydrated();
   const authOk = authorizationActionsEnabled();
   const publicLiveAi = isPublicLiveAiEnabled();
@@ -81,7 +84,10 @@ export function AgentPanel() {
     void gateHStrategy.getLatestDecision().then(setDecision);
     void gateJHealth().then(setGateJ);
     void fetchGateJHistory(12).then(setHistory);
-  }, []);
+    if (publicLiveAi) {
+      void fetchDemoStatus().then(setDemoStatus);
+    }
+  }, [publicLiveAi]);
 
   useEffect(() => {
     if (!portfolio || gateI.status !== "available") {
@@ -112,6 +118,7 @@ export function AgentPanel() {
     const h = await gateJHealth();
     setGateJ(h);
     setHistory(await fetchGateJHistory(12));
+    if (publicLiveAi) setDemoStatus(await fetchDemoStatus());
   };
 
   const runStart = async () => {
@@ -145,26 +152,17 @@ export function AgentPanel() {
   };
 
   const runLive = async () => {
+    if (liveBusy) return;
     setLiveBusy(true);
     setMsg(null);
     try {
-      if (!portfolio?.portfolio_id) {
-        throw new Error(
-          "Connect a Gate I portfolio owner first — live AI requires portfolio_id for on-chain mandate hydration."
-        );
-      }
-      const owner = boundOwner || portfolio.owner_account;
-      if (!owner) {
-        throw new Error("Owner wallet not bound — cannot claim portfolio ownership.");
-      }
-      const rec = await runLiveAiDecide({
-        portfolioId: portfolio.portfolio_id,
-        claimedOwner: owner,
-      });
+      const rec = await runLiveAiDecide();
       setRecord(rec);
       setHistory(await fetchGateJHistory(12));
+      setDemoStatus(await fetchDemoStatus());
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
+      if (publicLiveAi) setDemoStatus(await fetchDemoStatus());
     } finally {
       setLiveBusy(false);
     }
@@ -214,9 +212,10 @@ export function AgentPanel() {
           <span className="badge badge-pass">REAL OPENROUTER · NO SIGNING</span>
         </div>
         <p className="muted">
-          Backend <span className="mono">POST /gate-j/decide</span> with{" "}
-          <span className="mono">use_llm:true</span> + <span className="mono">portfolio_id</span>.
-          Never sends client mandate. Auth: {authModeLabel()}. Funded execution disabled.
+          Public judges call <span className="mono">POST /api/v1/gate-j/demo-decide</span>{" "}
+          (fixed portfolio <span className="mono">i-a-a4e7</span>, forced dry-run,{" "}
+          <span className="mono">may_sign=false</span>). Auth: {authModeLabel()}. No wallet
+          required. Signing / Gate K override remain blocked.
         </p>
         <p className={`banner ${gateJ.available ? "banner-ok" : "banner-block"}`}>
           Gate J API: {gateJ.detail}
@@ -224,20 +223,40 @@ export function AgentPanel() {
             Retry
           </button>
         </p>
+        {publicLiveAi && demoStatus ? (
+          <p
+            className={`banner ${
+              demoStatus.ok && !demoStatus.kill_switch ? "banner-ok" : "banner-block"
+            }`}
+          >
+            Live AI demo:{" "}
+            {demoStatus.kill_switch
+              ? "kill switch ON"
+              : demoStatus.ok
+                ? `available · portfolio ${demoStatus.portfolio_id ?? "i-a-a4e7"} · global remaining ${
+                    demoStatus.remaining?.global_calls ?? "—"
+                  }`
+                : demoStatus.reason ?? "unavailable"}
+          </p>
+        ) : null}
         <p className="muted small">
           On-chain mandate flag:{" "}
           {onchainMandate ? (
             <span className="badge badge-pass">VITE_GATE_J_ONCHAIN_MANDATE=true</span>
           ) : (
-            <span className="badge badge-warn">false — enable after verified integration</span>
+            <span className="badge badge-warn">false — demo uses server-hydrated mandate</span>
           )}
-          {" · "}Live always requests backend hydration via portfolio_id (no weaker client policy).
+          {" · "}Results labeled <strong>LIVE AI — DRY RUN</strong> (not an on-chain trade).
         </p>
         {!publicLiveAi ? (
           <p className="banner banner-block">
-            Public live OpenRouter dry-run stays <strong>disabled</strong> until shared
-            rate limits / OpenRouter budget are verified (`NIO_PUBLIC_LIVE_AI=true`).
-            Trusted OCI HTTPS is live — use recorded hosted trace + fixtures below.
+            Public live OpenRouter dry-run is <strong>disabled</strong> on this build. Use
+            recorded hosted trace + fixtures below.
+          </p>
+        ) : null}
+        {msg ? (
+          <p className="banner banner-block" role="alert">
+            {msg}
           </p>
         ) : null}
         <div className="row gap">
@@ -247,11 +266,14 @@ export function AgentPanel() {
               liveBusy ||
               !publicLiveAi ||
               !gateJ.available ||
-              !portfolio
+              Boolean(demoStatus?.kill_switch) ||
+              demoStatus?.ok === false
             }
             onClick={() => void runLive()}
           >
-            {liveBusy ? "Running live AI…" : "Run live AI (dry-run, on-chain mandate)"}
+            {liveBusy
+              ? "Running Live AI Analysis… (up to ~90s)"
+              : "Run Live AI Analysis"}
           </button>
           <button
             type="button"
@@ -266,15 +288,9 @@ export function AgentPanel() {
           Hosted OCI evidence: Strategist <strong>NO_TRADE</strong> → Fitter REJECTED → Critic{" "}
           <strong>ABSTAIN</strong> → BLOCKED / may_sign=false (not TRADE/REJECT).
         </p>
-        {publicLiveAi && !portfolio ? (
-          <p className="warn small">
-            Connect portfolio owner wallet to run live AI (claimed_owner must match).
-          </p>
-        ) : null}
         {!gateJ.available ? (
           <p className="warn small">
-            Gate J health unreachable (upstream not configured or TLS not trusted). Fixtures
-            and recorded evidence still work offline.
+            Gate J health unreachable. Fixtures and recorded evidence still work offline.
           </p>
         ) : null}
       </section>

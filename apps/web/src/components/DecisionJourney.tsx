@@ -11,7 +11,7 @@ const LABELS: Record<string, string> = {
 };
 
 function modeBadge(mode: GateJDecisionRecord["mode"] | undefined) {
-  if (mode === "live_ai") return { cls: "badge-pass", text: "LIVE AI · DRY RUN" };
+  if (mode === "live_ai") return { cls: "badge-pass", text: "LIVE AI — DRY RUN" };
   if (mode === "fixture") return { cls: "badge-warn", text: "FIXTURE" };
   if (mode === "recorded") return { cls: "badge-recorded", text: "RECORDED" };
   return { cls: "badge-recorded", text: "IDLE" };

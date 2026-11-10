@@ -49,6 +49,7 @@ async function getJson<T>(
   const root = base();
   if (!root) throw new Error("VITE_GATE_I_API_BASE unset");
   const res = await fetch(`${root}${path}`, {
+    credentials: "include",
     ...init,
     headers: {
       "content-type": "application/json",
@@ -529,67 +530,161 @@ export function mapDecideToRecord(
   };
 }
 
-/** LIVE AI / DRY RUN — OpenRouter only via backend; never client mandate. */
-export async function runLiveAiDecide(opts: {
-  portfolioId: string;
-  claimedOwner: string;
-}): Promise<GateJDecisionRecord> {
-  if (!opts.portfolioId) {
-    throw new Error("portfolio_id required for live AI (on-chain mandate hydration)");
-  }
-  if (!opts.claimedOwner) {
-    throw new Error("Connect the portfolio owner wallet before live AI");
-  }
+export type GateJDemoStatus = {
+  ok: boolean;
+  enabled?: boolean;
+  kill_switch?: boolean;
+  day?: string;
+  portfolio_id?: string;
+  reason?: string;
+  limits?: Record<string, unknown>;
+  usage?: Record<string, unknown>;
+  remaining?: {
+    global_calls?: number;
+    spend_usd?: number;
+    client_calls?: number;
+  };
+};
 
+/** Public demo quota / kill-switch status (no secrets). */
+export async function fetchDemoStatus(): Promise<GateJDemoStatus> {
+  if (!base()) {
+    return { ok: false, reason: "api_base_unset" };
+  }
+  try {
+    const res = await getJson<GateJDemoStatus>("/gate-j/demo-status");
+    if (res.ok) return { ...res.data, ok: res.data.ok !== false };
+    return {
+      ok: false,
+      reason:
+        typeof res.data.reason === "string"
+          ? res.data.reason
+          : `HTTP ${res.status}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      reason: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+function demoErrorMessage(
+  status: number,
+  data: Record<string, unknown>
+): string {
+  const reason = typeof data.reason === "string" ? data.reason : "";
+  if (status === 401) {
+    return "Unauthorized — BFF server credential missing. Never put API keys in VITE_*.";
+  }
+  if (status === 403 && reason === "public_live_ai_disabled") {
+    return "Public live AI is disabled on this deployment.";
+  }
+  if (status === 403) {
+    return `Live AI refused (${reason || "forbidden"}). Signing / override fields are blocked.`;
+  }
+  if (status === 429) {
+    if (reason === "DEMO_CLIENT_COOLDOWN") {
+      return "Please wait 15 seconds between live AI runs (cooldown).";
+    }
+    if (reason === "DEMO_CLIENT_DAILY_LIMIT") {
+      return "Daily live-AI limit reached for this browser (3/day). Try again tomorrow or use fixtures.";
+    }
+    if (reason === "DEMO_GLOBAL_DAILY_LIMIT") {
+      return "Global live-AI daily quota exhausted. Fixtures and recorded evidence remain available.";
+    }
+    if (reason === "DEMO_SPEND_CAP") {
+      return "OpenRouter daily spend cap reached for the public demo. Try fixtures instead.";
+    }
+    if (reason === "DEMO_BUSY") {
+      return "Another live AI analysis is already running. Wait a moment and retry.";
+    }
+    return `Live AI rate-limited (${reason || "429"}).`;
+  }
+  if (status === 503) {
+    if (reason === "DEMO_KILL_SWITCH" || reason === "DEMO_DISABLED") {
+      return "Live AI demo is temporarily switched off by the operator.";
+    }
+    if (reason === "DEMO_QUOTA_UNAVAILABLE") {
+      return "Live AI quota store unavailable (fail-closed). Try again later.";
+    }
+    return `Live AI unavailable (${reason || "503"}).`;
+  }
+  if (status === 409) {
+    return "Live AI concurrency conflict — retry shortly.";
+  }
+  if (status === 502 && reason === "upstream_timeout") {
+    return "Live AI timed out waiting for OpenRouter. No trade was signed — retry later.";
+  }
+  if (reason === "DEMO_TIMEOUT" || reason === "OPENROUTER_NOT_CONFIGURED") {
+    return `Live AI failed: ${reason}.`;
+  }
+  return `Live AI failed: ${reason || `HTTP ${status}`}`;
+}
+
+/**
+ * Public LIVE AI DRY RUN via POST /gate-j/demo-decide.
+ * Server forces portfolio i-a-a4e7, dry_run, may_sign=false — wallet not required.
+ */
+export async function runLiveAiDecide(): Promise<GateJDecisionRecord> {
   const health = await gateJHealth();
   if (!health.available) {
     throw new Error(
-      `Live AI unavailable: ${health.detail}. Need GET /v1/gate-j/health + authenticated decide.`
+      `Live AI unavailable: ${health.detail}. Need Gate J health + BFF → OCI HTTPS.`
     );
   }
 
-  // Dedicated demo endpoint — server forces portfolio/use_llm/dry_run/may_sign.
-  // Never send client-defined mandate constraints — backend hydrates on-chain.
-  const body = {
-    portfolio_id: opts.portfolioId,
-    claimed_owner: opts.claimedOwner,
-    use_llm: true,
-    dry_run: true,
-    allow_execute: false,
-  };
+  const status = await fetchDemoStatus();
+  if (!status.ok || status.kill_switch || status.enabled === false) {
+    throw new Error(
+      demoErrorMessage(503, {
+        reason: status.reason || (status.kill_switch ? "DEMO_KILL_SWITCH" : "DEMO_DISABLED"),
+      })
+    );
+  }
 
+  // Empty body — OCI ignores client identity/mandate fields and forces safe defaults.
   const res = await getJson<GateJDecideApiResponse>("/gate-j/demo-decide", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: "{}",
+    credentials: "include",
   });
 
   if (!res.ok) {
-    const reason =
-      typeof res.data.reason === "string"
-        ? res.data.reason
-        : `HTTP ${res.status}`;
-    if (res.status === 401) {
-      throw new Error(
-        "Unauthorized — use same-origin /api/v1 BFF (server GATE_I_API_KEY) or Chat 1 owner session. Never put API keys in VITE_*."
-      );
-    }
-    throw new Error(`Live decide failed: ${reason}`);
+    throw new Error(demoErrorMessage(res.status, res.data));
   }
   if (!res.data.ok) {
     throw new Error(
-      `Live decide rejected: ${res.data.reason ?? "unknown"}`
+      demoErrorMessage(400, res.data as unknown as Record<string, unknown>)
     );
+  }
+
+  const maySign =
+    res.data.may_sign ??
+    res.data.enforcement?.may_sign ??
+    res.data.summary?.may_sign ??
+    false;
+  if (maySign === true) {
+    throw new Error("Live AI response rejected: may_sign=true is not allowed in public demo.");
   }
 
   const source = classifyMandateSource(
     res.data.mandate_source ?? res.data.mandate?.source
   );
-  return mapDecideToRecord(res.data, {
+  const rec = mapDecideToRecord(res.data, {
     mode: "live_ai",
     mandateSource:
       source === "unavailable" ? "authoritative_onchain" : source,
-    portfolioId: opts.portfolioId,
+    portfolioId: res.data.portfolio_id || "i-a-a4e7",
   });
+  rec.note = [
+    "LIVE AI — DRY RUN",
+    res.data.DRY_RUN || res.data.dry_run ? "no signing" : null,
+    res.data.summary?.final_decision ?? res.data.enforcement?.decision,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return rec;
 }
 
 /** Recorded hosted OpenRouter evidence for judge demo when live call blocked. */

@@ -183,6 +183,9 @@ export type GateJDecideApiResponse = {
   dry_run?: boolean;
   DRY_RUN?: boolean;
   no_signing?: boolean;
+  may_sign?: boolean;
+  demo?: boolean;
+  demo_mode?: boolean;
   portfolio_id?: string;
   reason?: string;
   mandate_source?: string;

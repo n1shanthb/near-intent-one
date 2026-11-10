@@ -1,15 +1,20 @@
 /**
  * Production Vercel BFF — allowlisted proxy to OCI NIO API.
  * Mounted at /api (vercel.json rewrites /api/* → /api).
- * Expects browser paths /api/v1/... ; original req.url is preserved.
  * Credentials stay server-side (GATE_I_API_KEY). Never trust browser auth headers.
+ *
+ * Live AI uses POST /gate-j/demo-decide only (OCI quotas + hard dry-run).
+ * Fixtures use POST /gate-j/decide with use_llm=false.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const DEMO_PORTFOLIOS = new Set(["i-a-a4e7", "i-b-a4e7"]);
 const MAX_BODY = 64 * 1024;
-const TIMEOUT_MS = 55_000;
+/** Keep under Vercel maxDuration; OCI demo timeout is 90s — align via maxDuration. */
+const TIMEOUT_MS = 95_000;
 const MAX_RESPONSE = 512 * 1024;
+const DEMO_COOKIE = "nio_demo_cid";
 
 const ALLOWED_EXACT = new Set([
   "GET /health",
@@ -34,6 +39,70 @@ function apiKey(): string {
 
 function liveAiEnabled(): boolean {
   return process.env.NIO_PUBLIC_LIVE_AI === "true";
+}
+
+function cookieSecret(): string {
+  return apiKey() || "nio-demo-cookie-dev-only";
+}
+
+function signClientId(id: string): string {
+  const mac = createHmac("sha256", cookieSecret()).update(id).digest("hex").slice(0, 32);
+  return `${id}.${mac}`;
+}
+
+function verifyClientToken(token: string): string | null {
+  const i = token.lastIndexOf(".");
+  if (i <= 0) return null;
+  const id = token.slice(0, i);
+  const mac = token.slice(i + 1);
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(id) || !/^[a-f0-9]{32}$/.test(mac)) return null;
+  const expected = createHmac("sha256", cookieSecret())
+    .update(id)
+    .digest("hex")
+    .slice(0, 32);
+  try {
+    const a = Buffer.from(mac, "utf8");
+    const b = Buffer.from(expected, "utf8");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  } catch {
+    return null;
+  }
+  return id;
+}
+
+function parseCookies(req: VercelRequest): Record<string, string> {
+  const raw = req.headers.cookie;
+  if (!raw || typeof raw !== "string") return {};
+  const out: Record<string, string> = {};
+  for (const part of raw.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    const v = part.slice(eq + 1).trim();
+    if (k) out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+/** Stable per-browser id via signed httpOnly cookie — not browser-spoofable XFF. */
+function resolveDemoClientId(
+  req: VercelRequest,
+  res: VercelResponse
+): string {
+  const cookies = parseCookies(req);
+  const existing = cookies[DEMO_COOKIE]
+    ? verifyClientToken(cookies[DEMO_COOKIE])
+    : null;
+  const id = existing || randomBytes(16).toString("hex");
+  const token = signClientId(id);
+  const secure = true;
+  res.setHeader(
+    "Set-Cookie",
+    `${DEMO_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`
+  );
+  // Mark Secure only when appropriate — Vercel is always HTTPS in prod.
+  void secure;
+  return id;
 }
 
 /** Normalize to path under /v1 (e.g. /gate-j/health). */
@@ -88,7 +157,7 @@ function readRawBody(req: VercelRequest): Promise<Buffer> {
   });
 }
 
-function sanitizeDecideBody(
+function sanitizeFixtureDecideBody(
   raw: Buffer
 ): { ok: true; body: Buffer } | { ok: false; reason: string } {
   let parsed: Record<string, unknown> = {};
@@ -105,39 +174,62 @@ function sanitizeDecideBody(
   if (parsed.acceptance_override === true || parsed.gate_k_execute === true) {
     return { ok: false, reason: "gate_k_execution_forbidden" };
   }
+  if (parsed.use_llm === true) {
+    return {
+      ok: false,
+      reason: "use_demo_decide_for_live_ai",
+      // clients must call /gate-j/demo-decide
+    } as { ok: false; reason: string };
+  }
   const scenario = parsed.scenario;
   const isFixture =
     typeof scenario === "string" &&
     ["ALLOWED", "ADAPTED", "REJECTED"].includes(scenario);
-
-  if (parsed.use_llm === true) {
-    if (!liveAiEnabled()) {
-      return { ok: false, reason: "public_live_ai_disabled" };
-    }
-    // Prefer dedicated demo endpoint (server enforces quotas + hard locks).
-    // Body is still sanitized; upstream path rewritten in handler.
-    delete parsed.mandate;
-    delete parsed.allow_detached_mandate;
-    delete parsed.allow_fixture_mandate;
-    delete parsed.acceptance_override;
-    delete parsed.gate_k_execute;
-    delete parsed.confirm_funded_trade;
-    parsed.portfolio_id = "i-a-a4e7";
-    parsed.claimed_owner = "nio-i-a4e7-a-owner.testnet";
-    parsed.use_llm = true;
-    parsed.dry_run = true;
-    parsed.allow_execute = false;
-    parsed.may_sign = false;
-  } else if (isFixture) {
-    parsed.dry_run = true;
-    parsed.use_llm = false;
-    delete parsed.portfolio_id;
-    delete parsed.mandate;
-  } else {
-    parsed.dry_run = true;
-    parsed.allow_execute = false;
+  if (!isFixture) {
+    return { ok: false, reason: "fixture_scenario_required" };
   }
+  parsed.dry_run = true;
+  parsed.use_llm = false;
+  parsed.allow_execute = false;
+  delete parsed.portfolio_id;
+  delete parsed.mandate;
+  delete parsed.allow_detached_mandate;
+  delete parsed.allow_fixture_mandate;
+  delete parsed.claimed_owner;
   return { ok: true, body: Buffer.from(JSON.stringify(parsed), "utf8") };
+}
+
+function sanitizeDemoDecideBody(
+  raw: Buffer
+): { ok: true; body: Buffer } | { ok: false; reason: string } {
+  let parsed: Record<string, unknown> = {};
+  if (raw.length) {
+    try {
+      parsed = JSON.parse(raw.toString("utf8")) as Record<string, unknown>;
+    } catch {
+      return { ok: false, reason: "invalid_json" };
+    }
+  }
+  const forbidden = [
+    "allow_execute",
+    "confirm_funded_trade",
+    "acceptance_override",
+    "gate_k_execute",
+    "may_sign",
+    "withdraw",
+    "withdrawal",
+    "set_policy",
+    "mutate_policy",
+    "operator_confirm",
+  ];
+  for (const k of forbidden) {
+    if (parsed[k] === true) {
+      return { ok: false, reason: "demo_forbidden_field" };
+    }
+  }
+  // Body ignored for identity — OCI forces portfolio/owner/dry_run.
+  // Send empty object so browser cannot inject mandate/fixture escapes.
+  return { ok: true, body: Buffer.from("{}", "utf8") };
 }
 
 function sanitizeFitBody(
@@ -203,32 +295,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let upstreamPath = apiPath;
-  if (
-    method === "POST" &&
-    (apiPath === "/gate-j/decide" || apiPath === "/gate-j/demo-decide")
-  ) {
-    const sanitized = sanitizeDecideBody(bodyBuf);
+  let demoClientId: string | null = null;
+
+  if (method === "POST" && apiPath === "/gate-j/decide") {
+    const sanitized = sanitizeFixtureDecideBody(bodyBuf);
     if (!sanitized.ok) {
       res.status(403).json({ reason: sanitized.reason });
       return;
     }
     bodyBuf = sanitized.body;
-    // Route live LLM through OCI demo-decide (persistent quotas / hard dry-run).
-    try {
-      const parsed = JSON.parse(bodyBuf.toString("utf8")) as {
-        use_llm?: boolean;
-      };
-      if (parsed.use_llm === true || apiPath === "/gate-j/demo-decide") {
-        if (!liveAiEnabled()) {
-          res.status(403).json({ reason: "public_live_ai_disabled" });
-          return;
-        }
-        upstreamPath = "/gate-j/demo-decide";
-      }
-    } catch {
-      /* keep path */
-    }
   }
+
+  if (method === "POST" && apiPath === "/gate-j/demo-decide") {
+    if (!liveAiEnabled()) {
+      res.status(403).json({ reason: "public_live_ai_disabled" });
+      return;
+    }
+    const sanitized = sanitizeDemoDecideBody(bodyBuf);
+    if (!sanitized.ok) {
+      res.status(403).json({ reason: sanitized.reason });
+      return;
+    }
+    bodyBuf = sanitized.body;
+    upstreamPath = "/gate-j/demo-decide";
+    demoClientId = resolveDemoClientId(req, res);
+  }
+
+  if (method === "GET" && apiPath === "/gate-j/demo-status") {
+    // Public status — no key required upstream, but fine if sent.
+    demoClientId = resolveDemoClientId(req, res);
+  }
+
   if (method === "POST" && apiPath === "/gate-j/fit") {
     const sanitized = sanitizeFitBody(bodyBuf);
     if (!sanitized.ok) {
@@ -267,14 +364,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     accept: "application/json",
     "content-type": "application/json",
   };
+  // Never forward browser Authorization / x-api-key — inject server credential only.
   if (key) headers["x-api-key"] = key;
-  const fwd = req.headers["x-forwarded-for"];
-  const realIp = req.headers["x-real-ip"];
-  if (typeof fwd === "string" && fwd) headers["x-forwarded-for"] = fwd;
-  else if (typeof req.socket?.remoteAddress === "string") {
-    headers["x-forwarded-for"] = req.socket.remoteAddress;
+
+  // Trustworthy demo client identity: signed cookie → synthetic forwarded id.
+  // Do NOT forward browser-supplied X-Forwarded-For / X-Real-IP (spoofable).
+  if (demoClientId) {
+    headers["x-forwarded-for"] = `nio-demo-${demoClientId}`;
+    headers["x-nio-demo-client"] = demoClientId;
   }
-  if (typeof realIp === "string" && realIp) headers["x-real-ip"] = realIp;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -293,18 +391,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     let text = stripSecretsFromJson(buf.toString("utf8"));
     if (
-      (apiPath === "/gate-j/decide" ||
-        apiPath === "/gate-j/demo-decide" ||
-        upstreamPath === "/gate-j/demo-decide") &&
+      (upstreamPath === "/gate-j/demo-decide" || apiPath === "/gate-j/decide") &&
       method === "POST"
     ) {
       try {
         const json = JSON.parse(text) as {
           enforcement?: { may_sign?: boolean };
           summary?: { may_sign?: boolean };
+          may_sign?: boolean;
         };
         const maySign =
-          json.enforcement?.may_sign ?? json.summary?.may_sign ?? false;
+          json.may_sign ??
+          json.enforcement?.may_sign ??
+          json.summary?.may_sign ??
+          false;
         if (maySign === true) {
           res.status(502).json({
             reason: "upstream_may_sign_true_blocked",
