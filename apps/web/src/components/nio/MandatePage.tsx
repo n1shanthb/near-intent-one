@@ -11,12 +11,20 @@ const EXAMPLE =
 const DISPLAY_ASSETS = ["USDC", "ETH", "NEAR"] as const;
 
 type Tab = "overview" | "composer" | "preview";
+type MandateMode = "allowlist" | "any_eligible_token";
 
 export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
   const { authMode, portfolio, gateI } = useProductSession();
   const [tab, setTab] = useState<Tab>("overview");
   const [text, setText] = useState(EXAMPLE);
-  const [chains, setChains] = useState({ ethereum: true, near: true });
+  const [mandateMode, setMandateMode] = useState<MandateMode>("allowlist");
+  const [explicitAny, setExplicitAny] = useState(false);
+  const [chains, setChains] = useState({
+    ethereum: true,
+    near: true,
+    arbitrum: true,
+    base: true,
+  });
   const [tokens, setTokens] = useState<Record<(typeof DISPLAY_ASSETS)[number], boolean>>({
     USDC: true,
     ETH: true,
@@ -27,15 +35,21 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
   const composed = useMemo(() => {
     const chainBits = [
       chains.ethereum ? "Ethereum" : null,
+      chains.arbitrum ? "Arbitrum" : null,
+      chains.base ? "Base" : null,
       chains.near ? "NEAR" : null,
     ]
       .filter(Boolean)
       .join(" and ");
     const tokBits = DISPLAY_ASSETS.filter((k) => tokens[k]).join(", ");
+    const scopeNote =
+      mandateMode === "any_eligible_token" && explicitAny
+        ? " Token scope ANY_ELIGIBLE_TOKEN explicitly authorized."
+        : " Token scope ALLOWLIST.";
     return text.includes("Allow trading")
-      ? text
-      : `Allow trading on ${chainBits || "NEAR"}, only ${tokBits || "USDC"}. ${text}`;
-  }, [text, chains, tokens]);
+      ? `${text}${scopeNote}`
+      : `Allow trading on ${chainBits || "NEAR"}, only ${tokBits || "USDC"}. ${text}${scopeNote}`;
+  }, [text, chains, tokens, mandateMode, explicitAny]);
 
   const result = useMemo(() => compilePolicyFromText(composed), [composed]);
 
@@ -70,11 +84,83 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
         <div>
           <h1>Mandate</h1>
           <p>
-            Policy overview, natural-language compiler, and structured preview.
-            Owner mutations stay blocked without authorization.
+            Two first-class modes: Owner Allowlist (default) or Agent&apos;s
+            Choice (ANY_ELIGIBLE_TOKEN — explicit owner authorization required).
+            Chain-specific asset identities only. Owner mutations stay blocked
+            without authorization.
           </p>
         </div>
       </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Token scope</h2>
+          <span className="nio-badge nio-badge-idle">
+            {mandateMode === "allowlist" ? "ALLOWLIST" : "ANY_ELIGIBLE_TOKEN"}
+          </span>
+        </div>
+        <div className="axis-actions" style={{ flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            className={`axis-button ${mandateMode === "allowlist" ? "" : "secondary"}`}
+            onClick={() => setMandateMode("allowlist")}
+          >
+            Mode B — Owner allowlist
+          </button>
+          <button
+            type="button"
+            className={`axis-button ${mandateMode === "any_eligible_token" ? "" : "secondary"}`}
+            onClick={() => setMandateMode("any_eligible_token")}
+          >
+            Mode A — Agent&apos;s choice
+          </button>
+        </div>
+        {mandateMode === "any_eligible_token" ? (
+          <label style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={explicitAny}
+              onChange={(e) => setExplicitAny(e.target.checked)}
+            />
+            <span>
+              I explicitly authorize dynamic token selection across selected
+              chains (still subject to limits, venues, and on-chain policy).
+            </span>
+          </label>
+        ) : null}
+        {!explicitAny && mandateMode === "any_eligible_token" ? (
+          <p className="axis-supporting" style={{ color: "var(--danger, #b00)" }}>
+            Broad discretion is not active until the checkbox is set — default
+            remains allowlist.
+          </p>
+        ) : null}
+        <div style={{ marginTop: 12 }} className="axis-actions">
+          {(
+            [
+              ["near", "NEAR"],
+              ["ethereum", "Ethereum"],
+              ["arbitrum", "Arbitrum"],
+              ["base", "Base"],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={chains[key]}
+                onChange={(e) =>
+                  setChains((c) => ({ ...c, [key]: e.target.checked }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <p className="axis-supporting">
+          Per-chain spending limits, venues, slippage, expiry, and pause/revoke
+          remain owner-controlled. On-chain enforcement uses canonical asset ids
+          — not symbols.
+        </p>
+      </section>
 
       <div className="axis-segmented" role="tablist">
         {(
@@ -141,7 +227,14 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
             <label className="axis-field">
               <span>Chains</span>
               <div className="nio-check-row">
-                {(["ethereum", "near"] as const).map((c) => (
+                {(
+                  [
+                    ["near", "NEAR"],
+                    ["ethereum", "Ethereum"],
+                    ["arbitrum", "Arbitrum"],
+                    ["base", "Base"],
+                  ] as const
+                ).map(([c, label]) => (
                   <label key={c}>
                     <input
                       type="checkbox"
@@ -150,7 +243,7 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
                         setChains((prev) => ({ ...prev, [c]: e.target.checked }))
                       }
                     />
-                    {c}
+                    {label}
                   </label>
                 ))}
               </div>

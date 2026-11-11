@@ -40,11 +40,13 @@ WASM artifact path:
 `contracts/policy/target/wasm32-unknown-unknown/release/policy.wasm`
 
 **Frozen artifact:** `artifacts/mainnet/policy.wasm`  
-**SHA-256:** `be60e78933d941aed7d1a4b9b0f7f7ad7756b0b867c29c6f0b2eed3d0eab9f1a` · 617768 bytes  
-**Supersedes:** `8b6ba726…3022` (clean rebuild not bit-identical)  
-**Proposed account:** `nio-policy-hack26.near` — **does not exist**; needs registrar or parent subaccount (see `docs/MAINNET_DEPLOY_PREFLIGHT.md`)  
+**SHA-256:** `6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1` · 624900 bytes  
+**Includes:** `token_scope`, `allowed_chains`, `allowed_venues`, `max_gas_budget` (open-universe mandate)  
+**STOP:** Do not deploy older hashes (`8b6ba726…` / `be60e789…`)  
+**Proposed account:** `nio-policy-hack26.near` — **does not exist**; needs registrar or parent subaccount  
 **Approval stub:** `docs/approvals/MAINNET_DEPLOY_APPROVAL.json` (`approved: false`)  
-**Recommended max NEAR:** **8** (estimate ≈ 6.3; do not use 15)
+**Recommended max NEAR:** **8** (estimate ≈ 6.4; do not use 15)  
+**Vision:** `docs/OPEN_UNIVERSE_ARCHITECTURE.md`
 
 Rebuild:
 

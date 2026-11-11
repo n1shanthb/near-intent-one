@@ -4,6 +4,7 @@ import { getPortfolio, listBalances } from "../../adapters/gatei";
 import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { useProductSession } from "../../state/ProductSession";
 import { Portfolio } from "../Portfolio";
+import { FourChainPortfolioPanel } from "./FourChainPortfolioPanel";
 import type { NavId } from "./nav";
 import type { BalanceSlice, PortfolioRecord } from "../../types/gateI";
 
@@ -61,9 +62,11 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
         </div>
       </div>
 
+      <FourChainPortfolioPanel />
+
       <section className="axis-panel">
         <div className="axis-panel-heading">
-          <h2>Demo portfolio summary</h2>
+          <h2>Demo portfolio summary (testnet)</h2>
           <span className="nio-badge nio-badge-recorded">PUBLIC DEMO</span>
         </div>
         <div className="axis-stats" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>

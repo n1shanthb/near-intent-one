@@ -17,6 +17,9 @@ type TxRow = {
   gate: string;
   type: string;
   chain: string;
+  sourceChain?: string;
+  destChain?: string;
+  reconcile?: string;
   result: string;
   tone: "success" | "warn" | "danger" | "recorded";
   href?: string;
@@ -30,12 +33,15 @@ const ROWS: TxRow[] = [
     date: GATE_K_FIRST_TRADE.authorized_at.slice(0, 10),
     gate: "K",
     type: "AI-directed trade",
-    chain: "Sepolia",
+    chain: "Sepolia (testnet)",
+    sourceChain: "Sepolia",
+    destChain: "NEAR Intents (testnet)",
+    reconcile: "Recorded · not mainnet",
     result: "Executed · override",
     tone: "warn",
     href: GATE_K_FIRST_TRADE.execution.sepolia_explorer,
     detail:
-      "24.45 USDC after Fitter ECONOMIC_NOT_VIABLE and Critic REJECT — one-time operator acceptance override.",
+      "24.45 USDC after Fitter ECONOMIC_NOT_VIABLE and Critic REJECT — one-time operator acceptance override. Not a mainnet four-chain proof.",
     tabs: ["all", "executed", "proofs"],
   },
   {
@@ -147,7 +153,9 @@ export function TransactionsPage({ onNav }: { onNav: (id: NavId) => void }) {
                   <th>Date</th>
                   <th>Gate</th>
                   <th>Type</th>
-                  <th>Chain</th>
+                  <th>Source</th>
+                  <th>Dest</th>
+                  <th>Reconcile</th>
                   <th>Result</th>
                 </tr>
               </thead>
@@ -162,7 +170,9 @@ export function TransactionsPage({ onNav }: { onNav: (id: NavId) => void }) {
                     <td className="mono">{r.date}</td>
                     <td>{r.gate}</td>
                     <td>{r.type}</td>
-                    <td>{r.chain}</td>
+                    <td>{r.sourceChain ?? r.chain}</td>
+                    <td>{r.destChain ?? "—"}</td>
+                    <td>{r.reconcile ?? "—"}</td>
                     <td>
                       <span className={`nio-badge nio-badge-${r.tone === "recorded" ? "recorded" : r.tone}`}>
                         {r.result}

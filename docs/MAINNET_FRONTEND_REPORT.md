@@ -1,32 +1,47 @@
-# NIO — Mainnet MVP frontend
+# NIO — Mainnet / four-chain frontend
 
 **Date:** 2026-11-11  
 **URL:** https://near-intent-one.vercel.app  
-**Deploy:** `dpl_9pPiT3ZTScJW3nAULRhCt2v35LcJ` (READY)  
-**Active demo network:** NEAR **testnet** (from `/v1/health`)  
-**Tests:** web vitest 48/48 · production build PASS
+**Deploy:** `dpl_12auNNxBvbFRoAJyVKhNYyaaeEet` (READY)  
+**Active demo network:** NEAR **testnet** (public BFF unchanged)  
+**Tests:** web vitest **48/48** · production build **PASS**
 
 ## What shipped
 
-- Real network indicator from API health + verified evidence (not a cosmetic toggle)
-- `/mainnet` Mainnet evidence view with capability matrix
-- Overview + Evidence prominent mainnet proof banners (honest awaiting state)
-- Explorer helpers that refuse testnet↔mainnet mismatches
-- Owner-auth note: testnet session ≠ mainnet authentication
-- Mainnet trading button disabled; public BFF allowlists unchanged
+- Four-chain portfolio panel (NEAR / Arbitrum / Base / Ethereum) with **UNVERIFIED BALANCES** — no fake USD
+- Canonical asset selector (`eip155:…` / `nep141:…` / `native:…`) — disabled without owner signing
+- Mandate Mode A (ANY_ELIGIBLE_TOKEN, explicit checkbox) vs Mode B (ALLOWLIST default) + four-chain toggles
+- Agent **route selection** panel (source/dest/gas/fees/Fitter·Critic) with **NO LIVE QUOTE**
+- Transactions source → dest → reconcile columns (testnet proofs labeled as such)
+- Mainnet Evidence **per-network** awaiting matrix + explorers named, links only when Chat 1 supplies ids
+- Owner-only mainnet trade button remains **disabled**
+
+## Screenshots (production)
+
+| Page | URL |
+|------|-----|
+| Portfolio | https://near-intent-one.vercel.app/portfolio |
+| Mandate | https://near-intent-one.vercel.app/mandate |
+| Agent | https://near-intent-one.vercel.app/agent |
+| Mainnet evidence | https://near-intent-one.vercel.app/mainnet |
 
 ## Actual mainnet proof displayed
 
-**None yet.** `MAINNET_EVIDENCE` remains unverified (`contract_deployed=false`, no account/tx). UI shows **AWAITING CHAT 1** until independently verified deployment evidence is supplied.
+**None.** `MAINNET_EVIDENCE` still awaiting Chat 1 (`contract_deployed=false`). UI shows **AWAITING CHAT 1 PROOF**.
 
-## Remaining blockers (Chat 1)
+## Architecture / policy (Chat 1)
 
-1. Verified mainnet policy/contract account + deploy tx  
-2. Policy-active proof + MPC signer readiness  
-3. Production Intents quote integration status  
-4. Optional funded settlement proof  
-5. Exact owner-only mainnet trading endpoint contracts / security gates  
+See `docs/OPEN_UNIVERSE_ARCHITECTURE.md`.  
+New policy WASM (not deployed): sha256 `6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1`.
+
+## Remaining blockers
+
+1. Creatable mainnet target account + deployer/owner/agent  
+2. Operator approval of new WASM hash + max NEAR  
+3. Verified live balances / dry quotes per chain  
+4. 0x + NEAR-native DEX adapters (stubs only)  
+5. Funded mainnet signing stays **OFF**
 
 ## Unauthorized transactions
 
-Confirmed none: no mainnet funded trades, no Gate K sign enablement, no public execution routes added.
+Confirmed none: no mainnet fund/sign/broadcast; public BFF allowlists unchanged; `may_sign=false` on Live AI.

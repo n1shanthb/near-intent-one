@@ -13,6 +13,7 @@ import { isPublicLiveAiEnabled } from "../../lib/publicDemo";
 import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { DecisionJourney } from "../DecisionJourney";
 import { MandateFitterPanel } from "../MandateFitter";
+import { NIO_CHAINS, VERIFIED_TOKEN_OPTIONS } from "../../lib/chains";
 import type { NavId } from "./nav";
 
 const SCENARIOS: {
@@ -162,6 +163,52 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
           </button>
         </div>
       </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Route selection (network-aware)</h2>
+          <span className="nio-badge nio-badge-warn">NO LIVE QUOTE</span>
+        </div>
+        <p className="axis-supporting">
+          Source/destination chains and assets use verified identities. Estimated
+          output, gas, and fees appear only from a real adapter quote — never
+          invented. Public demo may_sign stays false.
+        </p>
+        <div
+          className="axis-stats"
+          style={{ gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}
+        >
+          <div className="axis-stat">
+            <span>Source chain</span>
+            <strong style={{ fontSize: 15 }}>
+              {NIO_CHAINS[1]?.short ?? "Arbitrum"}
+            </strong>
+            <small className="mono">{NIO_CHAINS[1]?.id}</small>
+          </div>
+          <div className="axis-stat">
+            <span>Destination chain</span>
+            <strong style={{ fontSize: 15 }}>NEAR</strong>
+            <small className="mono">near</small>
+          </div>
+          <div className="axis-stat">
+            <span>Asset in</span>
+            <strong style={{ fontSize: 13 }} className="mono">
+              {VERIFIED_TOKEN_OPTIONS.find((t) => t.chain === "eip155:42161")?.asset_id.slice(0, 28)}…
+            </strong>
+          </div>
+          <div className="axis-stat">
+            <span>Est. out / gas / fees</span>
+            <strong style={{ fontSize: 15 }}>—</strong>
+            <small>awaiting dry quote</small>
+          </div>
+          <div className="axis-stat">
+            <span>Fitter / Critic</span>
+            <strong style={{ fontSize: 15 }}>
+              {record?.fit?.verdict ?? "—"} / {record?.critic?.verdict ?? "—"}
+            </strong>
+          </div>
+        </div>
+      </section>
 
       <section className="nio-live-banner">
         <div>

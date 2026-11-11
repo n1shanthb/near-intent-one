@@ -60,11 +60,15 @@ export function buildInitArgs({
       daily_turnover_limit: "1000000",
       max_pending_exposure: "1000000",
       max_slippage_bps: 50,
-      allowed_assets: [],
+      allowed_assets: ["native:near", "nep141:wrap.near"],
       allowed_destinations: [],
       valid_until: String(
         BigInt(Date.now()) * 1_000_000n + 30n * 24n * 3600n * 1_000_000_000n
       ),
+      token_scope: "allowlist",
+      allowed_chains: ["near", "eip155:1", "eip155:42161", "eip155:8453"],
+      allowed_venues: ["near_intents_1click"],
+      max_gas_budget: "0",
     },
   };
 }

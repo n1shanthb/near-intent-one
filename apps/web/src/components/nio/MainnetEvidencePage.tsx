@@ -118,6 +118,44 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
 
       <section className="axis-panel">
         <div className="axis-panel-heading">
+          <h2>Per-network verification</h2>
+        </div>
+        <div
+          className="axis-stats"
+          style={{ gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}
+        >
+          {(
+            [
+              ["near", "NEAR"],
+              ["arbitrum", "Arbitrum"],
+              ["base", "Base"],
+              ["ethereum", "Ethereum"],
+            ] as const
+          ).map(([key, label]) => {
+            const row = ev.networks[key];
+            return (
+              <div className="axis-stat" key={key}>
+                <span>{label}</span>
+                <strong style={{ fontSize: 15 }}>
+                  {row.status === "verified"
+                    ? "VERIFIED"
+                    : row.status === "partial"
+                      ? "PARTIAL"
+                      : "AWAITING"}
+                </strong>
+                <small>{row.note}</small>
+              </div>
+            );
+          })}
+        </div>
+        <p className="axis-supporting">
+          Explorers: nearblocks.io · arbiscan.io · basescan.org · etherscan.io —
+          links only render when Chat 1 supplies real ids/hashes.
+        </p>
+      </section>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
           <h2>Capability matrix</h2>
         </div>
         <div className="nio-capability-grid">

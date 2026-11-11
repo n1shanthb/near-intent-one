@@ -55,6 +55,13 @@ export type MainnetEvidenceRecord = {
     note: string | null;
   };
   capabilities: Record<MainnetCapability, boolean>;
+  /** Per-network verification — never mark LIVE without Chat 1 proof. */
+  networks: {
+    near: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
+    arbitrum: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
+    base: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
+    ethereum: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
+  };
   notes: string[];
 };
 
@@ -101,10 +108,29 @@ export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
     live_trading_enabled: false,
     funded_settlement_proven: false,
   },
+  networks: {
+    near: {
+      status: "awaiting_evidence",
+      note: "Policy deploy + MPC reads pending Chat 1 verification",
+    },
+    arbitrum: {
+      status: "awaiting_evidence",
+      note: "No funded Arbitrum settlement proven",
+    },
+    base: {
+      status: "awaiting_evidence",
+      note: "No funded Base settlement proven",
+    },
+    ethereum: {
+      status: "awaiting_evidence",
+      note: "No funded Ethereum mainnet settlement proven",
+    },
+  },
   notes: [
     "Public judge Live AI remains testnet dry-run with may_sign=false.",
     "A verified testnet owner session does not authenticate a mainnet account.",
     "Mainnet trading controls stay disabled until Chat 1 confirms endpoint contracts and security gates.",
+    "Token scope ANY_ELIGIBLE_TOKEN is never the default — owner must authorize explicitly.",
   ],
 };
 

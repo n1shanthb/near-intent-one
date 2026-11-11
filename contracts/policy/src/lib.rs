@@ -97,9 +97,18 @@ pub struct PolicyLimits {
     pub daily_turnover_limit: U128,
     pub max_pending_exposure: U128,
     pub max_slippage_bps: u32,
+    /// Canonical asset ids only (eip155:<id>:0x… / nep141:… / native:…). Never symbols alone.
     pub allowed_assets: Vec<String>,
     pub allowed_destinations: Vec<String>,
     pub valid_until: U64,
+    /// "allowlist" (default) | "any_eligible_token" — broad mode must be explicit.
+    pub token_scope: String,
+    /// CAIP-2 style: "near", "eip155:1", "eip155:42161", "eip155:8453"
+    pub allowed_chains: Vec<String>,
+    /// Execution venues: near_intents_1click | evm_0x | near_native_dex
+    pub allowed_venues: Vec<String>,
+    /// Soft gas budget (wei or yocto depending on venue); enforced as upper bound on attested gas*price where applicable.
+    pub max_gas_budget: U128,
 }
 
 #[near(serializers = [json, borsh])]
@@ -273,6 +282,15 @@ impl PolicyContract {
             !portfolio_id.contains('/'),
             "portfolio_id must not contain '/'"
         );
+        let scope = Self::normalize_token_scope(&limits.token_scope);
+        require!(!scope.is_empty(), "invalid token_scope");
+        require!(!limits.allowed_chains.is_empty(), "allowed_chains required");
+        if scope == "allowlist" {
+            require!(
+                !limits.allowed_assets.is_empty(),
+                "allowlist requires allowed_assets"
+            );
+        }
         Self {
             owner,
             agent,
@@ -320,6 +338,16 @@ impl PolicyContract {
     ) {
         self.assert_owner();
         require!(!self.revoked, "revoked: create a new mandate epoch via unrevoke flow first");
+        let scope = Self::normalize_token_scope(&limits.token_scope);
+        require!(!scope.is_empty(), "invalid token_scope");
+        require!(!limits.allowed_chains.is_empty(), "allowed_chains required");
+        if scope == "allowlist" {
+            require!(
+                !limits.allowed_assets.is_empty(),
+                "allowlist requires allowed_assets"
+            );
+        }
+        // any_eligible_token is explicit — empty allowlist assets OK, but chains required.
         self.limits = limits;
         self.policy_hash = policy_hash;
         self.strategy_hash = strategy_hash;
@@ -443,18 +471,27 @@ impl PolicyContract {
             "exceeds max_trade_value"
         );
         require!(
-            self.limits
-                .allowed_assets
-                .iter()
-                .any(|a| a == &attestation.asset_in),
+            self.asset_permitted(&attestation.asset_in),
             "asset_in not allowed"
         );
         require!(
-            self.limits
-                .allowed_assets
-                .iter()
-                .any(|a| a == &attestation.asset_out),
+            self.asset_permitted(&attestation.asset_out),
             "asset_out not allowed"
+        );
+        require!(
+            self.chain_permitted_evm(attestation.chain_id.0),
+            "chain_id not in allowed_chains"
+        );
+        require!(
+            self.venue_permitted("near_intents_1click")
+                || self.venue_permitted("evm_0x"),
+            "venue not permitted for quoted evm transfer"
+        );
+        // ANY_ELIGIBLE_TOKEN remains NOT SAFE FOR FUNDED EVM SIGN until deterministic
+        // token-risk + destination restrictions are complete. Signing path = allowlist only.
+        require!(
+            Self::normalize_token_scope(&self.limits.token_scope) == "allowlist",
+            "any_eligible_token_not_safe_for_evm_sign"
         );
         require!(
             attestation.quote_deadline_ns.0 > env::block_timestamp(),
@@ -462,6 +499,14 @@ impl PolicyContract {
         );
         require!(attestation.gas_limit.0 > 0, "attested gas_limit required");
         require!(attestation.max_gas_price.0 > 0, "max_gas_price required");
+        let gas_cost = (attestation.max_gas_price.0 as u128)
+            .saturating_mul(attestation.gas_limit.0 as u128);
+        if self.limits.max_gas_budget.0 > 0 {
+            require!(
+                gas_cost <= self.limits.max_gas_budget.0,
+                "exceeds max_gas_budget"
+            );
+        }
 
         let min_ratio_bps = 10_000u128.saturating_sub(self.limits.max_slippage_bps as u128);
         let floor = attestation
@@ -589,7 +634,10 @@ impl PolicyContract {
         require!(cancel.gas_limit.0 > 0 && cancel.gas_limit.0 <= 100_000, "cancel gas_limit bound");
         require!(cancel.gas_price.0 > 0, "gas_price required");
         // Sepolia only for hackathon cancel path.
-        require!(cancel.chain_id.0 == 11155111, "cancel chain_id must be Sepolia");
+        require!(
+            self.chain_permitted_evm(cancel.chain_id.0),
+            "cancel chain_id not in allowed_chains"
+        );
 
         let self_addr = evm_auth::parse_hex_address(&self.intents_signer_id);
         let digest = evm_auth::eip155_unsigned_digest(
@@ -672,7 +720,10 @@ impl PolicyContract {
             "withdraw gas_limit bound"
         );
         require!(withdraw.gas_price.0 > 0, "gas_price required");
-        require!(withdraw.chain_id.0 == 11155111, "withdraw chain_id must be Sepolia");
+        require!(
+            self.chain_permitted_evm(withdraw.chain_id.0),
+            "withdraw chain_id not in allowed_chains"
+        );
 
         let to = withdraw.to.trim().to_lowercase();
         require!(
@@ -1431,6 +1482,66 @@ impl PolicyContract {
         );
     }
 
+    fn normalize_token_scope(scope: &str) -> &str {
+        let s = scope.trim();
+        if s.is_empty() || s == "allowlist" {
+            "allowlist"
+        } else if s == "any_eligible_token" {
+            "any_eligible_token"
+        } else {
+            ""
+        }
+    }
+
+    /// ALLOWLIST: exact canonical asset id. ANY_ELIGIBLE_TOKEN: chain membership only
+    /// (risk/liquidity still fail closed off-chain — never means arbitrary calldata).
+    fn asset_permitted(&self, asset: &str) -> bool {
+        let scope = Self::normalize_token_scope(&self.limits.token_scope);
+        require!(!scope.is_empty(), "invalid token_scope");
+        if scope == "allowlist" {
+            return self.limits.allowed_assets.iter().any(|a| a == asset);
+        }
+        // any_eligible_token
+        if let Some(chain) = Self::chain_of_asset(asset) {
+            return self.limits.allowed_chains.iter().any(|c| c == &chain);
+        }
+        false
+    }
+
+    fn chain_of_asset(asset: &str) -> Option<String> {
+        let a = asset.trim();
+        if a == "native:near" || a.starts_with("nep141:") {
+            return Some("near".into());
+        }
+        if let Some(rest) = a.strip_prefix("native:") {
+            if rest.starts_with("eip155:") {
+                return Some(rest.to_string());
+            }
+        }
+        // eip155:<id>:0x…
+        if a.starts_with("eip155:") {
+            let parts: Vec<&str> = a.splitn(3, ':').collect();
+            if parts.len() >= 2 {
+                return Some(format!("{}:{}", parts[0], parts[1]));
+            }
+        }
+        None
+    }
+
+    fn chain_permitted_evm(&self, chain_id: u64) -> bool {
+        let tag = format!("eip155:{}", chain_id);
+        self.limits.allowed_chains.iter().any(|c| c == &tag)
+    }
+
+    fn venue_permitted(&self, venue: &str) -> bool {
+        if self.limits.allowed_venues.is_empty() {
+            // Backward-compatible default for allowlist mandates that omit venues:
+            // only near_intents_1click is implied — never open arbitrary venues.
+            return venue == "near_intents_1click";
+        }
+        self.limits.allowed_venues.iter().any(|v| v == venue)
+    }
+
     fn assert_active_mandate(&self) {
         require!(!self.revoked, "revoked");
         require!(!self.paused, "paused");
@@ -1621,17 +1732,11 @@ impl PolicyContract {
             "exceeds max_trade_value"
         );
         require!(
-            self.limits
-                .allowed_assets
-                .iter()
-                .any(|a| a == &proposal.asset_in),
+            self.asset_permitted(&proposal.asset_in),
             "asset_in not allowed"
         );
         require!(
-            self.limits
-                .allowed_assets
-                .iter()
-                .any(|a| a == &proposal.asset_out),
+            self.asset_permitted(&proposal.asset_out),
             "asset_out not allowed"
         );
         require!(
@@ -1738,6 +1843,8 @@ mod tests {
                 "NEAR".into(),
                 "ETH".into(),
                 "nep141:usdc.tidepool-sandbox.testnet".into(),
+                "native:near".into(),
+                "eip155:11155111:0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2".into(),
             ],
             allowed_destinations: vec![
                 "intents.near".into(),
@@ -1746,6 +1853,16 @@ mod tests {
             ],
             // far future (ns)
             valid_until: U64(u64::MAX / 2),
+            token_scope: "allowlist".into(),
+            allowed_chains: vec![
+                "near".into(),
+                "eip155:11155111".into(),
+                "eip155:1".into(),
+                "eip155:42161".into(),
+                "eip155:8453".into(),
+            ],
+            allowed_venues: vec!["near_intents_1click".into()],
+            max_gas_budget: U128(u128::MAX / 4),
         }
     }
 
@@ -2019,5 +2136,38 @@ mod tests {
 
         let status = c.get_revocation_status();
         assert_eq!(status.unresolved_pending, 0);
+    }
+
+    #[test]
+    fn any_eligible_token_permits_chain_member_not_arbitrary() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.token_scope = "any_eligible_token".into();
+        lim.allowed_assets = vec![]; // dynamic — not an open calldata grant
+        lim.allowed_chains = vec!["near".into()];
+        c.set_policy(lim, "h".into(), "s".into());
+        testing_env!(context(agent(), 0).build());
+        let mut p = proposal("op-any", 5);
+        p.asset_in = "nep141:unknown-but-near.near".into();
+        p.asset_out = "native:near".into();
+        let _ = c.propose_trade(p);
+    }
+
+    #[test]
+    #[should_panic(expected = "asset_in not allowed")]
+    fn any_eligible_token_rejects_wrong_chain() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.token_scope = "any_eligible_token".into();
+        lim.allowed_assets = vec![];
+        lim.allowed_chains = vec!["near".into()];
+        c.set_policy(lim, "h".into(), "s".into());
+        testing_env!(context(agent(), 0).build());
+        let mut p = proposal("op-bad-chain", 5);
+        p.asset_in = "eip155:1:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".into();
+        p.asset_out = "native:near".into();
+        c.propose_trade(p);
     }
 }

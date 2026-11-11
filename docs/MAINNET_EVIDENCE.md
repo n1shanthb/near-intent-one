@@ -29,7 +29,7 @@
 |------|-------|----------|
 | Unit tests | IMPLEMENTED | `cargo test` → **18 passed** (2026-11-11) |
 | Release WASM | IMPLEMENTED | `contracts/policy/target/.../policy.wasm` |
-| WASM sha256 | IMPLEMENTED (frozen) | `be60e78933d941aed7d1a4b9b0f7f7ad7756b0b867c29c6f0b2eed3d0eab9f1a` (617768 B) in `artifacts/mainnet/policy.wasm` |
+| WASM sha256 | IMPLEMENTED (frozen, not deployed) | `6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1` (624900 B) — open-universe fields; supersedes prior hashes |
 | Mainnet deploy tx | **NOT YET PROVEN** | Blocked: target account unresolved + no mainnet deployer creds |
 | Mainnet contract address | **NOT YET PROVEN** | `nio-policy-hack26.near` = UNKNOWN_ACCOUNT |
 | Mainnet policy state views | **NOT YET PROVEN** | `verifyDeployedPolicy()` ready post-deploy |
