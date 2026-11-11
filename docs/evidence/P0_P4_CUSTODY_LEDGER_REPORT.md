@@ -62,7 +62,7 @@ Rehearsal account keys after temp deletion:
 
 ## 11. GitHub commit
 
-See repository HEAD after this evidence push.
+`37d006b597ce6cd9881a2ec031b3c4f81b674a25`
 
 ## 12. Remaining blockers (severity)
 
