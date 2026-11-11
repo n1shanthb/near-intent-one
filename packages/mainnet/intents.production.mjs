@@ -9,7 +9,12 @@ import {
   productionDryQuote,
   getExecutionStatus,
   normalizeIntentStatus,
+  constructOriginChainDeposit,
+  requiredSigningPrimitive,
+  sdkGetTokens,
+  sdkGetExecutionStatus,
 } from "./intents.mjs";
+import { fetchFourChainCatalog } from "./tokenCatalog.mjs";
 import { ROUTE_STATUS } from "../execution/router.mjs";
 
 export const PRODUCTION_ASSETS = Object.freeze({
@@ -292,10 +297,18 @@ export async function attemptProductionDryRoute(request, opts = {}) {
   };
 }
 
-/** Router-facing adapter. */
+/** Router-facing adapter — full dry surface; funded ops stay gated. */
 export function createProductionNearIntentsAdapter(opts = {}) {
   return {
     id: "near_intents_1click",
+    async getTokens() {
+      const catalog = await fetchFourChainCatalog(opts);
+      if (catalog.ok) return catalog;
+      return sdkGetTokens(opts);
+    },
+    async getQuote(req) {
+      return this.quote({ ...req, dry: true });
+    },
     async quote(req) {
       const out = await attemptProductionDryRoute(req, opts);
       if (!out.ok) {
@@ -314,6 +327,49 @@ export function createProductionNearIntentsAdapter(opts = {}) {
         binding_digest: out.bound.binding_digest,
         dry: true,
         note: "Production dry quote — not a deposit / not funded",
+      };
+    },
+    async prepareLiveQuote(req) {
+      if (process.env.NIO_MAINNET_ALLOW_FUNDED_QUOTE !== "1") {
+        return {
+          ok: false,
+          status: ROUTE_STATUS.BLOCKED,
+          reason: "funded_quote_gate_off",
+        };
+      }
+      return productionDryQuote(
+        { ...req },
+        { ...opts, allowFundedQuote: true }
+      );
+    },
+    validateQuote: (quote, request) => bindQuoteToRequest(quote, request),
+    constructDeposit: (args) => constructOriginChainDeposit(args),
+    signingPrimitive: (args) => requiredSigningPrimitive(args),
+    async pollStatus(depositAddress) {
+      return sdkGetExecutionStatus(depositAddress, opts);
+    },
+    async reconcile(args) {
+      return reconcileSettlement(args);
+    },
+    async refundRecovery(depositAddress) {
+      const st = await getExecutionStatus(depositAddress, opts);
+      if (!st.ok) return { ok: false, ...st };
+      if (st.normalized === "REFUNDED") {
+        return { ok: true, outcome: "REFUNDED", status: st };
+      }
+      if (st.normalized === "PENDING") {
+        return {
+          ok: false,
+          outcome: "REFUND_PENDING",
+          note: "Wait / escalate via 1Click status — do not resign",
+          status: st,
+        };
+      }
+      return {
+        ok: false,
+        outcome: st.normalized,
+        note: "Not in refund terminal state",
+        status: st,
       };
     },
   };

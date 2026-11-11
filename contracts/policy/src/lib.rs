@@ -303,7 +303,9 @@ impl PolicyContract {
             intents_signer_id: String::new(),
             verifying_contract,
             mandate_epoch: 1,
-            paused: false,
+            // Inert-by-default: agent propose/sign blocked until owner unpause
+            // after a separately authorized trading-readiness review.
+            paused: true,
             revoked: false,
             strategy_hash: String::new(),
             policy_hash: String::new(),
@@ -1931,7 +1933,27 @@ mod tests {
             "verifier.tidepool-sandbox.testnet".into(),
             limits(),
         );
+        // new() is paused=true (inert). Unpause only for tests that exercise
+        // an active mandate; pause/adversarial tests call new() directly.
+        assert!(c.get_paused(), "new() must start paused");
+        c.unpause();
         c.set_intents_signer_id("0xca67c1bb3fd69857e5edaf6aa1c65371bf46a464".into());
+        c
+    }
+
+    fn deploy_inert() -> PolicyContract {
+        testing_env!(context(owner(), 0).build());
+        let mut c = PolicyContract::new(
+            owner(),
+            agent(),
+            mpc(),
+            "alpha".into(),
+            "verifier.tidepool-sandbox.testnet".into(),
+            limits(),
+        );
+        c.set_intents_signer_id("0xca67c1bb3fd69857e5edaf6aa1c65371bf46a464".into());
+        assert!(c.get_paused());
+        assert!(!c.get_revocation_status().revoked);
         c
     }
 
@@ -2479,5 +2501,131 @@ mod tests {
             tx2,
             1,
         );
+    }
+
+    // ─── Inert-by-default / pause adversarial (direct contract calls) ─────
+
+    #[test]
+    fn new_initializes_paused_not_revoked() {
+        let c = deploy_inert();
+        assert!(c.get_paused());
+        assert!(!c.get_revocation_status().revoked);
+        assert_eq!(c.get_mandate_epoch(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "paused")]
+    fn paused_blocks_agent_propose_trade_direct_call() {
+        let mut c = deploy_inert();
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-paused", 1));
+    }
+
+    #[test]
+    #[should_panic(expected = "paused")]
+    fn paused_blocks_agent_propose_intent_direct_call() {
+        let mut c = deploy_inert();
+        testing_env!(context(agent(), 0).build());
+        let payload = serde_json::json!({
+            "signer_id": "0xca67c1bb3fd69857e5edaf6aa1c65371bf46a464",
+            "deadline": "9000000000",
+            "intents": [{
+                "intent": "token_diff",
+                "diff": {
+                    "nep141:usdc.tidepool-sandbox.testnet": "-10",
+                    "nep141:wnear.tidepool-sandbox.testnet": "1"
+                }
+            }],
+            "receipts": [{
+                "receiver_id": "alice.near",
+                "amount": "0",
+                "msg": "",
+                "tokens": { "nep141:usdc.tidepool-sandbox.testnet": "10" }
+            }]
+        })
+        .to_string();
+        c.propose_intent("op-paused-intent".into(), payload, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "paused")]
+    fn paused_blocks_agent_propose_quoted_evm_direct_call() {
+        let mut c = deploy_inert();
+        testing_env!(context(owner(), 0).build());
+        c.set_trusted_quote_signer(TEST_QUOTE_PK.into());
+        testing_env!(context(agent(), 0).build());
+        let _ = c.propose_quoted_evm_transfer(
+            "op-paused-q".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "paused")]
+    fn paused_blocks_request_signature_even_if_op_preexisted() {
+        // Active → propose → owner pause → agent cannot request_signature.
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-pre", 10));
+        testing_env!(context(owner(), 0).build());
+        c.pause();
+        assert!(c.get_paused());
+        testing_env!(context(agent(), 1).build());
+        let _ = c.request_signature("op-pre".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn agent_cannot_unpause() {
+        let mut c = deploy_inert();
+        testing_env!(context(agent(), 0).build());
+        c.unpause();
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn agent_cannot_pause() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.pause();
+    }
+
+    #[test]
+    fn owner_unpause_enables_propose_then_pause_blocks_again() {
+        let mut c = deploy_inert();
+        testing_env!(context(owner(), 0).build());
+        c.unpause();
+        assert!(!c.get_paused());
+        testing_env!(context(agent(), 0).build());
+        let op = c.propose_trade(proposal("op-after-unpause", 5));
+        assert_eq!(op.signing_state, SigningState::Reserved);
+        testing_env!(context(owner(), 0).build());
+        c.pause();
+        assert!(c.get_paused());
+    }
+
+    #[test]
+    #[should_panic(expected = "paused")]
+    fn owner_pause_blocks_subsequent_propose() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.pause();
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-re-paused", 1));
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot unpause while revoked")]
+    fn cannot_unpause_while_revoked_without_unrevoke() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.revoke();
+        assert!(c.get_revocation_status().revoked);
+        assert!(c.get_paused());
+        c.unpause();
     }
 }

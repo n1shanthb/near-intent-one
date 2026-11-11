@@ -23,7 +23,8 @@ export const STORAGE_HINT = Object.freeze({
   wasm_storage_near: "6.25701",
   recommended_min_near: "7.96",
   recommended_max_near_request: "9",
-  note: "Ledger subaccount deploy estimate — approval only; no auto-spend",
+  note:
+    "Ledger subaccount deploy estimate — approval only; no auto-spend. Contract new() starts paused=true.",
 });
 
 export function sha256File(path) {

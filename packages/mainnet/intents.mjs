@@ -1,11 +1,47 @@
 /**
- * Production NEAR Intents via official 1Click API.
+ * Production NEAR Intents via official 1Click API + SDK surface.
  * Tidepool/testnet contracts are NEVER used here.
  * Funded quotes (dry:false) require separate authorization.
  */
+import {
+  OpenAPI,
+  OneClickService,
+} from "@defuse-protocol/one-click-sdk-typescript";
 import { MAINNET, assertNetworkIsolation } from "../networks/profiles.mjs";
 
 const DEFAULT_BASE = MAINNET.intents.apiBase;
+
+/** Configure official SDK client (Bearer when JWT present). */
+export function configureOneClickSdk({
+  baseUrl = DEFAULT_BASE,
+  token = process.env.NIO_1CLICK_JWT,
+} = {}) {
+  OpenAPI.BASE = baseUrl;
+  OpenAPI.TOKEN = token || undefined;
+  OpenAPI.HEADERS = token
+    ? { authorization: `Bearer ${token}`, "x-api-key": token }
+    : undefined;
+  return { baseUrl, authenticated: Boolean(token) };
+}
+
+/**
+ * Prefer fetch helpers for deterministic dry:true enforcement; SDK wraps status/tokens.
+ */
+export async function sdkGetTokens(opts = {}) {
+  configureOneClickSdk(opts);
+  try {
+    const tokens = await OneClickService.getTokens();
+    const list = Array.isArray(tokens) ? tokens : tokens?.tokens || [];
+    return { ok: true, via: "sdk", count: list.length, tokens: list };
+  } catch (e) {
+    return {
+      ok: false,
+      via: "sdk",
+      reason: "sdk_getTokens_failed",
+      detail: String(e?.message || e).slice(0, 300),
+    };
+  }
+}
 
 function authHeaders(token) {
   const h = {
@@ -192,4 +228,124 @@ export function normalizeIntentStatus(status) {
     return "PENDING";
   }
   return s || "UNKNOWN";
+}
+
+/**
+ * Which signing primitive is required for a 1Click ORIGIN_CHAIN deposit route.
+ * Does not authorize signing — classification only.
+ */
+export function requiredSigningPrimitive({
+  originNetwork,
+  depositType = "ORIGIN_CHAIN",
+} = {}) {
+  const chain = String(originNetwork || "").toLowerCase();
+  if (depositType === "INTENTS") {
+    return {
+      primitive: "NEAR_INTENTS_SIGNED_PAYLOAD",
+      custody_model: "intents_account",
+      note: "INTENTS deposit uses signed intent payload — not enabled for NIO funded canary; custody model unchanged",
+      may_use: false,
+    };
+  }
+  if (chain === "near") {
+    return {
+      primitive: "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+      custody_model: "policy_near_account",
+      note: "NEP-141 deposit is NOT authorized by EVM Chain Signatures MPC path",
+      may_use: false,
+      policy_path: "near_ft_separate_from_quoted_evm",
+    };
+  }
+  if (["ethereum", "arbitrum", "base", "eth", "arb"].includes(chain)) {
+    return {
+      primitive: "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+      custody_model: "policy_mpc_evm",
+      note: "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+      may_use: true,
+      policy_path: "quoted_evm_transfer",
+    };
+  }
+  return {
+    primitive: "UNKNOWN",
+    custody_model: "unknown",
+    note: "Unsupported origin for current policy surfaces",
+    may_use: false,
+  };
+}
+
+/**
+ * Build deposit tx intent for an ORIGIN_CHAIN funded quote (gated — never broadcasts).
+ */
+export function constructOriginChainDeposit({
+  bound,
+  originNetwork,
+  tokenContract,
+  amount,
+  chainId,
+}) {
+  if (process.env.NIO_MAINNET_ALLOW_FUNDED_QUOTE !== "1") {
+    return {
+      ok: false,
+      reason: "funded_quote_gate_off",
+      note: "Deposit construction refused while funded quotes are disabled",
+    };
+  }
+  if (!bound?.deposit_address) {
+    return { ok: false, reason: "missing_deposit_address" };
+  }
+  const signing = requiredSigningPrimitive({
+    originNetwork,
+    depositType: "ORIGIN_CHAIN",
+  });
+  if (!signing.may_use) {
+    return { ok: false, reason: "signing_primitive_unavailable", signing };
+  }
+  return {
+    ok: true,
+    dry_broadcast: true,
+    may_broadcast: false,
+    deposit_address: bound.deposit_address,
+    amount: String(amount),
+    token_contract: tokenContract,
+    chain_id: chainId,
+    signing,
+    tx_shape: {
+      kind: "erc20_transfer",
+      to: tokenContract,
+      spender_or_token: tokenContract,
+      transfer_to: bound.deposit_address,
+      value: "0",
+      decoded: {
+        selector: "transfer(address,uint256)",
+        recipient: bound.deposit_address,
+        amount: String(amount),
+      },
+    },
+    note: "Construction only — NIO_MAINNET_ALLOW_BROADCAST + canary approval required to send",
+  };
+}
+
+/** SDK status poll wrapper. */
+export async function sdkGetExecutionStatus(depositAddress, opts = {}) {
+  if (!depositAddress) return { ok: false, reason: "deposit_address_required" };
+  configureOneClickSdk(opts);
+  try {
+    const body = await OneClickService.getExecutionStatus(depositAddress);
+    const status = body?.status || body?.state || body;
+    return {
+      ok: true,
+      via: "sdk",
+      deposit_address: depositAddress,
+      status,
+      normalized: normalizeIntentStatus(status),
+      body,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      via: "sdk",
+      reason: "sdk_status_failed",
+      detail: String(e?.message || e).slice(0, 300),
+    };
+  }
 }

@@ -94,15 +94,16 @@ export function createNearIntentsAdapter({ dryQuoteFn }) {
   };
 }
 
-/** Default mainnet router: one real 1Click path + honest stubs. */
-export function createMainnetRouter(adapters) {
+/** Default mainnet router: real 1Click adapter + honest non-1Click stubs. */
+export function createMainnetRouter(adapters, { productionAdapter } = {}) {
+  const oneClick =
+    productionAdapter ||
+    createNearIntentsAdapter({
+      // Prefer wiring createProductionNearIntentsAdapter from intents.production.mjs
+      dryQuoteFn: null,
+    });
   return createExecutionRouter(
-    adapters || [
-      // Caller should inject createProductionNearIntentsAdapter() when JWT available.
-      createNearIntentsAdapter({}),
-      createEvmAggregatorStub(),
-      createNearNativeDexStub(),
-    ]
+    adapters || [oneClick, createEvmAggregatorStub(), createNearNativeDexStub()]
   );
 }
 

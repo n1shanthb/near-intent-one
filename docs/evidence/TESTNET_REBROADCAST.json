@@ -1,0 +1,29 @@
+{
+  "kind": "TESTNET_REBROADCAST_NO_RESIGN",
+  "exec_key": "gate_k:rebalance:i-a-a4e7:1000000",
+  "operation_id": "k-ai-1794415005875",
+  "deposit": "0xab89c631b2381c556231d79bb28e20ece3b8cb39",
+  "amount": "1000000",
+  "nonce": "3",
+  "usdc_before": "24450000",
+  "broadcast_error": null,
+  "sepolia_tx": "0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
+  "explorer": "https://sepolia.etherscan.io/tx/0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
+  "near_propose": "Fztj18qC7ieeBuS6VBAyHniJ18R4hDrgTHuQiGd4KqBu",
+  "near_sign": "785oUE4pn13eTfuepDgqeChCySrdkgpxA4FndfyEyDXA",
+  "receipt_status": "0x1",
+  "receipt_ok": true,
+  "usdc_after": "24450000",
+  "tidepool_submit": {
+    "ok": false,
+    "http_status": 400,
+    "body": {
+      "message": "txHash and depositAddress are required"
+    }
+  },
+  "tidepool_poll": {
+    "attempt": 5,
+    "status": "SUCCESS"
+  },
+  "tidepool_terminal": "SUCCESS"
+}

@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "portfolio_id": "i-a-a4e7",
+  "mpc_evm": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+  "policy_account": "policy.nio-i-a4e7-a-owner.testnet",
+  "rows": [
+    {
+      "network": "near_testnet",
+      "display": "NEAR testnet",
+      "account": "policy.nio-i-a4e7-a-owner.testnet",
+      "token_contract": "native",
+      "symbol": "NEAR",
+      "decimals": 24,
+      "raw_token_balance": "10986459514271479800000000",
+      "human_token_balance": "10.986459514271479800000000",
+      "native_gas_wei": "10986459514271479800000000",
+      "rpc": "https://test.rpc.fastnear.com",
+      "block_height": 277240351,
+      "verified_at": "2026-11-11T16:32:11.171Z",
+      "status": "VERIFIED_POSITIVE"
+    },
+    {
+      "network": "ethereum_sepolia",
+      "display": "Ethereum Sepolia",
+      "chain_id": 11155111,
+      "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "token_contract": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+      "symbol": "USDC",
+      "decimals": 6,
+      "raw_token_balance": "24450000",
+      "human_token_balance": "24.450000",
+      "native_gas_wei": "49492997600000000",
+      "native_gas_eth": "0.049492997600000000",
+      "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+      "block_number": "0xb8d41c",
+      "block_hash": "0xb49f961ff6b12bcbfa8a86bb8fe3efd428390b752feae23e9e2d42ab44df0ff7",
+      "verified_at": "2026-11-11T16:32:11.197Z",
+      "status": "VERIFIED_POSITIVE"
+    },
+    {
+      "network": "arbitrum_sepolia",
+      "display": "Arbitrum Sepolia",
+      "chain_id": 421614,
+      "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "token_contract": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+      "symbol": "USDC",
+      "decimals": 6,
+      "raw_token_balance": "0",
+      "human_token_balance": "0",
+      "native_gas_wei": "0",
+      "native_gas_eth": "0",
+      "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+      "block_number": "0x13908d16",
+      "block_hash": "0x29b3711ede548e522af84add47b747985c4b9abb85b285258cfd39dfed40105f",
+      "verified_at": "2026-11-11T16:32:11.198Z",
+      "status": "VERIFIED_ZERO"
+    },
+    {
+      "network": "base_sepolia",
+      "display": "Base Sepolia",
+      "chain_id": 84532,
+      "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "token_contract": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+      "symbol": "USDC",
+      "decimals": 6,
+      "raw_token_balance": "0",
+      "human_token_balance": "0",
+      "native_gas_wei": "0",
+      "native_gas_eth": "0",
+      "rpc": "https://sepolia.base.org",
+      "block_number": "0x36cd5fa",
+      "block_hash": "0x53a05f1cf1acc6f75d28754355ad6437415ea80c11be0dbe24ece412d33ef19b",
+      "verified_at": "2026-11-11T16:32:11.198Z",
+      "status": "VERIFIED_ZERO"
+    }
+  ],
+  "positive_funding_networks": [
+    "near_testnet",
+    "ethereum_sepolia"
+  ],
+  "explanation": {
+    "mainnet_matrix_no_trade": "scripts/mainnet/multichain-quote-matrix.mjs passed balances:{} intentionally — capitalAvailable returned no_balance_entry because no verified mainnet balance map was supplied. That is ADDRESS/ASSOC omission for mainnet portfolio funding, not proof that Sepolia balances are zero.",
+    "testnet_live_reads": "Gate J/K verify Sepolia USDC on intents_signer_id only today. Arb/Base Sepolia were not in the balance reader; zero there means unverified-for-trading until faucet + reader + chain-id policy binding exist.",
+    "portfolio_a_mpc": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "portfolio_a_policy": "policy.nio-i-a4e7-a-owner.testnet"
+  },
+  "fingerprint": "18121e1b7c2f6971"
+}

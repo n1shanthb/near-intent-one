@@ -36,7 +36,11 @@
     "test:mandate": "node --test packages/mandate/mandate.test.mjs",
     "mainnet:readiness": "node scripts/mainnet/readiness.mjs",
     "mainnet:dry-quote": "node scripts/mainnet/dry-quote.mjs",
-    "mainnet:derive": "node scripts/mainnet/derive-address.mjs"
+    "mainnet:multichain-matrix": "node scripts/mainnet/multichain-quote-matrix.mjs",
+    "mainnet:derive": "node scripts/mainnet/derive-address.mjs",
+    "test:multichain": "node --test packages/mainnet/multichainRouter.test.mjs",
+    "testnet:balances": "node scripts/testnet/balance-verify.mjs",
+    "testnet:tidepool-matrix": "node scripts/testnet/tidepool-quote-matrix.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -35,19 +35,16 @@ Source: `contracts/policy/`
 | Events | `EVENT_JSON` logs for policy/revoke/sign/withdraw |
 | Unit tests | **28/28 PASS** (`cargo test` in `contracts/policy`) |
 
-WASM artifact path (deploy this hash only after approval):
+**Frozen artifact (inert-by-default — deploy this hash only after approval):**
 
 `artifacts/mainnet/policy.wasm`  
-SHA-256 `aa301524d9cfa99cbf0948d8e65f5f137411d494da91805770314fc6801b0202` (625565 B)
-
-**Frozen artifact:** `artifacts/mainnet/policy.wasm`  
-**SHA-256:** `6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1` · 624900 bytes  
-**Includes:** `token_scope`, `allowed_chains`, `allowed_venues`, `max_gas_budget` (open-universe mandate)  
-**STOP:** Do not deploy older hashes (`8b6ba726…` / `be60e789…`)  
-**Proposed account:** `nio-policy-hack26.near` — **does not exist**; needs registrar or parent subaccount  
+**SHA-256:** `3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90` · **625701** bytes  
+**Init:** `paused=true` (owner must `unpause` after separate trading-readiness review)  
+**STOP:** Do not deploy superseded hashes (`f8e51e44…` / `aa301524…` / `6fd1912f…` / `8b6ba726…` / `be60e789…`)  
+**Target pattern:** `policy.<ledger-owner>.near` (not `nio-policy-hack26.near`)  
 **Approval stub:** `docs/approvals/MAINNET_DEPLOY_APPROVAL.json` (`approved: false`)  
-**Recommended max NEAR:** **8** (estimate ≈ 6.4; do not use 15)  
-**Vision:** `docs/OPEN_UNIVERSE_ARCHITECTURE.md`
+**Recommended max NEAR:** **9** (storage ≈ 6.25701; see `docs/LEDGER_MAINNET_DEPLOY.md`)  
+**Ledger DeployContract:** not supported for this WASM size — use software deploy then rotate to sole Ledger FullAccess
 
 Rebuild:
 

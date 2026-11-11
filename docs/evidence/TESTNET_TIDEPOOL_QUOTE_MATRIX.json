@@ -1,0 +1,109 @@
+{
+  "fetched_at": "2026-11-11T16:32:14.724Z",
+  "destination": "nep141:wnear.tidepool-sandbox.testnet",
+  "tokens": {
+    "count": 29,
+    "trust": {
+      "kind": "community_testnet_1click_compatible",
+      "not_official_production_1click": true,
+      "maker_relayer_trust": "Tidepool sandbox operators / makers — not NEAR Intents mainnet settlement",
+      "docs": "https://www.usetidepool.tech/docs"
+    }
+  },
+  "balances_used": {
+    "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet": {
+      "amount_raw": "24450000",
+      "verified": true,
+      "chain": "ethereum_sepolia"
+    },
+    "nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet": {
+      "amount_raw": "0",
+      "verified": false,
+      "chain": "arbitrum_sepolia"
+    },
+    "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet": {
+      "amount_raw": "0",
+      "verified": false,
+      "chain": "base_sepolia"
+    }
+  },
+  "matrix": {
+    "ok": true,
+    "trust": {
+      "kind": "community_testnet_1click_compatible",
+      "not_official_production_1click": true,
+      "maker_relayer_trust": "Tidepool sandbox operators / makers — not NEAR Intents mainnet settlement",
+      "docs": "https://www.usetidepool.tech/docs"
+    },
+    "dry": true,
+    "matrix": [
+      {
+        "id": "eth_sepolia_usdc_to_wnear",
+        "chain_id": 11155111,
+        "origin_asset": "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet",
+        "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+        "capital_ok": true,
+        "capital": {
+          "amount_raw": "24450000",
+          "verified": true,
+          "chain": "ethereum_sepolia"
+        },
+        "quote_ok": true,
+        "reason": null,
+        "amount_out": "261867584868421096224000",
+        "min_amount_out": "259248909019736885261760",
+        "amount_out_usd_display_only": "0.9951",
+        "deposit_address": null,
+        "correlation_id": "4eee2b8e-e841-4c53-85bb-9d424a48cbd1"
+      },
+      {
+        "id": "arb_sepolia_usdc_to_wnear",
+        "chain_id": 421614,
+        "origin_asset": "nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+        "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+        "capital_ok": false,
+        "capital": {
+          "amount_raw": "0",
+          "verified": false,
+          "chain": "arbitrum_sepolia"
+        },
+        "quote_ok": true,
+        "reason": null,
+        "amount_out": "261867584868421096224000",
+        "min_amount_out": "259248909019736885261760",
+        "amount_out_usd_display_only": "0.9951",
+        "deposit_address": null,
+        "correlation_id": "54945c32-b5e3-4d06-b4d9-5f9d6cc1b5cc"
+      },
+      {
+        "id": "base_sepolia_usdc_to_wnear",
+        "chain_id": 84532,
+        "origin_asset": "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+        "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+        "capital_ok": false,
+        "capital": {
+          "amount_raw": "0",
+          "verified": false,
+          "chain": "base_sepolia"
+        },
+        "quote_ok": true,
+        "reason": null,
+        "amount_out": "261867584868421096224000",
+        "min_amount_out": "259248909019736885261760",
+        "amount_out_usd_display_only": "0.9951",
+        "deposit_address": null,
+        "correlation_id": "3a9da499-b04a-48b7-811d-28952310b153"
+      }
+    ],
+    "proposal": {
+      "choice": "TRADE",
+      "route_id": "eth_sepolia_usdc_to_wnear",
+      "origin_asset": "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet",
+      "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+      "amount": "1000000",
+      "min_amount_out": "259248909019736885261760",
+      "rationale": "Selected by highest minAmountOut among capital-verified quotes; amountOutUsd not used as authority",
+      "funded_execution": "DISABLED"
+    }
+  }
+}

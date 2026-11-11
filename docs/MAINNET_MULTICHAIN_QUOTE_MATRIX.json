@@ -1,0 +1,277 @@
+{
+  "fetched_at": "2026-11-11T16:20:12.787Z",
+  "catalog": {
+    "counts": {
+      "total_catalog": 229,
+      "four_chain": 89,
+      "near": 35,
+      "ethereum": 29,
+      "arbitrum": 7,
+      "base": 18
+    },
+    "api": "https://1click.chaindefuser.com"
+  },
+  "matrix": {
+    "ok": true,
+    "dry": true,
+    "funded_execution": "DISABLED",
+    "acceptance_override": "FORBIDDEN",
+    "catalog_counts": {
+      "total_catalog": 229,
+      "four_chain": 89,
+      "near": 35,
+      "ethereum": 29,
+      "arbitrum": 7,
+      "base": 18
+    },
+    "canonical_assets": {
+      "arb_usdc": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "base_usdc": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "eth_usdc": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "eth_weth": "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+      "wrap_near": "nep141:wrap.near"
+    },
+    "matrix": [
+      {
+        "id": "arb_usdc_to_near_wnear",
+        "label": "Arbitrum USDC → NEAR wNEAR",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "264156987433416489925768",
+        "amount_out_usd": 0.995871842624,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      },
+      {
+        "id": "arb_usdc_to_base_usdc",
+        "label": "Arbitrum USDC → Base USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "997398",
+        "amount_out_usd": 0.996961139676,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      },
+      {
+        "id": "base_usdc_to_eth_weth",
+        "label": "Base USDC → Ethereum WETH",
+        "ok": false,
+        "status": "NO_SAFE_LIQUIDITY",
+        "reason": "NO_SAFE_LIQUIDITY",
+        "amount_out": null,
+        "amount_out_usd": null,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": null
+      },
+      {
+        "id": "eth_usdc_to_arb_usdc",
+        "label": "Ethereum USDC → Arbitrum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "994498",
+        "amount_out_usd": 0.994062409876,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      }
+    ],
+    "proposal": {
+      "choice": "NO_TRADE",
+      "rationale": "No candidate passed verified capital + fitter + critic + signing readiness. Dry quotes may still exist for discovery.",
+      "best_discovery": {
+        "route_id": "arb_usdc_to_base_usdc",
+        "label": "Arbitrum USDC → Base USDC",
+        "amount_out_usd": 0.996961139676,
+        "capital_ok": false,
+        "capital_reason": "no_balance_entry",
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT"
+      }
+    },
+    "quoted_count": 3,
+    "eligible_count": 0,
+    "chains": [
+      "NEAR",
+      "Ethereum",
+      "Arbitrum",
+      "Base"
+    ],
+    "note": "Dry quotes only. NO_TRADE is valid. Do not treat discovery ranking as authorization."
+  },
+  "canary": {
+    "ok": false,
+    "verdict": "NO-GO",
+    "blockers": [
+      "no_eligible_trade_proposal",
+      "missing_owner_destination",
+      "missing_owner_refund",
+      "tx_journal_not_writable_on_production_host",
+      "mainnet_policy_not_deployed",
+      "policy_still_paused_owner_unpause_required",
+      "ledger_fullaccess_not_proven",
+      "testnet_lifecycle_not_proven",
+      "source_balance_not_verified_on_chain",
+      "mainnet_sign_disabled",
+      "testnet_lifecycle_not_proven_recoverable — failed/unsettled testnet blocks funded mainnet canary",
+      "mainnet_policy_contract_not_deployed",
+      "ledger_owned_mandate_not_proven — deployed contract ≠ Ledger-owned production mandate",
+      "approval_object_missing"
+    ],
+    "proposal": {
+      "choice": "NO_TRADE",
+      "rationale": "No candidate passed verified capital + fitter + critic + signing readiness. Dry quotes may still exist for discovery.",
+      "best_discovery": {
+        "route_id": "arb_usdc_to_base_usdc",
+        "label": "Arbitrum USDC → Base USDC",
+        "amount_out_usd": 0.996961139676,
+        "capital_ok": false,
+        "capital_reason": "no_balance_entry",
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT"
+      }
+    },
+    "matrix_summary": [
+      {
+        "id": "arb_usdc_to_near_wnear",
+        "label": "Arbitrum USDC → NEAR wNEAR",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "264156987433416489925768",
+        "amount_out_usd": 0.995871842624,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      },
+      {
+        "id": "arb_usdc_to_base_usdc",
+        "label": "Arbitrum USDC → Base USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "997398",
+        "amount_out_usd": 0.996961139676,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      },
+      {
+        "id": "base_usdc_to_eth_weth",
+        "label": "Base USDC → Ethereum WETH",
+        "ok": false,
+        "status": "NO_SAFE_LIQUIDITY",
+        "reason": "NO_SAFE_LIQUIDITY",
+        "amount_out": null,
+        "amount_out_usd": null,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": null
+      },
+      {
+        "id": "eth_usdc_to_arb_usdc",
+        "label": "Ethereum USDC → Arbitrum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "994498",
+        "amount_out_usd": 0.994062409876,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT"
+      }
+    ],
+    "approval_requirements": {
+      "owner_account": "Ledger-owned .near",
+      "chain": null,
+      "policy_contract": "policy.<owner>.near",
+      "source_token": null,
+      "destination_token": null,
+      "max_at_risk": null,
+      "max_fees": "operator-set",
+      "destination_address": null,
+      "refund_address": null,
+      "purpose": "single smallest viable 1Click canary",
+      "quote_binding_digest": null,
+      "env_flags_required_after_approval": [
+        "NIO_NETWORK=mainnet",
+        "NIO_MAINNET_MODE=1",
+        "NIO_MAINNET_CANARY_APPROVED=1",
+        "NIO_MAINNET_ALLOW_SIGN=1",
+        "NIO_MAINNET_ALLOW_BROADCAST=1",
+        "NIO_MAINNET_ALLOW_FUNDED_QUOTE=1",
+        "NIO_MAINNET_FUNDED_UNLOCK=1"
+      ],
+      "env_flags_now": {
+        "network_is_mainnet": false,
+        "mainnet_mode": false,
+        "allow_sign": false,
+        "allow_broadcast": false,
+        "canary_approved": false,
+        "public_demo_safe": true
+      }
+    },
+    "settlement_monitoring": {
+      "status_poll": "OneClickService.getExecutionStatus /v0/status",
+      "refund_recovery": "adapter.refundRecovery — never resign",
+      "journal": "SQLite WAL required before broadcast"
+    },
+    "user_recovery": [
+      "Owner pause/revoke on policy contract",
+      "Await 1Click REFUND_PENDING → REFUNDED",
+      "Owner-controlled refund address must match quote binding",
+      "Ledger FullAccess recovers contract authority; does not reverse broadcast txs"
+    ],
+    "funded_trade": "NO-GO",
+    "note": "Preparation artifact only — does not enable flags or broadcast"
+  },
+  "safety": {
+    "dry": true,
+    "funded_sign": "OFF",
+    "broadcast": "OFF",
+    "acceptance_override": "FORBIDDEN"
+  }
+}

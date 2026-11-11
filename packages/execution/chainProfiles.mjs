@@ -5,6 +5,8 @@ import { MAINNET } from "../networks/profiles.mjs";
 
 export const CHAIN_PROFILE = Object.freeze({
   SEPOLIA_TIDEPOOL: "sepolia_tidepool",
+  ARB_SEPOLIA_TIDEPOOL: "arb_sepolia_tidepool",
+  BASE_SEPOLIA_TIDEPOOL: "base_sepolia_tidepool",
   MAINNET_1CLICK: "mainnet_1click",
 });
 
@@ -20,6 +22,38 @@ export const SEPOLIA_TIDEPOOL = Object.freeze({
   explorer_tx: (hash) => `https://sepolia.etherscan.io/tx/${hash}`,
   funded_sign_env: "GATE_K_ALLOW_SIGN",
   allows_funded: true, // still gated by GATE_K_ALLOW_SIGN externally
+});
+
+/** Tidepool Arbitrum Sepolia — distinct from mainnet 42161. */
+export const ARB_SEPOLIA_TIDEPOOL = Object.freeze({
+  id: CHAIN_PROFILE.ARB_SEPOLIA_TIDEPOOL,
+  network: "testnet",
+  evm_chain_id: 421614,
+  token_usdc: "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+  origin_asset:
+    "nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+  destination_asset: "nep141:wnear.tidepool-sandbox.testnet",
+  settle_api_base: process.env.TIDEPOOL_URL || "https://www.usetidepool.tech",
+  explorer_tx: (hash) => `https://sepolia.arbiscan.io/tx/${hash}`,
+  funded_sign_env: "GATE_K_ALLOW_SIGN",
+  allows_funded: false, // policy/MPC chain-id binding not proven for Arb Sepolia
+  note: "Quotes allowed; funded ERC-20 MPC path requires explicit testnet chain-id support",
+});
+
+/** Tidepool Base Sepolia — distinct from mainnet 8453. */
+export const BASE_SEPOLIA_TIDEPOOL = Object.freeze({
+  id: CHAIN_PROFILE.BASE_SEPOLIA_TIDEPOOL,
+  network: "testnet",
+  evm_chain_id: 84532,
+  token_usdc: "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+  origin_asset:
+    "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+  destination_asset: "nep141:wnear.tidepool-sandbox.testnet",
+  settle_api_base: process.env.TIDEPOOL_URL || "https://www.usetidepool.tech",
+  explorer_tx: (hash) => `https://sepolia.basescan.org/tx/${hash}`,
+  funded_sign_env: "GATE_K_ALLOW_SIGN",
+  allows_funded: false,
+  note: "Quotes allowed; funded ERC-20 MPC path requires explicit testnet chain-id support",
 });
 
 export const MAINNET_1CLICK = Object.freeze({
@@ -48,6 +82,12 @@ export function resolveChainProfile(idOrEnv) {
   }
   if (raw === CHAIN_PROFILE.SEPOLIA_TIDEPOOL || raw === "testnet" || raw === "sepolia") {
     return SEPOLIA_TIDEPOOL;
+  }
+  if (raw === CHAIN_PROFILE.ARB_SEPOLIA_TIDEPOOL || raw === "arb-sepolia") {
+    return ARB_SEPOLIA_TIDEPOOL;
+  }
+  if (raw === CHAIN_PROFILE.BASE_SEPOLIA_TIDEPOOL || raw === "base-sepolia") {
+    return BASE_SEPOLIA_TIDEPOOL;
   }
   throw new Error(`unknown_chain_profile:${raw}`);
 }

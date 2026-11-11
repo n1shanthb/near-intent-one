@@ -1,6 +1,6 @@
 {
   "approved": false,
-  "stop_reason": "P0 gas-budget WASM ready. Awaiting Ledger-owned account + explicit max NEAR approval. Do not deploy prior aa301524 / 6fd1912f artifacts.",
+  "stop_reason": "Inert-by-default WASM (paused=true at new). Awaiting Ledger-owned accounts + ceremony that does not rely on Ledger signing DeployContract (device buffer limit). Do not deploy prior f8e51e44 / aa301524 / 6fd1912f artifacts.",
   "target_account": null,
   "recommended_target_pattern": "policy.<ledger-owner>.near",
   "proposed_unavailable": "nio-policy-hack26.near",
@@ -9,9 +9,12 @@
   "agent_account": null,
   "portfolio_id": "hack26-canary",
   "wasm_path": "artifacts/mainnet/policy.wasm",
-  "wasm_sha256": "f8e51e444557e702929a497c1e93fc50ca3232d1d7dd64f1b04c995f4f565fb0",
+  "wasm_sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
   "wasm_bytes": 625701,
+  "paused_on_init": true,
+  "revoked_on_init": false,
   "prior_hashes_superseded": [
+    "f8e51e444557e702929a497c1e93fc50ca3232d1d7dd64f1b04c995f4f565fb0",
     "aa301524d9cfa99cbf0948d8e65f5f137411d494da91805770314fc6801b0202",
     "6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1",
     "8b6ba72675dd3c3dcd03a6484589ce720e29289b005dcf0453a07764b8373022",
@@ -27,7 +30,9 @@
   "max_near": "9",
   "mpc_signer": "v1.signer",
   "funded_trading": false,
+  "ledger_deploycontract_supported": false,
+  "ledger_deploycontract_blocker": "NEAR Ledger app transaction buffer cannot hold DeployContract for ~625701 B WASM; near-cli-rs sign-with-ledger returns buffer overflow. Use one-shot software FullAccess for DeployContract then rotate to sole Ledger FullAccess, or a streaming Ledger NEAR app once operator-verified.",
   "approver": null,
   "approved_at": null,
-  "purpose": "NIO mainnet policy — P0 gas budget + auth remediation WASM (not approved)"
+  "purpose": "NIO mainnet policy — inert-by-default paused init (not approved)"
 }
