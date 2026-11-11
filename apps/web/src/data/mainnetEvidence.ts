@@ -13,6 +13,8 @@ export type MainnetCapability =
   | "contract_deployed"
   | "policy_active"
   | "mpc_ready"
+  | "deposit_capability_enabled"
+  | "custody_recovery_documented"
   | "live_trading_enabled"
   | "funded_settlement_proven";
 
@@ -105,6 +107,8 @@ export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
     contract_deployed: false,
     policy_active: false,
     mpc_ready: false,
+    deposit_capability_enabled: false,
+    custody_recovery_documented: false,
     live_trading_enabled: false,
     funded_settlement_proven: false,
   },
@@ -130,6 +134,7 @@ export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
     "Public judge Live AI remains testnet dry-run with may_sign=false.",
     "A verified testnet owner session does not authenticate a mainnet account.",
     "Mainnet trading controls stay disabled until Chat 1 confirms endpoint contracts and security gates.",
+    "Mainnet deposits stay disabled — do not send funds to derived or dry-quote addresses.",
     "Token scope ANY_ELIGIBLE_TOKEN is never the default — owner must authorize explicitly.",
   ],
 };

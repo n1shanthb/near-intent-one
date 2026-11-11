@@ -12,15 +12,15 @@ export function Onboarding({
   return (
     <section className="card onboarding">
       <p className="eyebrow">Choose how to enter</p>
-      <h2>Entry paths. No false hardware claims.</h2>
+      <h2>Entry paths. No false hardware or deposit claims.</h2>
       <div className="onboard-grid">
         <button type="button" className="onboard-card" onClick={() => onNav("ledger")}>
           <strong>Connect Ledger</strong>
           <p>
-            Physical hardware governance. Review ownership VERIFIED proofs, then open
-            the existing Ledger wizard for policy / revoke / unrevoke.
+            Physical hardware ownership path. NEP-413 verifies the owner session —
+            it does not authorize trading by itself.
           </p>
-          <span className="badge badge-pass">OWNERSHIP VERIFIED</span>
+          <span className="badge badge-warn">OWNERSHIP PROOF</span>
         </button>
         <button
           type="button"
@@ -31,29 +31,31 @@ export function Onboarding({
         >
           <strong>Connect NEAR Wallet</strong>
           <p>
-            Tested testnet wallet path for a personal Gate I portfolio. Does not
-            claim control of the shared demo policy. No Ledger prompts for ordinary
-            wallets.
+            Separate software-wallet path. Not equivalent to Ledger owner auth.
+            Does not unlock personal agent start/stop or mainnet deposits.
           </p>
           <span className="badge badge-warn">NO HARDWARE CLAIM</span>
         </button>
         <button type="button" className="onboard-card" onClick={() => onNav("welcome")}>
           <strong>Open user product</strong>
           <p>
-            Full connect → portfolio → deposit → policy → trade → withdraw journey
-            (blocks honestly until Gate I is hosted).
+            Honest journey: connect → verify → portfolio → mandate → contract →
+            deposit → agent → trade → withdraw. Steps stay BLOCKED until real.
           </p>
           <span className="badge badge-pass">PRODUCT</span>
         </button>
         <button type="button" className="onboard-card" onClick={() => onNav("demo")}>
           <strong>Explore Demo</strong>
           <p>
-            No wallet required. Walk real F4/H3 settlements, security rejects, and
-            illustrative Predict — recorded verified evidence.
+            No wallet required. Walk recorded F4/H3 settlements and Live AI
+            dry-run. Demo portfolio is never your personal custody.
           </p>
           <span className="badge badge-recorded">NO WALLET</span>
         </button>
       </div>
+      <p className="warn" style={{ marginTop: 12 }}>
+        Mainnet deposits are not enabled. Do not send funds.
+      </p>
     </section>
   );
 }

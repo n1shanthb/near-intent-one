@@ -110,6 +110,8 @@ export const CAPABILITY_LABELS: Record<MainnetCapability, string> = {
   contract_deployed: "Mainnet contract deployed",
   policy_active: "Mainnet policy active",
   mpc_ready: "MPC ready",
+  deposit_capability_enabled: "Deposit capability enabled",
+  custody_recovery_documented: "Custody / recovery documented",
   live_trading_enabled: "Live trading enabled",
   funded_settlement_proven: "Funded settlement proven",
 };
@@ -129,5 +131,23 @@ export function mainnetTradingControlsEnabled(
       ev.capabilities.contract_deployed &&
       ev.capabilities.policy_active &&
       ev.capabilities.mpc_ready
+  );
+}
+
+/**
+ * Mainnet deposit UX unlock — requires full evidence pack.
+ * Public builds additionally hard-lock via depositReadiness.publicMainnetDepositsAllowed().
+ */
+export function mainnetDepositControlsEnabled(
+  ev: MainnetEvidenceRecord = MAINNET_EVIDENCE
+): boolean {
+  return Boolean(
+    ev.capabilities.deposit_capability_enabled &&
+      ev.capabilities.contract_deployed &&
+      ev.capabilities.policy_active &&
+      ev.capabilities.mpc_ready &&
+      ev.capabilities.custody_recovery_documented &&
+      ev.contract.account_id &&
+      ev.mpc.derived_evm_address
   );
 }

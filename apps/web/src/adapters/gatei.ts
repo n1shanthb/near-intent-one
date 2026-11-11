@@ -169,7 +169,18 @@ export async function createDeposit(input: {
   portfolio_id: string;
   chain: string;
   asset: string;
+  /** Required — UI must pass deposit readiness evaluation. */
+  readinessAllowed?: boolean;
+  readinessReason?: string;
 }): Promise<DepositIntent | { status: "blocked"; reason: string }> {
+  if (!input.readinessAllowed) {
+    return {
+      status: "blocked",
+      reason:
+        input.readinessReason ??
+        "Mainnet deposits are not enabled. Do not send funds.",
+    };
+  }
   const health = await gateIHealth();
   if (health.status !== "available") {
     return { status: "blocked", reason: health.detail };
@@ -283,8 +294,16 @@ export async function getAgentState(
 }
 
 export async function startAgent(
-  portfolioId: string
+  portfolioId: string,
+  opts?: { ownerVerified?: boolean }
 ): Promise<{ ok: boolean; reason?: string }> {
+  if (!opts?.ownerVerified) {
+    return {
+      ok: false,
+      reason:
+        "Verified owner session required before agent start. NEP-413 login alone does not authorize trading.",
+    };
+  }
   const health = await gateIHealth();
   if (health.status !== "available") return { ok: false, reason: health.detail };
   const res = await getJson<{ ok: boolean; reason?: string }>(
@@ -304,8 +323,15 @@ export async function startAgent(
 }
 
 export async function stopAgent(
-  portfolioId: string
+  portfolioId: string,
+  opts?: { ownerVerified?: boolean }
 ): Promise<{ ok: boolean; reason?: string }> {
+  if (!opts?.ownerVerified) {
+    return {
+      ok: false,
+      reason: "Verified owner session required before agent stop.",
+    };
+  }
   const health = await gateIHealth();
   if (health.status !== "available") return { ok: false, reason: health.detail };
   const res = await getJson<{ ok: boolean; reason?: string }>(

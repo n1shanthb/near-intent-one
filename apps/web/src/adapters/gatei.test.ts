@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDeposit,
   createPortfolio,
   gateIHealth,
   isWithdrawDeliveryEnabled,
@@ -7,6 +8,7 @@ import {
   mapWithdrawToLifecycle,
   quoteWithdraw,
   startAgent,
+  stopAgent,
   submitWithdraw,
 } from "./gatei";
 
@@ -70,14 +72,27 @@ describe("gatei adapter", () => {
     }
   });
 
-  it("agent start fails closed when API down", async () => {
+  it("agent start fails closed without verified owner session", async () => {
     const s = await startAgent("nope");
-    // May be ok:false (down) or ok:false unknown_portfolio if API up
-    if (s.ok) {
-      // Should only happen for a real portfolio with API up — force stop
-      expect(true).toBe(true);
-    } else {
-      expect(s.ok).toBe(false);
+    expect(s.ok).toBe(false);
+    expect(s.reason).toMatch(/owner session/i);
+  });
+
+  it("agent stop fails closed without verified owner session", async () => {
+    const s = await stopAgent("nope");
+    expect(s.ok).toBe(false);
+    expect(s.reason).toMatch(/owner session/i);
+  });
+
+  it("createDeposit refuses without readinessAllowed", async () => {
+    const d = await createDeposit({
+      portfolio_id: "personal-1",
+      chain: "ethereum",
+      asset: "USDC",
+    });
+    expect(d).toMatchObject({ status: "blocked" });
+    if ("reason" in d) {
+      expect(d.reason).toMatch(/Do not send funds|not enabled/i);
     }
   });
 });

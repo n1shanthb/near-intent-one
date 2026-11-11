@@ -4,6 +4,7 @@ import {
   hasVerifiedMainnetContract,
 } from "../data/mainnetEvidence";
 import {
+  mainnetDepositControlsEnabled,
   mainnetTradingControlsEnabled,
   nearAccountExplorerUrl,
   nearTxExplorerUrl,
@@ -39,5 +40,12 @@ describe("network awareness", () => {
     expect(MAINNET_EVIDENCE.capabilities.live_trading_enabled).toBe(false);
     expect(mainnetTradingControlsEnabled()).toBe(false);
     expect(MAINNET_EVIDENCE.funded_trade.proven).toBe(false);
+  });
+
+  it("keeps mainnet deposits disabled without verified capabilities", () => {
+    expect(MAINNET_EVIDENCE.capabilities.deposit_capability_enabled).toBe(
+      false
+    );
+    expect(mainnetDepositControlsEnabled()).toBe(false);
   });
 });

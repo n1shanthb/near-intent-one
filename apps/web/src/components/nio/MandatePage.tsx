@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { compilePolicyFromText } from "../../policy/compile";
 import { CONSTRAINT_META } from "../../policy/schema";
 import { FROZEN_POLICY } from "../../data/evidenceSnapshot";
+import { useOwnerSession } from "../../state/OwnerSession";
 import { useProductSession } from "../../state/ProductSession";
 import type { NavId } from "./nav";
 
@@ -15,6 +16,7 @@ type MandateMode = "allowlist" | "any_eligible_token";
 
 export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
   const { authMode, portfolio, gateI } = useProductSession();
+  const { verified, session } = useOwnerSession();
   const [tab, setTab] = useState<Tab>("overview");
   const [text, setText] = useState(EXAMPLE);
   const [mandateMode, setMandateMode] = useState<MandateMode>("allowlist");
@@ -193,8 +195,24 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
               <dd>{gateI.status === "available" ? "Connected" : "Recorded / unreachable"}</dd>
             </div>
             <div>
-              <dt>Auth mode</dt>
-              <dd>{authMode ?? "unset (public visitor)"}</dd>
+              <dt>Owner session</dt>
+              <dd>
+                {verified
+                  ? `Verified · ${session?.account_id}`
+                  : "Not verified — mutations blocked"}
+              </dd>
+            </div>
+            <div>
+              <dt>Wallet product mode</dt>
+              <dd>{authMode ?? "unset (public visitor)"} — separate from Ledger owner path</dd>
+            </div>
+            <div>
+              <dt>On-chain mandate status</dt>
+              <dd>
+                {portfolio?.policy_contract
+                  ? `Policy account bound · deploy_status ${portfolio.deploy_status}`
+                  : "No personal on-chain mandate — compiler preview only"}
+              </dd>
             </div>
             <div>
               <dt>Personal policy contract</dt>
@@ -209,7 +227,8 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
           </dl>
           <p className="axis-supporting" style={{ marginTop: 12 }}>
             Public visitors can inspect rules. Deploying or mutating a personal mandate
-            requires an authenticated owner session and is unavailable in public demo mode.
+            requires a verified owner session. NEP-413 ownership proof does not itself
+            authorize trading. Demo mandate is not a real-user portfolio.
           </p>
           <button type="button" className="axis-button secondary" onClick={() => onNav("security")}>
             Open security / Ledger

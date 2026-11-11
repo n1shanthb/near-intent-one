@@ -13,7 +13,9 @@ import {
   hasVerifiedMainnetContract,
 } from "../../data/mainnetEvidence";
 import { workspaceNetworkContext } from "../../lib/network";
+import { useOwnerSession } from "../../state/OwnerSession";
 import { NetworkStatusPanel } from "./NetworkIndicator";
+import { OnboardingJourney } from "./OnboardingJourney";
 
 export function OverviewPage({
   onNav,
@@ -28,6 +30,7 @@ export function OverviewPage({
   demoLabel: string;
   healthNetwork?: string | null;
 }) {
+  const { verified, session } = useOwnerSession();
   const apiOk = gateIStatus === "available";
   const network = workspaceNetworkContext(healthNetwork);
   const mainnetReady = hasVerifiedMainnetContract();
@@ -135,6 +138,28 @@ export function OverviewPage({
       </section>
 
       <NetworkStatusPanel ctx={network} />
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Deposit safety</h2>
+          <span className="nio-badge nio-badge-danger">BLOCKED</span>
+        </div>
+        <p className="warn">
+          Mainnet deposits are not enabled. Do not send funds.
+        </p>
+      </section>
+
+      <OnboardingJourney
+        compact
+        input={{
+          walletConnected: verified,
+          ownerVerified: verified,
+          ownerAccountId: session?.account_id,
+          network: network.active,
+          evidence: MAINNET_EVIDENCE,
+        }}
+        onNav={onNav}
+      />
 
       <div className="axis-overview-actions">
         <button

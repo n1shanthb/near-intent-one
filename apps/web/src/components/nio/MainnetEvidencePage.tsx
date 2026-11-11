@@ -5,9 +5,11 @@ import {
 import {
   CAPABILITY_LABELS,
   mainnetAccountExplorer,
+  mainnetDepositControlsEnabled,
   mainnetTradingControlsEnabled,
   mainnetTxExplorer,
 } from "../../lib/network";
+import { publicMainnetDepositsAllowed } from "../../lib/depositReadiness";
 import type { NavId } from "./nav";
 
 async function copyText(value: string) {
@@ -65,6 +67,8 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
   const ev = MAINNET_EVIDENCE;
   const ready = hasVerifiedMainnetContract(ev);
   const trading = mainnetTradingControlsEnabled(ev);
+  const deposits =
+    mainnetDepositControlsEnabled(ev) && publicMainnetDepositsAllowed();
   const accountHref = mainnetAccountExplorer(ev.contract.account_id, ev);
   const deployHref = mainnetTxExplorer(ev.contract.deploy_tx, ev);
   const fundedHref = mainnetTxExplorer(ev.funded_trade.tx_hash, ev);
@@ -80,6 +84,24 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
           </p>
         </div>
       </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Deposit safety</h2>
+          <span className="nio-badge nio-badge-danger">
+            {deposits ? "ENABLED" : "BLOCKED"}
+          </span>
+        </div>
+        <p className="warn">
+          Mainnet deposits are not enabled. Do not send funds.
+        </p>
+        <p className="axis-supporting">
+          Dry quotes and derived addresses are never deposit instructions. A
+          fundable address appears only after contract, owner, policy, MPC,
+          custody/recovery, explicit deposit capability, and backend readiness
+          are all verified for the portfolio and chain.
+        </p>
+      </section>
 
       <section className="axis-panel">
         <div className="axis-panel-heading">
@@ -236,7 +258,13 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
           </div>
           <div>
             <dt>Derived EVM</dt>
-            <dd className="mono">{ev.mpc.derived_evm_address ?? "—"}</dd>
+            <dd className="mono">
+              {deposits
+                ? ev.mpc.derived_evm_address ?? "—"
+                : ev.mpc.derived_evm_address
+                  ? "Verified id withheld as fundable instruction"
+                  : "—"}
+            </dd>
           </div>
           <div>
             <dt>Intents verifier</dt>

@@ -1,44 +1,61 @@
+import {
+  buildOnboardingJourney,
+  type JourneyInput,
+  type JourneyStepStatus,
+} from "../lib/onboardingJourney";
 import type { NavId } from "./Shell";
 
-const STEPS: { id: NavId; label: string }[] = [
-  { id: "welcome", label: "Connect" },
-  { id: "portfolio", label: "Portfolio" },
-  { id: "funds", label: "Deposit" },
-  { id: "policies", label: "Policy" },
-  { id: "agent", label: "Agent" },
-  { id: "activity", label: "Activity" },
-  { id: "funds", label: "Withdraw" },
-];
+const NAV_FOR_STEP: Record<string, NavId> = {
+  connect_wallet: "welcome",
+  verify_ownership: "welcome",
+  create_portfolio: "portfolio",
+  authorize_mandate: "policies",
+  verify_contract: "portfolio",
+  deposit: "funds",
+  enable_agent: "agent",
+  trade: "agent",
+  withdraw: "funds",
+};
+
+const TONE: Record<JourneyStepStatus, string> = {
+  READY: "journey-step done",
+  PENDING: "journey-step",
+  BLOCKED: "journey-step",
+  UNSUPPORTED: "journey-step",
+};
 
 export function JourneyStrip({
   active,
   onNav,
+  journeyInput,
 }: {
   active: NavId;
   onNav: (id: NavId) => void;
+  journeyInput?: JourneyInput;
 }) {
-  const activeIdx = (() => {
-    if (active === "funds") return -1; // both Deposit and Withdraw share funds
-    return STEPS.findIndex((s) => s.id === active);
-  })();
+  const steps = buildOnboardingJourney(
+    journeyInput ?? {
+      walletConnected: false,
+      ownerVerified: false,
+    }
+  );
 
   return (
     <nav className="journey" aria-label="Product journey">
-      {STEPS.map((step, i) => {
-        const isFunds = step.id === "funds";
-        const on =
-          active === step.id ||
-          (isFunds && active === "funds") ||
-          (activeIdx >= 0 && i <= activeIdx);
+      {steps.map((step, i) => {
+        const target = NAV_FOR_STEP[step.id] ?? "welcome";
+        const on = active === target;
         return (
           <button
-            key={`${step.label}-${i}`}
+            key={step.id}
             type="button"
-            className={active === step.id || (active === "funds" && isFunds) ? "journey-step on" : on ? "journey-step done" : "journey-step"}
-            onClick={() => onNav(step.id)}
+            className={on ? "journey-step on" : TONE[step.status]}
+            onClick={() => onNav(target)}
+            title={`${step.status}: ${step.detail}`}
           >
             <span className="journey-n">{i + 1}</span>
-            {step.label}
+            {step.title}
+            <span className="journey-status">{step.status}</span>
           </button>
         );
       })}

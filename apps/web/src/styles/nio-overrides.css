@@ -865,6 +865,58 @@ body,
   }
 }
 
+/* Honest onboarding journey */
+.nio-journey-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.nio-journey-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid #e4e7ef;
+  border-radius: 12px;
+  background: #fff;
+}
+.nio-journey-n {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef1f8;
+  color: #334155;
+}
+.nio-journey-row strong {
+  display: block;
+  font-size: 14px;
+  color: #111827;
+}
+.nio-journey-row p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #5b6472;
+  line-height: 1.45;
+}
+.nio-onboarding-journey.compact .nio-journey-row {
+  padding: 10px 12px;
+}
+.journey-status {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-top: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-page *,
   .axis-layout * {

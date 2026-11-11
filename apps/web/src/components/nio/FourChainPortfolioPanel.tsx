@@ -21,9 +21,10 @@ export function FourChainPortfolioPanel() {
         <span className="nio-badge nio-badge-warn">UNVERIFIED BALANCES</span>
       </div>
       <p className="axis-supporting">
-        One logical NIO portfolio across NEAR, Arbitrum, Base, and Ethereum.
-        Positions use canonical asset ids. Combined USD valuation appears only
-        from verified price sources — never placeholders.
+        Four-chain ambition across NEAR, Arbitrum, Base, and Ethereum. Identities
+        are canonical; funded execution adapters for same-chain EVM and NEAR DEX
+        remain unsupported. Combined USD appears only from verified price sources —
+        never placeholders. Mainnet deposits are not enabled — do not send funds.
       </p>
 
       <div

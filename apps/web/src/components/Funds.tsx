@@ -8,6 +8,11 @@ import {
 } from "../adapters/gatei";
 import { CONFIG } from "../lib/config";
 import {
+  evaluateDepositReadiness,
+  isFundableDepositInstructionAllowed,
+} from "../lib/depositReadiness";
+import { isDemoPortfolioId } from "../lib/publicDemo";
+import {
   RECORDED_WITHDRAW_RECEIVED,
   RECORDED_WITHDRAW_SIGNED,
   honestLifecycleFromReceipt,
@@ -20,6 +25,7 @@ import type {
   WithdrawReceipt,
 } from "../types/gateI";
 import { WITHDRAW_LIFECYCLE_STAGES } from "../types/gateI";
+import { useOwnerSession } from "../state/OwnerSession";
 import { useProductSession } from "../state/ProductSession";
 import { GateIBanner } from "./GateIBanner";
 import type { NavId } from "./Shell";
@@ -47,6 +53,7 @@ function LifecycleTrack({ stage }: { stage: WithdrawLifecycleStage | null }) {
 
 export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
   const { portfolio, gateI, authMode, boundOwner } = useProductSession();
+  const { verified, session } = useOwnerSession();
   const [balances, setBalances] = useState<BalanceSlice[]>([]);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [chain, setChain] = useState<(typeof CHAINS)[number]>("sepolia");
@@ -61,6 +68,25 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
 
   const deliveryEnabled = isWithdrawDeliveryEnabled();
   const stage = honestLifecycleFromReceipt(withdraw, deliveryEnabled);
+  const demoPortfolio = isDemoPortfolioId(portfolio?.portfolio_id);
+
+  const readiness = evaluateDepositReadiness({
+    chain,
+    ownerVerified: verified,
+    ownerAccountId: session?.account_id,
+    portfolioId: portfolio?.portfolio_id,
+    portfolioOwner: portfolio?.owner_account,
+    policyContract: portfolio?.policy_contract,
+    intentsSignerId: portfolio?.intents_signer_id,
+    backendReady:
+      gateI.status === "available" &&
+      Boolean(portfolio) &&
+      !demoPortfolio &&
+      verified,
+    portfolioStatus:
+      verified && portfolio && !demoPortfolio ? "ready" : "blocked",
+  });
+  const depositsAllowed = isFundableDepositInstructionAllowed(readiness);
 
   useEffect(() => {
     setBalances([]);
@@ -68,16 +94,34 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
     setQuote(null);
     setWithdraw(null);
     setMsg(null);
-  }, [portfolio?.portfolio_id, boundOwner]);
+  }, [portfolio?.portfolio_id, boundOwner, session?.account_id]);
 
   useEffect(() => {
     if (!portfolio || gateI.status !== "available") {
       setBalances([]);
       return;
     }
+    if (demoPortfolio) {
+      setBalances([]);
+      setLoadErr(
+        "Demo portfolio is not personal custody — balances and deposits stay hidden here."
+      );
+      return;
+    }
     if (boundOwner && portfolio.owner_account !== boundOwner) {
       setBalances([]);
       setLoadErr("Portfolio owner does not match connected wallet — cleared.");
+      return;
+    }
+    if (
+      verified &&
+      session?.account_id &&
+      portfolio.owner_account !== session.account_id
+    ) {
+      setBalances([]);
+      setLoadErr(
+        "Portfolio belongs to a different owner — unauthorized for this session."
+      );
       return;
     }
     let cancelled = false;
@@ -95,13 +139,23 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
     return () => {
       cancelled = true;
     };
-  }, [portfolio, gateI.status, boundOwner]);
+  }, [
+    portfolio,
+    gateI.status,
+    boundOwner,
+    verified,
+    session?.account_id,
+    demoPortfolio,
+  ]);
 
   if (!portfolio) {
     return (
       <div className="stack">
         <section className="card">
           <p>Create a personal portfolio before depositing or withdrawing.</p>
+          <p className="warn">
+            Mainnet deposits are not enabled. Do not send funds.
+          </p>
           <button type="button" onClick={() => onNav("portfolio")}>
             Portfolio onboarding
           </button>
@@ -115,10 +169,16 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
     setMsg(null);
     setDeposit(null);
     try {
+      if (!depositsAllowed) {
+        setMsg(readiness.message);
+        return;
+      }
       const res = await createDeposit({
         portfolio_id: portfolio.portfolio_id,
         chain,
         asset,
+        readinessAllowed: depositsAllowed,
+        readinessReason: readiness.message,
       });
       if ("status" in res && res.status === "blocked") {
         setMsg(res.reason);
@@ -138,6 +198,10 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
     setQuote(null);
     setWithdraw(null);
     try {
+      if (!verified) {
+        setMsg("Verified owner session required before withdraw quotes.");
+        return;
+      }
       const q = await quoteWithdraw({
         portfolio_id: portfolio.portfolio_id,
         chain,
@@ -154,6 +218,10 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
   };
 
   const confirmWithdraw = async () => {
+    if (!verified) {
+      setMsg("Verified owner session required before withdrawals.");
+      return;
+    }
     if (!deliveryEnabled) {
       setMsg(
         "Withdrawals stay blocked in the public demo until owner delivery is proven."
@@ -191,17 +259,34 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
       <section className="card">
         <div className="card-head">
           <h3>Deposit / withdraw</h3>
-          <span className="badge badge-warn">TESTNET</span>
+          <span className="badge badge-warn">
+            {depositsAllowed ? "TESTNET GATED" : "DEPOSITS BLOCKED"}
+          </span>
         </div>
         <p className="muted">
           Portfolio <span className="mono">{portfolio.portfolio_id}</span> · owner{" "}
-          <span className="mono">{portfolio.owner_account}</span> · MPC{" "}
-          <span className="mono">{portfolio.intents_signer_id ?? "—"}</span>
+          <span className="mono">{portfolio.owner_account}</span>
         </p>
         <p className="muted small">
-          Balances are live Gate I reads for this portfolio only. Switching wallets
-          clears prior user cache.
+          Owner session:{" "}
+          {verified ? (
+            <span className="mono">{session?.account_id}</span>
+          ) : (
+            "not verified"
+          )}
+          . Dry quotes and derived MPC ids are never deposit instructions.
         </p>
+      </section>
+
+      <section className="card alert">
+        <p className="warn">{readiness.message}</p>
+        <ul className="nio-owner-actions">
+          {readiness.checks.map((c) => (
+            <li key={c.id}>
+              {c.ok ? "✓" : "✗"} {c.label} — {c.detail}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <GateIBanner action="Deposit and withdraw" />
@@ -209,7 +294,11 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
       <section className="card">
         <h3>Balances by network & custody</h3>
         {loadErr ? <p className="warn">{loadErr}</p> : null}
-        {balances.length === 0 ? (
+        {!verified ? (
+          <p className="warn">
+            Balances for personal custody require a verified owner session.
+          </p>
+        ) : balances.length === 0 ? (
           <p className="muted">
             No verified balances from Gate I yet (zeros or unavailable — not
             placeholders).
@@ -238,13 +327,6 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
             </tbody>
           </table>
         )}
-        {balances.every((b) => b.amount === "0") ? (
-          <p className="warn">
-            Funding blocked: MPC address is unfunded. Send Sepolia ETH+USDC to the
-            deposit address below. Demo <span className="mono">nio-c-*</span>{" "}
-            custody is never used.
-          </p>
-        ) : null}
       </section>
 
       <section className="card">
@@ -252,7 +334,13 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
         <div className="row gap wrap">
           <label>
             Chain
-            <select value={chain} onChange={(e) => setChain(e.target.value as typeof chain)}>
+            <select
+              value={chain}
+              onChange={(e) => {
+                setChain(e.target.value as typeof chain);
+                setDeposit(null);
+              }}
+            >
               {CHAINS.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -274,15 +362,26 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
       </section>
 
       <section className="card">
-        <h3>Deposit</h3>
+        <div className="card-head">
+          <h3>Deposit</h3>
+          <span className={`badge ${depositsAllowed ? "badge-pass" : "badge-blocked"}`}>
+            {depositsAllowed ? "READY" : "BLOCKED"}
+          </span>
+        </div>
+        {!depositsAllowed ? (
+          <p className="warn">
+            Mainnet deposits are not enabled. Do not send funds. No deposit
+            address is shown until every readiness gate passes.
+          </p>
+        ) : null}
         <button
           type="button"
-          disabled={busy || gateI.status !== "available"}
+          disabled={busy || !depositsAllowed || gateI.status !== "available"}
           onClick={() => void requestDeposit()}
         >
           {busy ? "Requesting…" : "Request deposit address"}
         </button>
-        {deposit ? (
+        {depositsAllowed && deposit ? (
           <dl className="kv dense">
             <dt>Address</dt>
             <dd className="mono">{deposit.deposit_address}</dd>
@@ -300,6 +399,12 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
             </dd>
           </dl>
         ) : null}
+        {!depositsAllowed ? (
+          <p className="muted small">
+            MPC id on the portfolio record is withheld as a fundable instruction.
+            Open Mainnet evidence for verification status only.
+          </p>
+        ) : null}
       </section>
 
       <section className="card">
@@ -313,6 +418,7 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
         <p className="muted small">
           Exact stages: Requested → Authorized → Signed → Broadcast → Confirmed →
           Received. Owner wallet/Ledger must still sign each new withdraw.
+          Independent recovery is not claimed unless the path is demonstrated.
         </p>
         <p className="muted small">
           Historical NEAR auth{" "}
@@ -327,6 +433,9 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
           <span className="mono">{RECORDED_WITHDRAW_RECEIVED.recipient.slice(0, 10)}…</span>
           ).
         </p>
+        {!verified ? (
+          <p className="warn">Withdraw controls require a verified owner session.</p>
+        ) : null}
         {!deliveryEnabled ? (
           <p className="warn">
             Confirm stays disabled until owner withdrawal delivery is proven for
@@ -345,6 +454,7 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
               value={dest}
               onChange={(e) => setDest(e.target.value)}
               placeholder="0x… (allowlisted)"
+              disabled={!verified}
             />
           </label>
           <label>
@@ -353,13 +463,20 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
+              disabled={!verified}
             />
           </label>
         </div>
         <div className="row gap wrap">
           <button
             type="button"
-            disabled={busy || gateI.status !== "available" || !dest || !amount}
+            disabled={
+              !verified ||
+              busy ||
+              gateI.status !== "available" ||
+              !dest ||
+              !amount
+            }
             onClick={() => void runQuote()}
           >
             Estimate fee / validate
@@ -367,6 +484,7 @@ export function Funds({ onNav }: { onNav: (id: NavId) => void }) {
           <button
             type="button"
             disabled={
+              !verified ||
               !deliveryEnabled ||
               busy ||
               !quote?.ok ||

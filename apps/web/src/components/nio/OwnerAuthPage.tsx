@@ -183,11 +183,23 @@ export function OwnerAuthPage({ onNav }: { onNav: (id: NavId) => void }) {
           <h1>Owner authentication</h1>
           <p>
             Physical Ledger → NEP-413 ownership proof → HttpOnly session → My
-            Portfolio. Public Live AI never uses this path. Hardware approval is
-            required for a real verified session — mock UI below is illustrative only.
+            Portfolio. NEP-413 login itself does not authorize trading. Ordinary
+            NEAR wallet connect is a separate path. Public Live AI never uses this
+            session. Hardware approval is required for a real verified session —
+            mock UI below is illustrative only.
           </p>
         </div>
       </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Deposit safety</h2>
+          <span className="nio-badge nio-badge-danger">BLOCKED</span>
+        </div>
+        <p className="warn">
+          Mainnet deposits are not enabled. Do not send funds.
+        </p>
+      </section>
 
       {!webhidOk ? (
         <section className="axis-panel nio-owner-callout">
@@ -461,8 +473,9 @@ export function OwnerAuthPage({ onNav }: { onNav: (id: NavId) => void }) {
         <p className="axis-supporting">
           Owner sessions are network-bound. A verified <strong>testnet</strong>{" "}
           Ledger session does <strong>not</strong> authenticate a mainnet account.
-          Mainnet trading controls stay disabled until Chat 1 confirms endpoint
-          contracts and security gates.
+          Mainnet trading and deposit controls stay disabled until Chat 1 confirms
+          endpoint contracts and security gates. On-chain mandate status is shown
+          only from live portfolio/policy reads — never invented.
         </p>
       </section>
 

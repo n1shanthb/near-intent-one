@@ -31,13 +31,14 @@ import type {
   GateJHistoryEntry,
   GateJScenarioId,
 } from "../types/gateJ";
+import { useOwnerSession } from "../state/OwnerSession";
 import { useProductSession } from "../state/ProductSession";
 import { GateIBanner } from "./GateIBanner";
 import { DecisionJourney } from "./DecisionJourney";
 import { MandateFitterPanel } from "./MandateFitter";
 import { GateKEvidence } from "./GateKEvidence";
 import { usdcDisplay } from "../lib/mandateFitter";
-import { isPublicLiveAiEnabled } from "../lib/publicDemo";
+import { isDemoPortfolioId, isPublicLiveAiEnabled } from "../lib/publicDemo";
 
 const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
   {
@@ -59,6 +60,14 @@ const SCENARIOS: { id: GateJScenarioId; title: string; blurb: string }[] = [
 
 export function AgentPanel() {
   const { portfolio, gateI } = useProductSession();
+  const { verified, session } = useOwnerSession();
+  const ownerMutationsOk =
+    verified &&
+    Boolean(portfolio) &&
+    !isDemoPortfolioId(portfolio?.portfolio_id) &&
+    (!session?.account_id ||
+      !portfolio?.owner_account ||
+      session.account_id === portfolio.owner_account);
   const [decision, setDecision] = useState<StrategyDecisionLog | null>(null);
   const [runtime, setRuntime] = useState<AgentRuntimeState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,7 +135,9 @@ export function AgentPanel() {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await startAgent(portfolio.portfolio_id);
+      const res = await startAgent(portfolio.portfolio_id, {
+        ownerVerified: ownerMutationsOk,
+      });
       if (!res.ok) setMsg(res.reason ?? "Start blocked");
       else setRuntime(await getAgentState(portfolio.portfolio_id));
     } catch (e) {
@@ -141,7 +152,9 @@ export function AgentPanel() {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await stopAgent(portfolio.portfolio_id);
+      const res = await stopAgent(portfolio.portfolio_id, {
+        ownerVerified: ownerMutationsOk,
+      });
       if (!res.ok) setMsg(res.reason ?? "Stop blocked");
       else setRuntime(await getAgentState(portfolio.portfolio_id));
     } catch (e) {
@@ -519,10 +532,22 @@ export function AgentPanel() {
             ) : (
               <p className="muted small">No live decision from Gate I yet.</p>
             )}
+            {!ownerMutationsOk ? (
+              <p className="warn">
+                Start / stop require a verified owner session for this personal
+                portfolio. NEP-413 login alone does not authorize trading. Demo
+                portfolios cannot start a personal agent.
+              </p>
+            ) : null}
             <div className="row gap">
               <button
                 type="button"
-                disabled={busy || gateI.status !== "available" || runtime?.running}
+                disabled={
+                  !ownerMutationsOk ||
+                  busy ||
+                  gateI.status !== "available" ||
+                  runtime?.running
+                }
                 onClick={() => void runStart()}
               >
                 Start agent
@@ -530,7 +555,12 @@ export function AgentPanel() {
               <button
                 type="button"
                 className="ghost"
-                disabled={busy || gateI.status !== "available" || !runtime?.running}
+                disabled={
+                  !ownerMutationsOk ||
+                  busy ||
+                  gateI.status !== "available" ||
+                  !runtime?.running
+                }
                 onClick={() => void runStop()}
               >
                 Stop trading
