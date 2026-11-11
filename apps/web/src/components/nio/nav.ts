@@ -9,6 +9,7 @@ export type NavId =
   | "activity"
   | "security"
   | "evidence"
+  | "mainnet"
   | "settings"
   | "funds"
   | "policies"
@@ -27,6 +28,7 @@ export const WORKSPACE_PATH: Partial<Record<NavId, string>> = {
   mandate: "/mandate",
   activity: "/transactions",
   evidence: "/evidence",
+  mainnet: "/mainnet",
   security: "/security",
   settings: "/settings",
   funds: "/funds",
@@ -50,6 +52,7 @@ export function pathToNav(pathname: string): NavId {
     "/transactions": "activity",
     "/activity": "activity",
     "/evidence": "evidence",
+    "/mainnet": "mainnet",
     "/security": "security",
     "/settings": "settings",
     "/funds": "funds",

@@ -31,7 +31,8 @@ body,
 .nio-mandate-page,
 .nio-security-page,
 .nio-owner-auth-page,
-.nio-my-portfolio-page {
+.nio-my-portfolio-page,
+.nio-mainnet-page {
   --bg: #f5f6fa;
   --bg-elev: #ffffff;
   --panel: #ffffff;
@@ -719,6 +720,50 @@ body,
   line-height: 1.55;
   color: #111827;
 }
+.nio-mainnet-proof-banner.is-pending {
+  border-color: #f0d9a8;
+  background: linear-gradient(180deg, #fffaf0 0%, #fff 70%);
+}
+.nio-mainnet-proof-banner.is-ready {
+  border-color: #b7e0c6;
+  background: linear-gradient(180deg, #f3fbf6 0%, #fff 70%);
+}
+.nio-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.nio-capability-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e4e7ef;
+  border-radius: 10px;
+  background: #fafbff;
+}
+.nio-capability-grid > div[data-on="1"] {
+  border-color: #b7e0c6;
+  background: #f3fbf6;
+}
+.nio-capability-grid strong {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #111827;
+}
+.axis-network-chip.nio-network-mainnet-pending {
+  border-color: #f0d9a8;
+  background: #fff8e8;
+}
+.axis-network-chip.nio-network-mainnet-ready {
+  border-color: #b7e0c6;
+  background: #f3fbf6;
+}
+.nio-network-panel .nio-capability-grid {
+  margin-top: 14px;
+}
+
 .nio-owner-auth-page .axis-input,
 .nio-my-portfolio-page .axis-input {
   width: 100%;

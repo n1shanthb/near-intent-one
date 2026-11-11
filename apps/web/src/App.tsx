@@ -9,6 +9,7 @@ import { PortfolioPage } from "./components/nio/PortfolioPage";
 import { OwnerAuthPage } from "./components/nio/OwnerAuthPage";
 import { MyPortfolioPage } from "./components/nio/MyPortfolioPage";
 import { EvidencePage } from "./components/nio/EvidencePage";
+import { MainnetEvidencePage } from "./components/nio/MainnetEvidencePage";
 import { TransactionsPage } from "./components/nio/TransactionsPage";
 import { MandatePage } from "./components/nio/MandatePage";
 import { SecurityPage } from "./components/nio/SecurityPage";
@@ -69,6 +70,7 @@ function AppInner() {
       onNav={onNav}
       onHome={() => onNav("landing")}
       demoStatus={demoChip}
+      healthNetwork={gateI.network}
       walletSlot={
         <WalletControl
           loading={loading}
@@ -95,6 +97,7 @@ function AppInner() {
           gateIStatus={gateI.status}
           gateIDetail={gateI.detail}
           demoLabel={demoChip}
+          healthNetwork={gateI.network}
         />
       )}
       {nav === "portfolio" && <PortfolioPage onNav={onNav} />}
@@ -118,7 +121,8 @@ function AppInner() {
       {nav === "agent" && <AgentWorkspace onNav={onNav} />}
       {(nav === "mandate" || nav === "policies") && <MandatePage onNav={onNav} />}
       {nav === "activity" && <TransactionsPage onNav={onNav} />}
-      {nav === "evidence" && <EvidencePage />}
+      {nav === "evidence" && <EvidencePage onNav={onNav} />}
+      {nav === "mainnet" && <MainnetEvidencePage onNav={onNav} />}
       {nav === "security" && (
         <>
           <SecurityPage onNav={onNav} onOpenLedger={() => onNav("ledger")} />

@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-11-11T07:39:23.261Z",
+  "gates": {
+    "network_is_mainnet": false,
+    "mainnet_mode": false,
+    "allow_sign": false,
+    "allow_broadcast": false,
+    "canary_approved": false,
+    "public_demo_safe": true
+  },
+  "wasm": {
+    "path": "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm",
+    "bytes": 612184,
+    "sha256": "8b6ba72675dd3c3dcd03a6484589ce720e29289b005dcf0453a07764b8373022"
+  },
+  "deployment_approval_request": {
+    "status": "AWAITING_OPERATOR_APPROVAL",
+    "network": "mainnet",
+    "target_account": "nio-policy-hack26.near",
+    "wasm": {
+      "path": "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm",
+      "bytes": 612184,
+      "sha256": "8b6ba72675dd3c3dcd03a6484589ce720e29289b005dcf0453a07764b8373022"
+    },
+    "mpc_signer": "v1.signer",
+    "init_args": null,
+    "max_near": "15",
+    "storage_hint": {
+      "recommended_min_near": "8",
+      "recommended_max_near_request": "15",
+      "note": "Exact cost depends on account creation vs upgrade; operator must approve max NEAR"
+    },
+    "purpose": "NIO mainnet policy contract deploy (hackathon MVP)",
+    "deploy_command": "node scripts/mainnet/deploy-policy.mjs \\\n  --account nio-policy-hack26.near \\\n  --wasm E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm \\\n  --sha256 8b6ba72675dd3c3dcd03a6484589ce720e29289b005dcf0453a07764b8373022 \\\n  --max-near 15 \\\n  --approve-file docs/approvals/MAINNET_DEPLOY_APPROVAL.json",
+    "required_approval_fields": [
+      "target_account",
+      "wasm_sha256",
+      "max_near",
+      "owner_account",
+      "agent_account",
+      "portfolio_id",
+      "approver",
+      "approved_at"
+    ],
+    "note": "Do NOT run deploy until approval JSON matches this artifact hash and max NEAR"
+  },
+  "approval_stub": "E:\\near-intent-one\\docs\\approvals\\MAINNET_DEPLOY_APPROVAL.json",
+  "mpc": {
+    "network": "mainnet",
+    "signer": "v1.signer",
+    "rpc": "https://rpc.mainnet.near.org",
+    "public_key": "secp256k1:3tFRbMqmoa6AAALMrEFAYCEoHcqKxeW38YptwowBVBtXK1vo36HDbUWuR6EZmoK4JcH6HDkNMGGqP1ouV7VZUWya",
+    "status": "VERIFIED_ON_MAINNET_READ",
+    "note": "Root MPC public key view — not a user signature"
+  },
+  "sign_requirements": {
+    "signer": "v1.signer",
+    "attached_deposit": "1 yoctoNEAR",
+    "recommended_gas_tgas": 15,
+    "domain_id": 0,
+    "payload": "Ecdsa(32-byte hex hash)",
+    "duplicate_policy": "Same caller/domain/path/payload while pending is queued; queue bounded",
+    "funded_sign_default": "OFF (NIO_MAINNET_ALLOW_SIGN=0)"
+  },
+  "intents_tokens": {
+    "ok": false,
+    "error": "fetch failed"
+  },
+  "canary": {
+    "ready": false,
+    "gates": {
+      "network_is_mainnet": false,
+      "mainnet_mode": false,
+      "allow_sign": false,
+      "allow_broadcast": false,
+      "canary_approved": false,
+      "public_demo_safe": true
+    },
+    "auth": {
+      "ok": false,
+      "reason": "approval_object_missing"
+    },
+    "blockers": [
+      "testnet_lifecycle_not_proven_recoverable — failed/unsettled testnet blocks funded mainnet canary",
+      "mainnet_policy_contract_not_deployed",
+      "ledger_owned_mandate_not_proven — deployed contract ≠ Ledger-owned production mandate",
+      "approval_object_missing"
+    ],
+    "signing_default": "OFF",
+    "broadcast_default": "OFF",
+    "network_profile": "mainnet",
+    "note": "Do not activate canary until operator signs the exact approval fields"
+  },
+  "labels": {
+    "contract": "IMPLEMENTED — DEPLOY AWAITING APPROVAL",
+    "mpc_root_key": "VERIFIED_ON_MAINNET_READ",
+    "intents_registry": "NOT_YET_PROVEN",
+    "funded_execution": "NOT_YET_PROVEN"
+  }
+}

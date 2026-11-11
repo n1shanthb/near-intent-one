@@ -4,6 +4,7 @@ import {
   Bot,
   FileText,
   FolderLock,
+  Globe2,
   KeyRound,
   LayoutDashboard,
   Layers2,
@@ -20,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { NioBrandMark } from "./NioLogo";
+import { NetworkIndicator } from "./NetworkIndicator";
 import type { NavId } from "./nav";
 
 const links: { id: NavId; label: string; icon: typeof Activity; separated?: boolean }[] = [
@@ -32,6 +34,7 @@ const links: { id: NavId; label: string; icon: typeof Activity; separated?: bool
   { id: "activity", label: "Transactions", icon: Activity },
   { id: "security", label: "Security", icon: Shield, separated: true },
   { id: "evidence", label: "Evidence", icon: FolderLock },
+  { id: "mainnet", label: "Mainnet", icon: Globe2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -45,6 +48,7 @@ const titles: Partial<Record<NavId, string>> = {
   activity: "Transactions",
   security: "Security",
   evidence: "Evidence",
+  mainnet: "Mainnet evidence",
   settings: "Settings",
   funds: "Deposit / Withdraw",
 };
@@ -55,6 +59,7 @@ export function WorkspaceShell({
   onHome,
   walletSlot,
   demoStatus,
+  healthNetwork,
   children,
 }: {
   active: NavId;
@@ -62,6 +67,8 @@ export function WorkspaceShell({
   onHome: () => void;
   walletSlot?: ReactNode;
   demoStatus?: string;
+  /** Live API-reported network (testnet|mainnet) — drives the real indicator. */
+  healthNetwork?: string | null;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -177,10 +184,7 @@ export function WorkspaceShell({
             </div>
           </div>
           <div className="axis-header-actions">
-            <span className="axis-network-chip" title="NEAR testnet">
-              <Layers2 size={16} strokeWidth={1.8} />
-              <span>NEAR Testnet</span>
-            </span>
+            <NetworkIndicator healthNetwork={healthNetwork} compact />
             {demoStatus ? (
               <span className="axis-network-chip" title="Demo status">
                 <Bot size={16} strokeWidth={1.8} />

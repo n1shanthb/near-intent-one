@@ -20,7 +20,7 @@ type Session = {
   /** Call on wallet connect / switch / disconnect to prevent cross-user leakage */
   syncOwner: (ownerAccount: string | null) => void;
   clearSession: () => void;
-  gateI: { status: GateIStatus; detail: string };
+  gateI: { status: GateIStatus; detail: string; network?: string | null };
   refreshGateI: () => Promise<void>;
 };
 
@@ -64,9 +64,14 @@ export function ProductSessionProvider({ children }: { children: ReactNode }) {
   });
   const [boundOwner, setBoundOwner] = useState<string | null>(null);
   const [portfolio, setPortfolioState] = useState<PortfolioRecord | null>(null);
-  const [gateI, setGateI] = useState<{ status: GateIStatus; detail: string }>({
+  const [gateI, setGateI] = useState<{
+    status: GateIStatus;
+    detail: string;
+    network?: string | null;
+  }>({
     status: "unavailable",
     detail: "Checking Gate I…",
+    network: null,
   });
 
   // One-time: drop legacy single-slot cache that could leak across users
@@ -117,7 +122,12 @@ export function ProductSessionProvider({ children }: { children: ReactNode }) {
   }, [boundOwner]);
 
   const refreshGateI = useCallback(async () => {
-    setGateI(await gateIHealth());
+    const h = await gateIHealth();
+    setGateI({
+      status: h.status,
+      detail: h.detail,
+      network: h.payload?.network ?? null,
+    });
   }, []);
 
   useEffect(() => {

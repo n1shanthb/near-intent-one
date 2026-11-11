@@ -1,0 +1,23 @@
+{
+  "approved": false,
+  "target_account": null,
+  "target_account_note": "nio-policy-hack26.near does NOT exist and cannot be created without registrar purchase or a parent account. Provide creatable target.",
+  "proposed_unavailable": "nio-policy-hack26.near",
+  "deployer_account": null,
+  "owner_account": null,
+  "agent_account": null,
+  "portfolio_id": "hack26-canary",
+  "wasm_path": "artifacts/mainnet/policy.wasm",
+  "wasm_sha256": "be60e78933d941aed7d1a4b9b0f7f7ad7756b0b867c29c6f0b2eed3d0eab9f1a",
+  "wasm_bytes": 617768,
+  "prior_wasm_sha256_superseded": "8b6ba72675dd3c3dcd03a6484589ce720e29289b005dcf0453a07764b8373022",
+  "estimated_near_actual": "6.3",
+  "max_near": "8",
+  "mpc_signer": "v1.signer",
+  "derivation_path_template": "trading/v1/portfolio/hack26-canary",
+  "funded_trading": false,
+  "approver": null,
+  "approved_at": null,
+  "purpose": "NIO mainnet policy contract deploy (hackathon MVP)",
+  "preflight": "docs/MAINNET_DEPLOY_PREFLIGHT.md"
+}

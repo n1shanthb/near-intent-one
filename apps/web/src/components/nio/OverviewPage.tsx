@@ -2,31 +2,42 @@ import {
   ArrowUpRight,
   Bot,
   FileText,
+  Globe2,
   Shield,
   WalletCards,
 } from "lucide-react";
 import type { NavId } from "./nav";
 import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
+import {
+  MAINNET_EVIDENCE,
+  hasVerifiedMainnetContract,
+} from "../../data/mainnetEvidence";
+import { workspaceNetworkContext } from "../../lib/network";
+import { NetworkStatusPanel } from "./NetworkIndicator";
 
 export function OverviewPage({
   onNav,
   gateIStatus,
   gateIDetail,
   demoLabel,
+  healthNetwork,
 }: {
   onNav: (id: NavId) => void;
   gateIStatus: string;
   gateIDetail: string;
   demoLabel: string;
+  healthNetwork?: string | null;
 }) {
   const apiOk = gateIStatus === "available";
+  const network = workspaceNetworkContext(healthNetwork);
+  const mainnetReady = hasVerifiedMainnetContract();
 
   return (
     <div className="page-enter axis-overview">
       <section className="axis-overview-hero">
         <div className="axis-overview-hero-copy">
           <div className="axis-overview-hero-label">
-            <Bot size={16} /> NIO workspace · NEAR testnet
+            <Bot size={16} /> NIO workspace · {network.label}
           </div>
           <h1>Hardware sets rules. AI decides. NEAR enforces.</h1>
           <p>
@@ -59,13 +70,71 @@ export function OverviewPage({
               <dd style={{ fontSize: 22 }}>{apiOk ? "Connected" : "Unreachable"}</dd>
             </div>
             <div>
+              <dt>Network</dt>
+              <dd style={{ fontSize: 22 }}>{network.label}</dd>
+            </div>
+            <div>
               <dt>Live AI demo</dt>
               <dd style={{ fontSize: 22 }}>{demoLabel}</dd>
+            </div>
+            <div>
+              <dt>Mainnet proof</dt>
+              <dd style={{ fontSize: 22 }}>
+                {mainnetReady ? "Verified" : "Pending"}
+              </dd>
             </div>
           </dl>
           <div className="axis-overview-catalog-note">{gateIDetail}</div>
         </div>
       </section>
+
+      <section
+        className={`axis-panel nio-mainnet-proof-banner ${
+          mainnetReady ? "is-ready" : "is-pending"
+        }`}
+      >
+        <div className="axis-panel-heading">
+          <h2>Mainnet proof</h2>
+          <span
+            className={`nio-badge ${
+              mainnetReady ? "nio-badge-success" : "nio-badge-warn"
+            }`}
+          >
+            {mainnetReady ? "VERIFIED ON-CHAIN" : "AWAITING CHAT 1"}
+          </span>
+        </div>
+        {mainnetReady ? (
+          <p>
+            Independently verified NIO mainnet contract{" "}
+            <span className="mono">{MAINNET_EVIDENCE.contract.account_id}</span>.
+            Open Mainnet evidence for deploy tx, policy, MPC, and Intents status.
+          </p>
+        ) : (
+          <p>
+            No independently verified NIO mainnet deployment is displayed yet.
+            Capability chips stay honest (all NO) until Chat 1 supplies on-chain
+            proof. Testnet Gate K evidence remains separate.
+          </p>
+        )}
+        <div className="axis-actions" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            className="axis-button"
+            onClick={() => onNav("mainnet")}
+          >
+            <Globe2 size={16} /> Open Mainnet evidence
+          </button>
+          <button
+            type="button"
+            className="axis-button secondary"
+            onClick={() => onNav("evidence")}
+          >
+            Testnet Gate K proof
+          </button>
+        </div>
+      </section>
+
+      <NetworkStatusPanel ctx={network} />
 
       <div className="axis-overview-actions">
         <button
@@ -144,7 +213,7 @@ export function OverviewPage({
           <div className="axis-stats" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div className="axis-stat">
               <span>Network</span>
-              <strong style={{ fontSize: 22 }}>testnet</strong>
+              <strong style={{ fontSize: 22 }}>{network.active}</strong>
             </div>
             <div className="axis-stat">
               <span>Signing</span>

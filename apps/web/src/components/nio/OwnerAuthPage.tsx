@@ -458,6 +458,12 @@ export function OwnerAuthPage({ onNav }: { onNav: (id: NavId) => void }) {
           Public judge Live AI demo stays separate under AI Agent — it never uses
           this owner session.
         </p>
+        <p className="axis-supporting">
+          Owner sessions are network-bound. A verified <strong>testnet</strong>{" "}
+          Ledger session does <strong>not</strong> authenticate a mainnet account.
+          Mainnet trading controls stay disabled until Chat 1 confirms endpoint
+          contracts and security gates.
+        </p>
       </section>
 
       <section className="axis-panel">

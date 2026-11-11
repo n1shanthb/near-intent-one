@@ -29,7 +29,11 @@
     "test:gate-j": "node --test packages/gate-j/fitter.test.mjs packages/gate-j/hydrate.test.mjs packages/gate-j/demoQuota.test.mjs packages/services/gate-j-demo-decide.test.mjs",
     "test:gate-k": "node --test packages/gate-k/gate-k.test.mjs",
     "test:owner-auth": "node --test packages/services/ownerAuth.test.mjs packages/services/ownerAuth.security.test.mjs packages/services/nep413.test.mjs",
-    "test:personal": "node --test packages/services/ownerAuth.test.mjs packages/services/ownerAuth.security.test.mjs packages/services/nep413.test.mjs packages/services/portfolioProvision.test.mjs packages/services/withdrawLifecycle.test.mjs packages/services/settlementWorker.test.mjs packages/gate-k/lifecycle.test.mjs packages/gate-k/gate-k.test.mjs"
+    "test:personal": "node --test packages/services/ownerAuth.test.mjs packages/services/ownerAuth.security.test.mjs packages/services/nep413.test.mjs packages/services/portfolioProvision.test.mjs packages/services/withdrawLifecycle.test.mjs packages/services/settlementWorker.test.mjs packages/gate-k/lifecycle.test.mjs packages/gate-k/gate-k.test.mjs",
+    "test:mainnet": "node --test packages/mainnet/mainnet.test.mjs",
+    "mainnet:readiness": "node scripts/mainnet/readiness.mjs",
+    "mainnet:dry-quote": "node scripts/mainnet/dry-quote.mjs",
+    "mainnet:derive": "node scripts/mainnet/derive-address.mjs"
   },
   "engines": {
     "node": ">=20"

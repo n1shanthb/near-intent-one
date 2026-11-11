@@ -6,6 +6,11 @@ import {
   RECORDED_WITHDRAW_RECEIVED,
 } from "../../lib/withdrawLifecycle";
 import { CONFIG } from "../../lib/config";
+import {
+  MAINNET_EVIDENCE,
+  hasVerifiedMainnetContract,
+} from "../../data/mainnetEvidence";
+import type { NavId } from "./nav";
 
 async function copyText(value: string) {
   try {
@@ -44,24 +49,72 @@ function HashRow({
   );
 }
 
-export function EvidencePage() {
+export function EvidencePage({ onNav }: { onNav?: (id: NavId) => void }) {
   const k = GATE_K_FIRST_TRADE;
   const [showRaw, setShowRaw] = useState(false);
+  const mainnetReady = hasVerifiedMainnetContract();
 
   return (
     <div className="page-enter nio-evidence-page">
       <div className="axis-intro">
         <div>
           <h1>Evidence</h1>
-          <p>Gate K — Real AI-directed Sepolia execution and historical proofs.</p>
+          <p>
+            Gate K — Real AI-directed Sepolia <strong>testnet</strong> execution
+            and historical proofs. Mainnet proof lives on a separate page and is
+            never mixed with these receipts.
+          </p>
         </div>
       </div>
+
+      <section
+        className={`axis-panel nio-mainnet-proof-banner ${
+          mainnetReady ? "is-ready" : "is-pending"
+        }`}
+      >
+        <div className="axis-panel-heading">
+          <h2>Mainnet proof</h2>
+          <span
+            className={`nio-badge ${
+              mainnetReady ? "nio-badge-success" : "nio-badge-warn"
+            }`}
+          >
+            {mainnetReady ? "VERIFIED" : "AWAITING CHAT 1"}
+          </span>
+        </div>
+        {mainnetReady ? (
+          <p>
+            Verified mainnet contract{" "}
+            <span className="mono">{MAINNET_EVIDENCE.contract.account_id}</span>.
+            Open the Mainnet evidence view for deploy tx, policy, MPC, and Intents.
+          </p>
+        ) : (
+          <p>
+            Independently verified NIO mainnet deployment details are not available
+            yet. This Gate K panel remains Sepolia/testnet only.
+          </p>
+        )}
+        {onNav ? (
+          <div className="axis-actions" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="axis-button"
+              onClick={() => onNav("mainnet")}
+            >
+              Open Mainnet evidence
+            </button>
+          </div>
+        ) : null}
+      </section>
 
       <section className="axis-panel nio-evidence-hero">
         <div className="axis-panel-heading">
           <h2>Gate K — Real AI-directed Sepolia execution</h2>
           <span className="nio-badge nio-badge-warn">OPERATOR OVERRIDE DISCLOSED</span>
         </div>
+        <p className="axis-supporting" style={{ marginTop: 0, marginBottom: 12 }}>
+          Network label: <strong>Sepolia testnet</strong> · not mainnet
+        </p>
         <div className="axis-stats" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
           <div className="axis-stat">
             <span>Amount</span>

@@ -1,0 +1,27 @@
+{
+  "source": "https://1click.chaindefuser.com/v0/tokens",
+  "fetched_at": "2026-11-11T07:40:00Z",
+  "count": 229,
+  "status_label": "VERIFIED_ON_MAINNET_READ",
+  "note": "Full registry read succeeded via independent HTTPS fetch. Local Node TLS/WAF from the Windows workspace returned UNABLE_TO_VERIFY_LEAF_SIGNATURE / 403 — JWT still required for authenticated quote endpoints per official SDK.",
+  "sample": [
+    {
+      "assetId": "nep141:wrap.near",
+      "symbol": "wNEAR",
+      "decimals": 24,
+      "blockchain": "near"
+    },
+    {
+      "assetId": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "symbol": "USDC",
+      "decimals": 6,
+      "blockchain": "arb"
+    },
+    {
+      "assetId": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "symbol": "USDC",
+      "decimals": 6,
+      "blockchain": "eth"
+    }
+  ]
+}
