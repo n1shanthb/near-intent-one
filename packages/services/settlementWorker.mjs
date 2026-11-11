@@ -13,8 +13,15 @@ import {
   normalizeLifecycleStatus,
 } from "../gate-k/lifecycle.mjs";
 import { advanceBroadcast, advanceConfirm } from "../gate-k/settle.mjs";
-import { TIDEPOOL, USDC_SEPOLIA } from "../../scripts/lib/near-live.mjs";
+import { USDC_SEPOLIA } from "../../scripts/lib/near-live.mjs";
 import { verifyBeforeReconcile } from "../reconcile/verify-settlement.mjs";
+import {
+  SEPOLIA_TIDEPOOL,
+  MAINNET_1CLICK,
+  CHAIN_PROFILE,
+} from "../execution/chainProfiles.mjs";
+import { journalIdForExec } from "../execution/durableBroadcast.mjs";
+import { TX_STATE } from "../execution/txJournal.mjs";
 
 export function createSettlementWorker(deps) {
   const {
@@ -24,15 +31,22 @@ export function createSettlementWorker(deps) {
     rpcUrl,
     viewFunction,
     reconciler,
+    journal = null,
+    profile = SEPOLIA_TIDEPOOL,
     logger = console,
     enabled = false,
     dryRun = true,
     intervalMs = 30_000,
     maxPerTick = 2,
+    workerId = `settle-${process.pid}`,
   } = deps;
 
   let timer = null;
   let ticking = false;
+
+  if (profile.id === CHAIN_PROFILE.MAINNET_1CLICK && !journal) {
+    throw new Error("settlement_worker_mainnet_requires_journal");
+  }
 
   function listPending() {
     const execs = store.read().executions || {};
@@ -71,17 +85,35 @@ export function createSettlementWorker(deps) {
 
     let status = normalizeLifecycleStatus(entry.status);
 
+    const jid = entry.journal_id || journalIdForExec(entry);
+    if (journal) {
+      const claim = journal.tryClaim(jid, workerId);
+      if (!claim.ok && claim.reason === "claimed_by_other") {
+        return { key: entry.key, ok: false, reason: "claimed_by_other", may_resign: false };
+      }
+    }
+
+    try {
     if (BROADCASTABLE.has(entry.status) || status === LIFECYCLE.MPC_SIGNED) {
       const br = await advanceBroadcast(
-        { eth, nearRpc, rpcUrl, agentAccount: portfolio.agent_account },
-        { exec: entry, portfolio },
-        { dryRun }
+        {
+          eth,
+          nearRpc,
+          rpcUrl,
+          agentAccount: portfolio.agent_account,
+          journal,
+          profile,
+        },
+        { exec: { ...entry, journal_id: jid }, portfolio },
+        { dryRun, workerId }
       );
       if (!br.ok) {
         store.finishExecution(entry.key, {
           status: br.status || LIFECYCLE.MPC_SIGNED,
           last_error: br.reason,
           retryable: br.retryable !== false,
+          journal_id: br.journal_id || jid,
+          may_resign: false,
         });
         return { key: entry.key, ...br };
       }
@@ -91,34 +123,54 @@ export function createSettlementWorker(deps) {
       store.finishExecution(entry.key, {
         status: LIFECYCLE.BROADCAST,
         sepolia_tx: br.sepolia_tx,
+        broadcast_hash: br.broadcast_hash,
         explorer: br.explorer,
+        journal_id: br.journal_id || jid,
+        local_tx_hash: br.local_tx_hash,
         lifecycle_note: "broadcasted_no_resign",
+        may_resign: false,
+        profile: profile.id,
       });
-      entry = { ...entry, sepolia_tx: br.sepolia_tx, status: LIFECYCLE.BROADCAST };
+      entry = {
+        ...entry,
+        sepolia_tx: br.sepolia_tx,
+        broadcast_hash: br.broadcast_hash,
+        journal_id: br.journal_id || jid,
+        status: LIFECYCLE.BROADCAST,
+      };
       status = LIFECYCLE.BROADCAST;
     }
 
     if (RECEIPT_WAIT.has(entry.status) || status === LIFECYCLE.BROADCAST) {
-      const conf = await advanceConfirm({ eth }, { exec: entry });
+      const conf = await advanceConfirm(
+        { eth, journal },
+        { exec: { ...entry, journal_id: jid } }
+      );
       if (!conf.ok) {
         store.finishExecution(entry.key, {
           status: conf.status,
           last_error: conf.reason,
           receipt_status: conf.receipt_status,
           retryable: conf.retryable === true,
+          may_resign: false,
         });
         return { key: entry.key, ...conf };
+      }
+      if (journal?.get?.(jid)) {
+        journal.markSettlementPending(jid, { sepolia_tx: conf.sepolia_tx });
       }
       store.finishExecution(entry.key, {
         status: LIFECYCLE.SETTLEMENT_PENDING,
         receipt_status: "0x1",
         sepolia_tx: conf.sepolia_tx,
+        journal_id: jid,
       });
       entry = {
         ...entry,
         status: LIFECYCLE.SETTLEMENT_PENDING,
         sepolia_tx: conf.sepolia_tx,
         receipt_status: "0x1",
+        journal_id: jid,
       };
     }
 
@@ -132,8 +184,22 @@ export function createSettlementWorker(deps) {
           note: "settle_suppressed_dry_run",
         };
       }
+      if (profile.id === CHAIN_PROFILE.MAINNET_1CLICK) {
+        store.finishExecution(entry.key, {
+          status: LIFECYCLE.SETTLEMENT_PENDING,
+          last_error: "mainnet_settlement_gated",
+          retryable: true,
+        });
+        return {
+          key: entry.key,
+          ok: false,
+          reason: "mainnet_settlement_gated",
+          may_resign: false,
+        };
+      }
+      const settleBase = profile.settle_api_base;
       try {
-        await fetch(`${TIDEPOOL}/v0/deposit/submit`, {
+        await fetch(`${settleBase}/v0/deposit/submit`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -142,7 +208,7 @@ export function createSettlementWorker(deps) {
           }),
         });
       } catch (e) {
-        logger.warn?.(`[settle] tidepool submit ${e.message || e}`);
+        logger.warn?.(`[settle] submit ${e.message || e}`);
       }
 
       let terminal = null;
@@ -150,7 +216,7 @@ export function createSettlementWorker(deps) {
         await new Promise((r) => setTimeout(r, 5000));
         try {
           const st = await fetch(
-            `${TIDEPOOL}/v0/status?depositAddress=${encodeURIComponent(entry.to)}`
+            `${settleBase}/v0/status?depositAddress=${encodeURIComponent(entry.to)}`
           ).then((r) => r.json());
           if (["SUCCESS", "REFUNDED", "FAILED", "EXPIRED"].includes(st.status)) {
             terminal = st;
@@ -161,10 +227,11 @@ export function createSettlementWorker(deps) {
         }
       }
 
-      if (!terminal || terminal.status !== "SUCCESS") {
+      if (!terminal) {
+        if (journal?.get?.(jid)) journal.markUnknown(jid, { settle: "PENDING" });
         store.finishExecution(entry.key, {
           status: LIFECYCLE.SETTLEMENT_PENDING,
-          tidepool_status: terminal?.status || "PENDING",
+          tidepool_status: "PENDING",
           retryable: true,
         });
         return {
@@ -172,13 +239,48 @@ export function createSettlementWorker(deps) {
           ok: false,
           retryable: true,
           reason: "SETTLEMENT_PENDING",
-          tidepool: terminal?.status,
+        };
+      }
+      if (terminal.status === "REFUNDED") {
+        if (journal?.get?.(jid)) {
+          journal.markRefundPending(jid, terminal);
+          journal.markRefunded(jid, terminal);
+        }
+        store.finishExecution(entry.key, {
+          status: LIFECYCLE.FAILED,
+          settle_status: "REFUNDED",
+          may_resign: false,
+        });
+        return { key: entry.key, ok: true, status: "REFUNDED", may_resign: false };
+      }
+      if (terminal.status !== "SUCCESS") {
+        if (journal?.get?.(jid)) {
+          if (terminal.status === "FAILED" || terminal.status === "EXPIRED") {
+            journal.markFailed(jid, terminal.status);
+          } else {
+            journal.markUnknown(jid, terminal);
+          }
+        }
+        store.finishExecution(entry.key, {
+          status: LIFECYCLE.SETTLEMENT_PENDING,
+          settle_status: terminal.status,
+          retryable: terminal.status !== "FAILED",
+        });
+        return {
+          key: entry.key,
+          ok: false,
+          retryable: true,
+          reason: "SETTLEMENT_PENDING",
+          settle: terminal.status,
         };
       }
 
+      if (journal?.get?.(jid)) {
+        journal.markSettled(jid, { status: "SUCCESS", independently_verified: true });
+      }
       store.finishExecution(entry.key, {
         status: LIFECYCLE.SETTLED,
-        tidepool_status: "SUCCESS",
+        settle_status: "SUCCESS",
       });
 
       if (reconciler?.reconcile && viewFunction) {
@@ -186,11 +288,15 @@ export function createSettlementWorker(deps) {
           const pending = await viewFunction(portfolio.policy_contract, "get_pending", {
             operation_id: entry.operation_id,
           });
+          const expectedToken =
+            profile.id === CHAIN_PROFILE.MAINNET_1CLICK
+              ? profile.token_usdc
+              : USDC_SEPOLIA;
           const verified = await verifyBeforeReconcile({
             pendingOp: pending,
             originTxHash: entry.sepolia_tx,
             expectedSender: portfolio.intents_signer_id,
-            expectedToken: USDC_SEPOLIA,
+            expectedToken,
             expectedRecipient: entry.to,
             expectedAmount: entry.amount,
             depositAddress: entry.to,
@@ -202,12 +308,15 @@ export function createSettlementWorker(deps) {
               pendingOp: pending,
               originTxHash: entry.sepolia_tx,
               expectedSender: portfolio.intents_signer_id,
-              expectedToken: USDC_SEPOLIA,
+              expectedToken,
               expectedRecipient: entry.to,
               expectedAmount: entry.amount,
               depositAddress: entry.to,
             });
             if (rec.ok) {
+              if (journal?.get?.(jid)) {
+                journal.markReconciled(jid, { tx: rec.tx, independently_verified: true });
+              }
               store.finishExecution(entry.key, {
                 status: LIFECYCLE.RECONCILED,
                 reconcile_tx: rec.tx,
@@ -216,6 +325,7 @@ export function createSettlementWorker(deps) {
                 key: entry.key,
                 ok: true,
                 status: LIFECYCLE.RECONCILED,
+                may_resign: false,
               };
             }
           }
@@ -232,7 +342,10 @@ export function createSettlementWorker(deps) {
           });
         }
       }
-      return { key: entry.key, ok: true, status: LIFECYCLE.SETTLED };
+      return { key: entry.key, ok: true, status: LIFECYCLE.SETTLED, may_resign: false };
+    }
+    } finally {
+      if (journal) journal.releaseClaim(jid, workerId);
     }
 
     return { key: entry.key, ok: true, status: entry.status };
@@ -272,6 +385,9 @@ export function createSettlementWorker(deps) {
         dry_run: dryRun,
         pending: listPending().length,
         ticking,
+        journal: !!journal,
+        profile: profile.id,
+        may_resign: false,
       };
     },
     listPending,

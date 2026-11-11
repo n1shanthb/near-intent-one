@@ -61,6 +61,8 @@ export function createGateKHandlers({
   attestor,
   eth,
   reconcilerHealth,
+  journal = null,
+  profile = null,
   quoteFn = defaultQuoteFn,
 }) {
   mkdirSync(dataDir, { recursive: true });
@@ -237,6 +239,8 @@ export function createGateKHandlers({
               viewFunction,
               attestor,
               eth,
+              journal,
+              profile,
             }
           : null;
 

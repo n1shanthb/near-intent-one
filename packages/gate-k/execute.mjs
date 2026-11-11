@@ -13,6 +13,7 @@ import {
   DEMO_PREFIX,
   REASON,
 } from "./constants.mjs";
+import { SEPOLIA_TIDEPOOL, assertProfileIsolation } from "../execution/chainProfiles.mjs";
 
 /**
  * Build Tidepool agent request for EXACT_INPUT USDC→wNEAR.
@@ -172,7 +173,16 @@ export function preSignChecks({
  * @param {object} args
  */
 export async function executeGateKTrade(deps, args) {
-  const { store, getNearAccounts, viewFunction, attestor, eth, logger = console } = deps;
+  const {
+    store,
+    getNearAccounts,
+    viewFunction,
+    attestor,
+    eth,
+    logger = console,
+    journal: depsJournal = null,
+    profile: depsProfile = null,
+  } = deps;
   const {
     portfolioId,
     portfolio,
@@ -187,6 +197,8 @@ export async function executeGateKTrade(deps, args) {
     mode,
     idempotencyKey,
     ownerSessionId = null,
+    journal: argsJournal = null,
+    profile: argsProfile = null,
   } = args;
 
   if (!operatorConfirmed) {
@@ -253,6 +265,21 @@ export async function executeGateKTrade(deps, args) {
   }
 
   const amount = pre.amount;
+  const profile = argsProfile || depsProfile || SEPOLIA_TIDEPOOL;
+  const journal = argsJournal || depsJournal || null;
+  try {
+    assertProfileIsolation(profile, {
+      chainId: CHAIN_ID,
+      token: USDC_SEPOLIA,
+      originAsset: ORIGIN_ASSET,
+      settleBase: profile.settle_api_base,
+    });
+  } catch (e) {
+    return { ok: false, reason: String(e.message || e), signed: false };
+  }
+  if (profile.network === "mainnet" && !journal) {
+    return { ok: false, reason: "journal_required_for_mainnet_funded", signed: false };
+  }
 
   const execKey =
     idempotencyKey ||
@@ -265,6 +292,7 @@ export async function executeGateKTrade(deps, args) {
       reason: "IDEMPOTENT_ALREADY_EXECUTED",
       existing,
       signed: existing.status === "SIGNED_PENDING_BROADCAST",
+      may_resign: false,
     };
   }
 
@@ -277,6 +305,38 @@ export async function executeGateKTrade(deps, args) {
   });
   if (inflight.status === "SUCCESS") {
     return { ok: false, reason: "IDEMPOTENT_SUCCESS", signed: false };
+  }
+
+  // Journal DRAFT before any MPC sign — crash here ⇒ no signature, no broadcast.
+  const journalId = `j:${execKey}`;
+  if (journal) {
+    try {
+      journal.assertWritable();
+      journal.insertDraft({
+        id: journalId,
+        portfolio_id: portfolioId,
+        idempotency_key: execKey,
+        chain_id: String(CHAIN_ID),
+        meta: {
+          owner_account: portfolio.owner_account,
+          policy_epoch: epoch,
+          quote_hash: quote.quote_hash,
+          profile: profile.id,
+          mode,
+        },
+      });
+    } catch (e) {
+      store.finishExecution(execKey, {
+        status: "FAILED",
+        reason: "journal_unavailable",
+      });
+      return {
+        ok: false,
+        reason: "journal_unavailable",
+        error: String(e.message || e).slice(0, 200),
+        signed: false,
+      };
+    }
   }
 
   try {
@@ -366,11 +426,42 @@ export async function executeGateKTrade(deps, args) {
       propose_tx: propose.transaction.hash,
       sign_tx: sign.transaction.hash,
       quote_hash: quote.quote_hash,
+      policy_epoch: epoch,
+      journal_id: journalId,
+      profile: profile.id,
       mode,
       owner_account: portfolio.owner_account || null,
       owner_session_id: ownerSessionId || null,
+      may_resign: false,
       note: "MPC_SIGNED / ECDSA exported — NOT settled; settlement worker must broadcast+reconcile without re-signing",
     };
+
+    if (journal) {
+      const row = journal.get(journalId);
+      if (row) {
+        journal.db
+          .prepare(
+            `UPDATE tx_journal SET nonce = ?, meta_json = ?, updated_at = ? WHERE id = ?`
+          )
+          .run(
+            nonce.toString(),
+            JSON.stringify({
+              ...JSON.parse(row.meta_json || "{}"),
+              operation_id: opId,
+              sign_tx: sign.transaction.hash,
+              propose_tx: propose.transaction.hash,
+              to: attest.attestation.deposit_address,
+              amount,
+              token: USDC_SEPOLIA.toLowerCase(),
+              mpc_signed: true,
+              // Signed raw EVM bytes are assembled at broadcast from MPC sig;
+              // journal remains DRAFT until settle persists exact bytes pre-broadcast.
+            }),
+            new Date().toISOString(),
+            journalId
+          );
+      }
+    }
 
     store.finishExecution(execKey, result);
     store.upsertPortfolio(portfolioId, {

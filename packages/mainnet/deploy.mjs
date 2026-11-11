@@ -18,10 +18,12 @@ export const DEFAULT_WASM = join(
 
 /** Rough storage-staking estimate helpers (yocto). Operator must set hard max. */
 export const STORAGE_HINT = Object.freeze({
-  /** Observed policy.wasm size ~ hundreds of KiB; pad for code + state. */
-  recommended_min_near: "8",
-  recommended_max_near_request: "15",
-  note: "Exact cost depends on account creation vs upgrade; operator must approve max NEAR",
+  /** Live mainnet storage_amount_per_byte = 1e19; 625701 B WASM ≈ 6.25701 NEAR. */
+  storage_amount_per_byte: "10000000000000000000",
+  wasm_storage_near: "6.25701",
+  recommended_min_near: "7.96",
+  recommended_max_near_request: "9",
+  note: "Ledger subaccount deploy estimate — approval only; no auto-spend",
 });
 
 export function sha256File(path) {
@@ -49,28 +51,54 @@ export function buildInitArgs({
   if (mpc_signer !== MAINNET.mpc.signer) {
     throw new Error(`mpc_signer_must_be_${MAINNET.mpc.signer}`);
   }
+  const resolvedLimits = limits || {
+    max_trade_value: "1000000",
+    daily_turnover_limit: "1000000",
+    max_pending_exposure: "1000000",
+    max_slippage_bps: 50,
+    allowed_assets: ["native:near", "nep141:wrap.near"],
+    allowed_destinations: [],
+    valid_until: String(
+      BigInt(Date.now()) * 1_000_000n + 30n * 24n * 3600n * 1_000_000_000n
+    ),
+    token_scope: "allowlist",
+    allowed_chains: ["near", "eip155:1", "eip155:42161", "eip155:8453"],
+    allowed_venues: ["near_intents_1click"],
+    /** gas_price * gas_limit ceiling (wei·gas). Zero rejected on-chain. */
+    max_gas_budget: "2500000000000000",
+  };
+  assertMainnetGasBudget(resolvedLimits);
   return {
     owner,
     agent,
     mpc_signer,
     portfolio_id,
     verifying_contract,
-    limits: limits || {
-      max_trade_value: "1000000",
-      daily_turnover_limit: "1000000",
-      max_pending_exposure: "1000000",
-      max_slippage_bps: 50,
-      allowed_assets: ["native:near", "nep141:wrap.near"],
-      allowed_destinations: [],
-      valid_until: String(
-        BigInt(Date.now()) * 1_000_000n + 30n * 24n * 3600n * 1_000_000_000n
-      ),
-      token_scope: "allowlist",
-      allowed_chains: ["near", "eip155:1", "eip155:42161", "eip155:8453"],
-      allowed_venues: ["near_intents_1click"],
-      max_gas_budget: "0",
-    },
+    limits: resolvedLimits,
   };
+}
+
+/** Mainnet init must never treat zero as unlimited. */
+export function assertMainnetGasBudget(limits) {
+  const raw = limits?.max_gas_budget ?? limits?.maxGasBudget;
+  if (raw == null || raw === "") {
+    throw new Error("max_gas_budget_required");
+  }
+  let n;
+  try {
+    n = BigInt(String(raw));
+  } catch {
+    throw new Error("max_gas_budget_invalid");
+  }
+  if (n <= 0n) {
+    throw new Error("max_gas_budget_zero_forbidden");
+  }
+  // Sanity: must cover at least 21k * 1 gwei; refuse absurdly huge (u128/4).
+  const absMax = (1n << 128n) / 4n;
+  if (n > absMax) {
+    throw new Error("max_gas_budget_overflow");
+  }
+  return n;
 }
 
 /**

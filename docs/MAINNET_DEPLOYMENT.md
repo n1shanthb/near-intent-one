@@ -33,11 +33,12 @@ Source: `contracts/policy/`
 | Upgrade | No open `upgrade` method in contract — code upgrade = redeploy/account control |
 | MPC | `mpc_signer` stored at init; mainnet must be `v1.signer` |
 | Events | `EVENT_JSON` logs for policy/revoke/sign/withdraw |
-| Unit tests | **18/18 PASS** (`cargo test -p policy`) |
+| Unit tests | **28/28 PASS** (`cargo test` in `contracts/policy`) |
 
-WASM artifact path:
+WASM artifact path (deploy this hash only after approval):
 
-`contracts/policy/target/wasm32-unknown-unknown/release/policy.wasm`
+`artifacts/mainnet/policy.wasm`  
+SHA-256 `aa301524d9cfa99cbf0948d8e65f5f137411d494da91805770314fc6801b0202` (625565 B)
 
 **Frozen artifact:** `artifacts/mainnet/policy.wasm`  
 **SHA-256:** `6fd1912f5912f52481f788ee0a4f7fec1cbc3cafd34496d53e61feb59c1a30d1` · 624900 bytes  

@@ -26,6 +26,13 @@ import {
 import { createPortfolioProvision } from "./portfolioProvision.mjs";
 import { createWithdrawLifecycle } from "./withdrawLifecycle.mjs";
 import { createSettlementWorker } from "./settlementWorker.mjs";
+import {
+  authorizeService,
+  authorizePortfolioOwner,
+  allowOpenDevMode,
+} from "./apiAuth.mjs";
+import { openTxJournal } from "../execution/txJournal.mjs";
+import { SEPOLIA_TIDEPOOL } from "../execution/chainProfiles.mjs";
 import { nearRpc } from "../../scripts/lib/near-live.mjs";
 import { loadServicesEnv } from "../gate-j/llm.mjs";
 import {
@@ -63,6 +70,13 @@ if (NETWORK !== "testnet") {
   process.exit(1);
 }
 
+if (!API_KEY && !allowOpenDevMode(process.env, { remoteAddress: "127.0.0.1" })) {
+  console.error(
+    "refusing to start: GATE_I_API_KEY required (set GATE_I_ALLOW_OPEN_DEV=1 only for localhost/test)"
+  );
+  process.exit(1);
+}
+
 mkdirSync(DATA, { recursive: true });
 const store = openStore(DATA);
 const attestor = createAttestorService({
@@ -78,6 +92,7 @@ let ownerAuth;
 let portfolioProvision;
 let withdrawLifecycle;
 let settlementWorker;
+let txJournal = null;
 const startedAt = new Date().toISOString();
 
 async function listNearAccessKeys(accountId) {
@@ -183,16 +198,21 @@ function readBody(req) {
   });
 }
 
-/** Mutating routes require API key when GATE_I_API_KEY is set. Health stays public. */
+/** Mutating routes require API key; open_dev only on localhost/test with explicit flag. */
 function authorize(req, { mutating }) {
-  if (!mutating || !API_KEY) return { ok: true };
-  const hdr =
-    req.headers["x-api-key"] ||
-    (String(req.headers.authorization || "").startsWith("Bearer ")
-      ? String(req.headers.authorization).slice(7)
-      : "");
-  if (hdr !== API_KEY) return { ok: false, reason: "unauthorized" };
-  return { ok: true };
+  return authorizeService(req, { mutating, apiKey: API_KEY, env: process.env });
+}
+
+function requirePortfolioOwnerSession(req, portfolioId, { requireReady = false } = {}) {
+  const sess = ownerSessionFromReq(req);
+  syncProvisionIntoStore();
+  const portfolio = store.getPortfolio(portfolioId);
+  return authorizePortfolioOwner({
+    portfolioId,
+    portfolio,
+    session: sess,
+    requireReady,
+  });
 }
 
 function loadProvision() {
@@ -305,6 +325,22 @@ async function boot() {
     fetchIntentsUsdc,
   });
 
+  // Durable journal — required before any live broadcast (testnet or mainnet).
+  const journalPath =
+    process.env.NIO_TX_JOURNAL_PATH || join(DATA, "tx-journal.sqlite");
+  const journalSecret =
+    process.env.NIO_TX_JOURNAL_SECRET ||
+    process.env.NIO_OWNER_AUTH_SECRET ||
+    API_KEY ||
+    "nio-journal-dev-only";
+  try {
+    txJournal = openTxJournal({ path: journalPath, secret: journalSecret });
+    txJournal.assertWritable();
+  } catch (e) {
+    console.error("[boot] tx journal unavailable:", String(e.message || e).slice(0, 200));
+    txJournal = null;
+  }
+
   gateK = createGateKHandlers({
     store,
     evidenceDir: EVIDENCE,
@@ -316,10 +352,13 @@ async function boot() {
     getNearAccounts,
     attestor,
     eth,
+    journal: txJournal,
+    profile: SEPOLIA_TIDEPOOL,
     reconcilerHealth: () => reconSvc?.health() || { ok: false, reason: "not_booted" },
   });
 
   // Settlement worker default OFF — never auto-broadcast without explicit env.
+  // Profile remains Sepolia/Tidepool for this testnet-locked API server.
   settlementWorker = createSettlementWorker({
     store,
     eth,
@@ -327,13 +366,19 @@ async function boot() {
     rpcUrl: rpc,
     viewFunction: viewFn,
     reconciler: reconSvc,
+    journal: txJournal,
+    profile: SEPOLIA_TIDEPOOL,
     logger: console,
     enabled: process.env.GATE_K_SETTLEMENT_WORKER === "1",
     dryRun: process.env.GATE_K_SETTLEMENT_DRY_RUN !== "0",
     intervalMs: Number(process.env.GATE_K_SETTLEMENT_INTERVAL_MS || 30000),
   });
   if (process.env.GATE_K_SETTLEMENT_WORKER === "1") {
-    settlementWorker.start();
+    if (!txJournal) {
+      console.error("[boot] refusing to start settlement worker without durable journal");
+    } else {
+      settlementWorker.start();
+    }
   }
 
   const pending = agentSvc.recoverPending();
@@ -431,8 +476,13 @@ async function handle(req, res) {
           settlement_worker: settlementWorker?.health() || { ok: false },
         },
         pending_recoveries: agentSvc?.recoverPending()?.length || 0,
-        auth: API_KEY ? "api_key_required_for_mutations" : "open_dev_mode",
+        auth: API_KEY
+          ? "api_key_required_for_mutations"
+          : allowOpenDevMode(process.env)
+            ? "open_dev_localhost_only"
+            : "api_key_required",
         owner_auth: "nep413",
+        agent_control: "owner_session_required",
       });
     }
 
@@ -905,15 +955,36 @@ async function handle(req, res) {
 
     const ag = path.match(/^\/portfolios\/([^/]+)\/agent$/);
     if (req.method === "GET" && ag) {
-      return json(req, res, 200, agentSvc.state(decodeURIComponent(ag[1])));
+      const pid = decodeURIComponent(ag[1]);
+      const gate = requirePortfolioOwnerSession(req, pid);
+      if (!gate.ok) return json(req, res, 401, gate);
+      return json(req, res, 200, agentSvc.state(pid));
     }
     const agStart = path.match(/^\/portfolios\/([^/]+)\/agent\/start$/);
     if (req.method === "POST" && agStart) {
-      return json(req, res, 200, agentSvc.start(decodeURIComponent(agStart[1])));
+      const pid = decodeURIComponent(agStart[1]);
+      const gate = requirePortfolioOwnerSession(req, pid, { requireReady: true });
+      if (!gate.ok) {
+        return json(req, res, gate.reason === "unknown_portfolio" ? 404 : 401, gate);
+      }
+      return json(req, res, 200, {
+        ...agentSvc.start(pid),
+        owner_authenticated: true,
+        owner_account: gate.account_id,
+      });
     }
     const agStop = path.match(/^\/portfolios\/([^/]+)\/agent\/stop$/);
     if (req.method === "POST" && agStop) {
-      return json(req, res, 200, agentSvc.stop(decodeURIComponent(agStop[1])));
+      const pid = decodeURIComponent(agStop[1]);
+      const gate = requirePortfolioOwnerSession(req, pid);
+      if (!gate.ok) {
+        return json(req, res, gate.reason === "unknown_portfolio" ? 404 : 401, gate);
+      }
+      return json(req, res, 200, {
+        ...agentSvc.stop(pid),
+        owner_authenticated: true,
+        owner_account: gate.account_id,
+      });
     }
 
     return json(req, res, 404, { reason: "unknown_route", path });
@@ -938,7 +1009,11 @@ const onListen = (scheme, port) => {
       gate_j_health: `${scheme}://${HOST}:${port}/v1/gate-j/health`,
       gate_k_health: `${scheme}://${HOST}:${port}/v1/gate-k/health`,
       attestor_public: attestor.publicKey,
-      auth: API_KEY ? "mutations_require_api_key" : "open_dev_mode",
+      auth: API_KEY
+        ? "mutations_require_api_key"
+        : allowOpenDevMode(process.env)
+          ? "open_dev_localhost_only"
+          : "api_key_required",
       persistence: DATA,
       tls: scheme === "https",
     })

@@ -1,0 +1,44 @@
+{
+  "fetched_at": "2026-11-11T12:47:43.465Z",
+  "api": "https://1click.chaindefuser.com/v0/quote",
+  "status_label": "DRY_QUOTE_OBTAINED",
+  "ok": true,
+  "dry": true,
+  "funded_execution": "DISABLED",
+  "no_deposit_address": true,
+  "request": {
+    "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "destinationAsset": "nep141:wrap.near",
+    "amount": "1000000",
+    "recipient": "root.near",
+    "refundTo": "0x9751874dc251d705ed571a447f7a00de5b845cf4",
+    "depositType": "ORIGIN_CHAIN",
+    "refundType": "ORIGIN_CHAIN",
+    "recipientType": "DESTINATION_CHAIN"
+  },
+  "amount_in": "1000000",
+  "amount_out": "265282256815454472843450",
+  "deadline": "2026-11-11T13:02:42.741Z",
+  "binding_digest": "a648144870f6d8359966ee4da35cc0003c30492590f8c0db21c25ce857662d9f",
+  "correlation_id": "6f3b8e73-16cd-45e3-ad41-ce1503fa400e",
+  "deposit": {
+    "ok": false,
+    "reason": "no_deposit_address",
+    "note": "Dry quotes do not allocate deposit addresses; funded quote gated OFF"
+  },
+  "blocker": null,
+  "quote": {
+    "amountIn": "1000000",
+    "amountInFormatted": "1.0",
+    "amountInUsd": "0.999633000000",
+    "minAmountIn": "1000000",
+    "amountOut": "265282256815454472843450",
+    "amountOutFormatted": "0.26528225681545447284345",
+    "amountOutUsd": "0.994808463058",
+    "minAmountOut": "262629434247299928115015",
+    "timeEstimate": 27,
+    "refundFee": "5300",
+    "withdrawFee": "0"
+  },
+  "note": "Real production dry quote. Funded quote/deposit/sign NOT activated."
+}

@@ -36,3 +36,5 @@ vendor/near-hackathon-prompt-examples/
 # AXIS design reference (MIT study copy; do not merge)
 .axis-ref/
 
+private/
+

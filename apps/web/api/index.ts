@@ -129,6 +129,10 @@ function resolveV1Path(req: VercelRequest): string | null {
 }
 
 function pathAllowed(method: string, apiPath: string): boolean {
+  // Hard deny: personal agent execution must never traverse the public BFF.
+  if (/^\/portfolios\/[^/]+\/agent(\/(start|stop))?$/.test(apiPath)) {
+    return false;
+  }
   const key = `${method.toUpperCase()} ${apiPath}`;
   if (ALLOWED_EXACT.has(key)) return true;
   if (method === "GET" && /^\/portfolios\/[^/]+$/.test(apiPath)) {

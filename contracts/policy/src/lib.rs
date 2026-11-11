@@ -291,6 +291,10 @@ impl PolicyContract {
                 "allowlist requires allowed_assets"
             );
         }
+        require!(
+            limits.max_gas_budget.0 > 0,
+            "max_gas_budget required (zero is not unlimited)"
+        );
         Self {
             owner,
             agent,
@@ -347,6 +351,11 @@ impl PolicyContract {
                 "allowlist requires allowed_assets"
             );
         }
+        // Zero previously meant "unlimited" — rejected: funded paths need an explicit cap.
+        require!(
+            limits.max_gas_budget.0 > 0,
+            "max_gas_budget required (zero is not unlimited)"
+        );
         // any_eligible_token is explicit — empty allowlist assets OK, but chains required.
         self.limits = limits;
         self.policy_hash = policy_hash;
@@ -465,6 +474,16 @@ impl PolicyContract {
         require!(!attestation.quote_hash.is_empty(), "quote_hash required");
         require!(!recipient.is_empty(), "recipient required");
         require!(!refund_to.is_empty(), "refund_to required");
+        // Final swap destination + refund must be mandate-allowlisted.
+        // Deposit address is bound separately via attestation+tx.to (1Click escrow).
+        require!(
+            self.destination_allowed(&recipient),
+            "recipient not allowed"
+        );
+        require!(
+            self.destination_allowed(&refund_to),
+            "refund_to not allowed"
+        );
         require!(attestation.amount_in.0 > 0, "amount_in must be > 0");
         require!(
             attestation.amount_in.0 <= self.limits.max_trade_value.0,
@@ -499,14 +518,16 @@ impl PolicyContract {
         );
         require!(attestation.gas_limit.0 > 0, "attested gas_limit required");
         require!(attestation.max_gas_price.0 > 0, "max_gas_price required");
+        require!(
+            self.limits.max_gas_budget.0 > 0,
+            "max_gas_budget required (zero is not unlimited)"
+        );
         let gas_cost = (attestation.max_gas_price.0 as u128)
             .saturating_mul(attestation.gas_limit.0 as u128);
-        if self.limits.max_gas_budget.0 > 0 {
-            require!(
-                gas_cost <= self.limits.max_gas_budget.0,
-                "exceeds max_gas_budget"
-            );
-        }
+        require!(
+            gas_cost <= self.limits.max_gas_budget.0,
+            "exceeds max_gas_budget"
+        );
 
         let min_ratio_bps = 10_000u128.saturating_sub(self.limits.max_slippage_bps as u128);
         let floor = attestation
@@ -1542,6 +1563,14 @@ impl PolicyContract {
         self.limits.allowed_venues.iter().any(|v| v == venue)
     }
 
+    fn destination_allowed(&self, dest: &str) -> bool {
+        let d = dest.trim().to_lowercase();
+        self.limits
+            .allowed_destinations
+            .iter()
+            .any(|allowed| allowed.trim().to_lowercase() == d)
+    }
+
     fn assert_active_mandate(&self) {
         require!(!self.revoked, "revoked");
         require!(!self.paused, "paused");
@@ -2169,5 +2198,286 @@ mod tests {
         p.asset_in = "eip155:1:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".into();
         p.asset_out = "native:near".into();
         c.propose_trade(p);
+    }
+
+    /// Fixed ed25519 seed=0x07… (see packages/intents-codec quote-auth helpers).
+    const TEST_QUOTE_PK: &str = "ed25519:GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB";
+    const TEST_QUOTE_SIG: &str =
+        "ed25519:2Ptx5KRAipkVAMcxCpTQhud5j3YGgKtn9jfdXHbQg7P1PCYMdFVqSjEzHNG8URrtrJbYxJSfQzfSM5fez87ca3Qy";
+
+    fn quoted_attestation() -> QuoteAttestation {
+        QuoteAttestation {
+            deposit_address: "0x1111111111111111111111111111111111111111".into(),
+            amount_in: U128(10),
+            asset_in: "eip155:11155111:0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2".into(),
+            asset_out: "native:near".into(),
+            min_amount_out: U128(10),
+            quote_deadline_ns: U64(9_000_000_000),
+            token_contract: "0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2".into(),
+            chain_id: U64(11_155_111),
+            recipient: "0x0000000000000000000000000000000000000001".into(),
+            refund_to: "0x0000000000000000000000000000000000000001".into(),
+            correlation_id: "corr-test-1".into(),
+            quote_hash: "qh-test-1".into(),
+            max_gas_price: U128(1_000_000_000),
+            gas_limit: U64(100_000),
+        }
+    }
+
+    fn quoted_tx() -> EvmTxParams {
+        EvmTxParams {
+            to: "0x1111111111111111111111111111111111111111".into(),
+            token_contract: "0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2".into(),
+            amount: U128(10),
+            chain_id: U64(11_155_111),
+            gas_limit: U64(100_000),
+            gas_price: U128(1_000_000_000),
+            nonce: U64(7),
+        }
+    }
+
+    fn deploy_with_quote_signer() -> PolicyContract {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.set_trusted_quote_signer(TEST_QUOTE_PK.into());
+        c
+    }
+
+    #[test]
+    fn quoted_evm_binds_digest_to_deposit_transfer() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let op = c.propose_quoted_evm_transfer(
+            "op-q1".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            1,
+        );
+        assert_eq!(op.signing_state, SigningState::Reserved);
+        assert_eq!(op.destination, "0x1111111111111111111111111111111111111111");
+        assert_eq!(op.epoch, 1);
+        // Digest is contract-computed EIP-155 of ERC-20 transfer(deposit, amount) —
+        // agent cannot supply an alternate payload_commitment.
+        let token = evm_auth::parse_hex_address(&quoted_tx().token_contract);
+        let to = evm_auth::parse_hex_address(&quoted_tx().to);
+        let data = evm_auth::erc20_transfer_data(&to, 10);
+        let digest = evm_auth::eip155_unsigned_digest(
+            7,
+            1_000_000_000,
+            100_000,
+            &token,
+            0,
+            &data,
+            11_155_111,
+        );
+        assert_eq!(op.payload_commitment, evm_auth::digest_hex(&digest));
+        // request_signature reads only stored commitment (no agent payload arg).
+        let stored = c.get_pending("op-q1".into()).unwrap();
+        assert_eq!(stored.payload_commitment, op.payload_commitment);
+    }
+
+    #[test]
+    #[should_panic(expected = "tx.to != attested deposit")]
+    fn quoted_evm_rejects_attacker_recipient_substitution() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let mut tx = quoted_tx();
+        // Malicious agent swaps ERC-20 transfer recipient after quote approval.
+        tx.to = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef".into();
+        let _ = c.propose_quoted_evm_transfer(
+            "op-evil".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            tx,
+            1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "recipient not allowed")]
+    fn quoted_evm_rejects_non_allowlisted_recipient() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let mut att = quoted_attestation();
+        att.recipient = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef".into();
+        // Direct contract call: allowlist blocks before signature even matters.
+        let _ = c.propose_quoted_evm_transfer(
+            "op-resub".into(),
+            att,
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid quote attestation signature")]
+    fn quoted_evm_rejects_allowlisted_recipient_without_resign() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        // Attacker address is allowlisted but attestation still signed for original recipient.
+        lim.allowed_destinations
+            .push("0x0000000000000000000000000000000000000002".into());
+        c.set_policy(lim, "h".into(), "s".into());
+        testing_env!(context(agent(), 0).build());
+        let mut att = quoted_attestation();
+        att.recipient = "0x0000000000000000000000000000000000000002".into();
+        let _ = c.propose_quoted_evm_transfer(
+            "op-resign".into(),
+            att,
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            2, // set_policy advanced epoch
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "any_eligible_token_not_safe_for_evm_sign")]
+    fn quoted_evm_blocks_any_eligible_token_mode() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.token_scope = "any_eligible_token".into();
+        lim.allowed_assets = vec![];
+        c.set_policy(lim, "h".into(), "s".into());
+        testing_env!(context(agent(), 0).build());
+        let _ = c.propose_quoted_evm_transfer(
+            "op-any-evm".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            2,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "exceeds max_gas_budget")]
+    fn quoted_evm_enforces_max_gas_budget() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.max_gas_budget = U128(1); // far below gas_price * gas_limit
+        c.set_policy(lim, "h".into(), "s".into());
+        testing_env!(context(agent(), 0).build());
+        let _ = c.propose_quoted_evm_transfer(
+            "op-gas".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            2,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "max_gas_budget required")]
+    fn set_policy_rejects_zero_max_gas_budget() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.max_gas_budget = U128(0);
+        c.set_policy(lim, "h".into(), "s".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn unauthorized_set_policy_rejected() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.set_policy(limits(), "h".into(), "s".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "stale mandate epoch")]
+    fn quoted_evm_rejects_after_policy_epoch_change() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(owner(), 0).build());
+        // Bump epoch via set_policy while agent still presents epoch 1.
+        c.set_policy(limits(), "h2".into(), "s2".into());
+        testing_env!(context(agent(), 0).build());
+        let _ = c.propose_quoted_evm_transfer(
+            "op-stale".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            1, // stale
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "tx.gas_price out of attested bounds")]
+    fn quoted_evm_rejects_excessive_gas_price() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let mut tx = quoted_tx();
+        tx.gas_price = U128(9_000_000_000); // > attested max 1e9
+        let _ = c.propose_quoted_evm_transfer(
+            "op-gasp".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            tx,
+            1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "tx.gas_limit != attested")]
+    fn quoted_evm_rejects_gas_limit_mismatch() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let mut tx = quoted_tx();
+        tx.gas_limit = U64(9_000_000);
+        let _ = c.propose_quoted_evm_transfer(
+            "op-gasl".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            tx,
+            1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "evm destinations require propose_quoted_evm_transfer")]
+    fn propose_trade_cannot_bypass_quoted_evm_path() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        let mut p = proposal("op-bypass", 10);
+        p.destination = "0x1111111111111111111111111111111111111111".into();
+        c.propose_trade(p);
+    }
+
+    #[test]
+    #[should_panic(expected = "attestation already used")]
+    fn quoted_evm_attestation_replay_blocked() {
+        let mut c = deploy_with_quote_signer();
+        testing_env!(context(agent(), 0).build());
+        let _ = c.propose_quoted_evm_transfer(
+            "op-r1".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            quoted_tx(),
+            1,
+        );
+        let mut tx2 = quoted_tx();
+        tx2.nonce = U64(8);
+        let _ = c.propose_quoted_evm_transfer(
+            "op-r2".into(),
+            quoted_attestation(),
+            TEST_QUOTE_SIG.into(),
+            TEST_QUOTE_PK.into(),
+            tx2,
+            1,
+        );
     }
 }

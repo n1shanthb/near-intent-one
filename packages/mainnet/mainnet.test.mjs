@@ -22,7 +22,12 @@ import {
   evaluateCanaryReadiness,
   mainnetTradeSafetyCheck,
 } from "./canary.mjs";
-import { buildInitArgs, sha256File, DEFAULT_WASM } from "./deploy.mjs";
+import {
+  buildInitArgs,
+  sha256File,
+  DEFAULT_WASM,
+  assertMainnetGasBudget,
+} from "./deploy.mjs";
 import { existsSync } from "node:fs";
 
 describe("network isolation", () => {
@@ -148,6 +153,83 @@ describe("intents status model", () => {
   });
 });
 
+describe("production 1Click binding", () => {
+  it("validates request + recipient allowlist + binds dry quote fields", async () => {
+    const {
+      validateQuoteRequest,
+      validateRecipientRefund,
+      bindQuoteToRequest,
+      depositInstructions,
+      reconcileSettlement,
+      PRODUCTION_ASSETS,
+    } = await import("./intents.production.mjs");
+    const req = {
+      originAsset: PRODUCTION_ASSETS.arbUsdc,
+      destinationAsset: PRODUCTION_ASSETS.wrapNear,
+      amount: "1000000",
+      recipient: "root.near",
+      refundTo: "0x9751874dc251d705ed571a447f7a00de5b845cf4",
+      deadline: new Date(Date.now() + 600_000).toISOString(),
+    };
+    assert.equal(validateQuoteRequest(req).ok, true);
+    assert.equal(
+      validateRecipientRefund(req, {
+        allowedRecipients: ["root.near"],
+        allowedRefunds: [req.refundTo],
+      }).ok,
+      true
+    );
+    assert.equal(
+      validateRecipientRefund(req, { allowedRecipients: ["other.near"] }).ok,
+      false
+    );
+    const fakeQuote = {
+      ok: true,
+      dry: true,
+      deadline: req.deadline,
+      request: req,
+      quote: { amountIn: "1000000", amountOut: "1", minAmountOut: "1" },
+      amount_out: "1",
+      deposit_address: null,
+      correlation_id: "corr-test",
+    };
+    const bound = bindQuoteToRequest(fakeQuote, req);
+    assert.equal(bound.ok, true);
+    assert.equal(bound.may_attest, true);
+    assert.equal(depositInstructions(bound).ok, false);
+    assert.equal(depositInstructions(bound).reason, "no_deposit_address");
+    assert.equal(reconcileSettlement({ status: "REFUNDED" }).outcome, "REFUNDED");
+  });
+});
+
+describe("execution router stubs", () => {
+  it("keeps 0x and NEAR DEX as unsupported stubs", async () => {
+    const {
+      createMainnetRouter,
+      createEvmAggregatorStub,
+      createNearNativeDexStub,
+      createNearIntentsAdapter,
+      ROUTE_STATUS,
+    } = await import("../execution/router.mjs");
+    const router = createMainnetRouter([
+      createNearIntentsAdapter({}),
+      createEvmAggregatorStub(),
+      createNearNativeDexStub(),
+    ]);
+    const all = await router.quoteAll({
+      originAsset: "a",
+      destinationAsset: "b",
+      amount: "1",
+      recipient: "x",
+      refundTo: "y",
+    });
+    assert.equal(all.length, 3);
+    assert.equal(all[0].reason, "1click_fn_missing");
+    assert.equal(all[1].status, ROUTE_STATUS.UNSUPPORTED_ROUTE);
+    assert.equal(all[2].status, ROUTE_STATUS.UNSUPPORTED_ROUTE);
+  });
+});
+
 describe("wasm artifact", () => {
   it("hashes release wasm when present", () => {
     if (!existsSync(DEFAULT_WASM)) {
@@ -167,5 +249,38 @@ describe("wasm artifact", () => {
         portfolio_id: "x",
       })
     );
+  });
+
+  it("rejects zero / missing max_gas_budget (SEC gas unlimited)", () => {
+    assert.throws(() => assertMainnetGasBudget({ max_gas_budget: "0" }), /zero/);
+    assert.throws(() => assertMainnetGasBudget({}), /required/);
+    assert.throws(
+      () =>
+        buildInitArgs({
+          owner: "alice.near",
+          agent: "agent.near",
+          portfolio_id: "hack26",
+          limits: {
+            max_trade_value: "1",
+            daily_turnover_limit: "1",
+            max_pending_exposure: "1",
+            max_slippage_bps: 50,
+            allowed_assets: ["native:near"],
+            allowed_destinations: [],
+            valid_until: "9",
+            token_scope: "allowlist",
+            allowed_chains: ["near"],
+            allowed_venues: ["near_intents_1click"],
+            max_gas_budget: "0",
+          },
+        }),
+      /zero/
+    );
+    const ok = buildInitArgs({
+      owner: "alice.near",
+      agent: "agent.near",
+      portfolio_id: "hack26",
+    });
+    assert.ok(BigInt(ok.limits.max_gas_budget) > 0n);
   });
 });

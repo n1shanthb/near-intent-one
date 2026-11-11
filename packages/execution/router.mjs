@@ -69,6 +69,7 @@ export function createNearIntentsAdapter({ dryQuoteFn }) {
           ok: false,
           status: ROUTE_STATUS.UNSUPPORTED_ROUTE,
           reason: "1click_fn_missing",
+          note: "Wire packages/mainnet/intents.production.mjs createProductionNearIntentsAdapter",
         };
       }
       const out = await dryQuoteFn({ ...req, dry: true });
@@ -76,20 +77,33 @@ export function createNearIntentsAdapter({ dryQuoteFn }) {
         return {
           ok: false,
           status: ROUTE_STATUS.NO_SAFE_LIQUIDITY,
-          reason: out?.reason || "quote_failed",
+          reason: out?.reason || out?.blocker || "quote_failed",
           detail: out,
         };
       }
       return {
         ok: true,
         status: ROUTE_STATUS.QUOTED,
-        amount_out: out.amount_out,
-        deadline: out.deadline,
+        amount_out: out.amount_out ?? out.bound?.amount_out,
+        deadline: out.deadline ?? out.bound?.deadline,
+        binding_digest: out.binding_digest ?? out.bound?.binding_digest,
         dry: true,
         note: "Dry quote only — not a deposit address",
       };
     },
   };
+}
+
+/** Default mainnet router: one real 1Click path + honest stubs. */
+export function createMainnetRouter(adapters) {
+  return createExecutionRouter(
+    adapters || [
+      // Caller should inject createProductionNearIntentsAdapter() when JWT available.
+      createNearIntentsAdapter({}),
+      createEvmAggregatorStub(),
+      createNearNativeDexStub(),
+    ]
+  );
 }
 
 /** 0x / EVM aggregator stub — validates shape, does not sign. */
