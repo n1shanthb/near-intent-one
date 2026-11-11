@@ -1,0 +1,32 @@
+{
+  "kind": "TESTNET_FUNDED_MULTICHAIN_TRADES",
+  "acceptance_override": false,
+  "may_resign": false,
+  "pass": true,
+  "caveats": [
+    "destination_mt_balance_on_policy_account_unverified",
+    "tidepool_not_official_1click"
+  ],
+  "portfolio": {
+    "id": "i-a-a4e7",
+    "policy": "policy.nio-i-a4e7-a-owner.testnet",
+    "mpc_evm": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752"
+  },
+  "trade": {
+    "amount_usdc_raw": "1000000",
+    "deposit": "0xab89c631b2381c556231d79bb28e20ece3b8cb39",
+    "sepolia_tx": "0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
+    "explorer": "https://sepolia.etherscan.io/tx/0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
+    "receipt_status": "0x1",
+    "near_propose": "Fztj18qC7ieeBuS6VBAyHniJ18R4hDrgTHuQiGd4KqBu",
+    "near_sign": "785oUE4pn13eTfuepDgqeChCySrdkgpxA4FndfyEyDXA",
+    "tidepool_status": "SUCCESS",
+    "destination_near_tx": "BtguMNjeFE59vJqqWm1RGwvodQhzs6gVjnGUcfL6bvNk",
+    "amount_out": "263247070370370421104000",
+    "usdc_before": "24450000",
+    "usdc_after": "23450000",
+    "fitter": "ALLOWED",
+    "critic": "APPROVE",
+    "correlation_id": "d0fd48c2-329c-4dc1-ad60-912c3734d2c1"
+  }
+}

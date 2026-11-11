@@ -1,0 +1,67 @@
+{
+  "kind": "TESTNET_DESTINATION_CUSTODY_P0",
+  "investigated_trade": {
+    "source_tx": "0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
+    "destination_tx": "BtguMNjeFE59vJqqWm1RGwvodQhzs6gVjnGUcfL6bvNk",
+    "correlation_id": "d0fd48c2-329c-4dc1-ad60-912c3734d2c1",
+    "provider_status": "SUCCESS",
+    "amount_out_raw": "263247070370370421104000"
+  },
+  "quote_fields": {
+    "recipient": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "recipientType": "DESTINATION_CHAIN",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+    "depositType": "ORIGIN_CHAIN",
+    "refundTo": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "refundType": "ORIGIN_CHAIN",
+    "intentsAccount": "a4f0342b9e57ccda81a120067320e8ec86a77d4d4e21fc34375f77b1bfb05343"
+  },
+  "delivery_path": [
+    "verifier mt_burn withdraw of wNEAR from intentsAccount a4f0342b…",
+    "wnear.tidepool-sandbox.testnet ft_transfer verifier → 0x30af279bedef3bb82c7f47bb9f6a514f6264e752"
+  ],
+  "exact_output": {
+    "recipient": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "output_contract": "wnear.tidepool-sandbox.testnet",
+    "balance_interface": "nep141.ft_balance_of",
+    "trade_raw_amount": "263247070370370421104000",
+    "observed_ft_balance_of_recipient": "7313347300037944920013600",
+    "note": "Observed balance aggregates prior misdelivered credits to same EVM-as-NEAR id; trade credit equals amount_out_raw via ft_transfer log"
+  },
+  "before_after": {
+    "policy.nio-i-a4e7-a-owner.testnet.ft_balance_of": { "after": "0" },
+    "nio-i-a4e7-a-owner.testnet.ft_balance_of": { "after": "0" },
+    "verifier.mt_balance_of(recipient, nep141:wnear…)": "0",
+    "verifier.mt_balance_of(intentsAccount, nep141:wnear…)": "0",
+    "wnear.ft_balance_of(0x30af…)": "7313347300037944920013600"
+  },
+  "ownership_control": {
+    "recipient_near_account_exists": false,
+    "access_keys": [],
+    "create_account_attempt": {
+      "result": "FAILED",
+      "error": "OnlyImplicitAccountCreationAllowed",
+      "tx": "3JmS1FC5JUMXA8ntbUkuUcJQYAZJjsNgm4UeaRjUtWoA",
+      "meaning": "NEAR protocol refuses named top-level create for 0x-prefixed EVM address string"
+    },
+    "evm_mpc_controls_near_account": false,
+    "nio_signing_control_of_intentsAccount": false,
+    "intentsAccount_role": "transient verifier ledger identity; balance burned/withdrawn to DESTINATION_CHAIN recipient"
+  },
+  "withdrawal_feasibility": "IMPOSSIBLE_FOR_NIO",
+  "recovered_funds": null,
+  "settlement_verdict": "CUSTODY_FAILURE",
+  "root_cause": "Canary quoted recipientType=DESTINATION_CHAIN with recipient=EVM MPC address for a NEAR NEP-141 asset, delivering wNEAR to an uncreateable NEAR account_id",
+  "do_not_repeat": {
+    "recipient": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "recipientType": "DESTINATION_CHAIN",
+    "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet"
+  },
+  "correct_next_config": {
+    "recipient": "nio-i-a4e7-a-owner.testnet",
+    "recipientType": "DESTINATION_CHAIN",
+    "refundTo": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+    "refundType": "ORIGIN_CHAIN",
+    "prereq": "storage_deposit on wnear for owner (tx Ebffv3GND4e9EECBiAWsndwr3spUJVHPZpHpAfi5dVHv)"
+  }
+}

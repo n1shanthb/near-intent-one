@@ -1,0 +1,19 @@
+{
+  "withdrawal_proof": {
+    "token": "wnear.tidepool-sandbox.testnet",
+    "from": "nio-i-a4e7-a-owner.testnet",
+    "to": "policy.nio-i-a4e7-a-owner.testnet",
+    "amount_raw": "1000000000000000000000",
+    "storage_tx": "Ewaz7gn8oLM8tVX5ksyYUk98ooWMoWrhWCAbnBMDhx8m",
+    "transfer_tx": "5cf6y1q7ZK4X5eGTmfb6LYcBYgaqSkmZK3PGYKBC6zEG",
+    "before": {
+      "owner": "263260765079365092512000",
+      "policy": "0"
+    },
+    "after": {
+      "owner": "262260765079365092512000",
+      "policy": "1000000000000000000000"
+    },
+    "ok": true
+  }
+}

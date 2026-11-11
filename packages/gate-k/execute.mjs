@@ -18,7 +18,15 @@ import { SEPOLIA_TIDEPOOL, assertProfileIsolation } from "../execution/chainProf
 /**
  * Build Tidepool agent request for EXACT_INPUT USDC→wNEAR.
  */
-export function buildAgentRequest({ amount, recipient, deadlineMs = 45 * 60 * 1000 }) {
+export function buildAgentRequest({
+  amount,
+  recipient,
+  refundTo,
+  recipientType = "DESTINATION_CHAIN",
+  refundType = "ORIGIN_CHAIN",
+  deadlineMs = 45 * 60 * 1000,
+}) {
+  const refund = refundTo || recipient;
   return {
     dry: false,
     swapType: "EXACT_INPUT",
@@ -27,10 +35,10 @@ export function buildAgentRequest({ amount, recipient, deadlineMs = 45 * 60 * 10
     depositType: "ORIGIN_CHAIN",
     destinationAsset: DEST_ASSET,
     amount: String(amount),
-    refundTo: recipient,
-    refundType: "ORIGIN_CHAIN",
+    refundTo: refund,
+    refundType,
     recipient,
-    recipientType: "DESTINATION_CHAIN",
+    recipientType,
     deadline: new Date(Date.now() + deadlineMs).toISOString(),
   };
 }

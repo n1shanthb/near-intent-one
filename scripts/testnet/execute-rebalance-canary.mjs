@@ -331,6 +331,28 @@ async function main() {
     process.exit(1);
   }
 
+  // DESTINATION_CHAIN + NEAR asset requires a NEAR account ID we control.
+  // Prior CUSTODY FAILURE: EVM MPC address as recipient credited uncreateable
+  // account_id 0x… on wNEAR (OnlyImplicitAccountCreationAllowed).
+  const nearRecipient =
+    process.env.NIO_TESTNET_DEST_RECIPIENT || portfolio.owner_account;
+  const refundTo = portfolio.intents_signer_id;
+  report.steps.destination_binding = {
+    recipient: nearRecipient,
+    recipientType: "DESTINATION_CHAIN",
+    refundTo,
+    refundType: "ORIGIN_CHAIN",
+    depositType: "ORIGIN_CHAIN",
+    destinationAsset: "nep141:wnear.tidepool-sandbox.testnet",
+    note: "owner-controlled NEAR recipient; EVM refund only",
+  };
+  report.steps.destination_ft_before = await viewFunction(
+    rpc,
+    "wnear.tidepool-sandbox.testnet",
+    "ft_balance_of",
+    { account_id: nearRecipient }
+  );
+
   const quoteFn = async ({ originAsset, destinationAsset, amount, deadlineMs }) => {
     const agentRequest = {
       dry: false,
@@ -340,9 +362,9 @@ async function main() {
       depositType: "ORIGIN_CHAIN",
       destinationAsset,
       amount: String(amount),
-      refundTo: portfolio.intents_signer_id,
+      refundTo,
       refundType: "ORIGIN_CHAIN",
-      recipient: portfolio.intents_signer_id,
+      recipient: nearRecipient,
       recipientType: "DESTINATION_CHAIN",
       deadline: new Date(Date.now() + (deadlineMs || 45 * 60 * 1000)).toISOString(),
     };
@@ -392,12 +414,30 @@ async function main() {
 
   const agentRequest = buildAgentRequest({
     amount: safety.safe_proposal.proposed_size_usdc_raw,
-    recipient: portfolio.intents_signer_id,
+    recipient: nearRecipient,
+    refundTo,
+    recipientType: "DESTINATION_CHAIN",
+    refundType: "ORIGIN_CHAIN",
   });
   if (quoteResult.quote?.quoteRequest?.deadline) {
     agentRequest.deadline = quoteResult.quote.quoteRequest.deadline;
   } else if (quoteResult.quote?.quote?.deadline) {
     agentRequest.deadline = quoteResult.quote.quote.deadline;
+  }
+  // Bind quoted recipient to what we will settle against.
+  const quotedRecipient =
+    quoteResult.quote?.quoteRequest?.recipient ||
+    quoteResult.quote?.quote?.quoteRequest?.recipient ||
+    null;
+  report.steps.quote_recipient_check = {
+    expected: nearRecipient,
+    quoted: quotedRecipient,
+    match: quotedRecipient === nearRecipient,
+  };
+  if (quotedRecipient && quotedRecipient !== nearRecipient) {
+    report.reason = "QUOTE_RECIPIENT_MISMATCH";
+    save("TESTNET_FUNDED_MULTICHAIN_TRADES.json", report);
+    process.exit(1);
   }
 
   console.error("[canary] proposing + requesting MPC signature...");
@@ -430,7 +470,7 @@ async function main() {
       reconcilerOk: true,
       operatorConfirmed: true,
       mode: MODE.TESTNET_EXECUTION,
-      idempotencyKey: `gate_k:rebalance:${FIRST_TEST.portfolio_id}:${AMOUNT}`,
+      idempotencyKey: `gate_k:rebalance:${FIRST_TEST.portfolio_id}:${AMOUNT}:owner-near:${Date.now()}`,
     }
   );
   report.steps.execution = {
@@ -592,10 +632,55 @@ async function main() {
   }
   report.steps.settlement_terminal = terminal;
 
+  const wnear = "wnear.tidepool-sandbox.testnet";
+  const ftBefore = report.steps.destination_ft_before;
+  let ftAfter = null;
+  let custody = {
+    recipient: nearRecipient,
+    token: wnear,
+    verdict: "UNVERIFIED",
+  };
+  try {
+    // Poll independent NEP-141 balance on owner-controlled account.
+    for (let i = 0; i < 12; i++) {
+      ftAfter = await viewFunction(rpc, wnear, "ft_balance_of", {
+        account_id: nearRecipient,
+      });
+      if (ftBefore != null && BigInt(ftAfter || "0") > BigInt(ftBefore || "0")) break;
+      if (terminal && String(terminal).startsWith("SUCCESS") && i >= 2) break;
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    const increased =
+      ftBefore != null && BigInt(ftAfter || "0") > BigInt(ftBefore || "0");
+    custody = {
+      recipient: nearRecipient,
+      token: wnear,
+      balance_interface: "nep141.ft_balance_of",
+      before: ftBefore,
+      after: ftAfter,
+      increased,
+      owner_controls_recipient: nearRecipient === portfolio.owner_account,
+      withdrawal_feasible: increased || BigInt(ftAfter || "0") > 0n,
+      verdict: increased
+        ? "CUSTODY_VERIFIED_RECOVERABLE"
+        : terminal && String(terminal).includes("SUCCESS")
+          ? "CUSTODY_UNVERIFIED_AFTER_SUCCESS"
+          : "CUSTODY_PENDING",
+    };
+  } catch (e) {
+    custody.error = String(e.message || e).slice(0, 200);
+  }
+  report.steps.destination_custody = custody;
+
   report.pass =
     report.steps.receipt.ok === true &&
-    (terminal === "SUCCESS" || terminal === "SUCCEEDED" || terminal === "COMPLETED");
-  report.reason = report.pass ? "TESTNET_TRADE_COMPLETED" : "SETTLEMENT_PENDING_OR_FAILED";
+    (terminal === "SUCCESS" || terminal === "SUCCEEDED" || terminal === "COMPLETED") &&
+    custody.verdict === "CUSTODY_VERIFIED_RECOVERABLE";
+  report.reason = report.pass
+    ? "TESTNET_TRADE_CUSTODY_VERIFIED"
+    : custody.verdict === "CUSTODY_VERIFIED_RECOVERABLE"
+      ? "SETTLEMENT_PENDING_OR_FAILED"
+      : "SETTLEMENT_OR_CUSTODY_INCOMPLETE";
   report.summary = {
     source_chain: "ethereum_sepolia",
     source_token: USDC_SEPOLIA,
@@ -605,6 +690,9 @@ async function main() {
     near_propose: exec.propose_tx,
     near_sign: exec.sign_tx,
     tidepool_terminal: terminal,
+    destination_recipient: nearRecipient,
+    destination_ft_after: ftAfter,
+    custody_verdict: custody.verdict,
     fitter: fit.outcome,
     critic: criticReview.verdict,
     acceptance_override: false,

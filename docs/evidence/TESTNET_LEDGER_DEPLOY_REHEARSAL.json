@@ -1,0 +1,40 @@
+{
+  "kind": "TESTNET_LEDGER_DEPLOY_REHEARSAL",
+  "cli": {
+    "name": "near-cli-rs",
+    "version": "0.31.1",
+    "source": "https://github.com/near/near-cli-rs/releases/tag/v0.31.1"
+  },
+  "ledger_device_used": false,
+  "signing_mode": "software_full_access_simulating_ledger_owner_and_temp_deploy_key",
+  "account": "policy-rehearse.nio-i-a4e7-a-owner.testnet",
+  "existing_policy_untouched": "policy.nio-i-a4e7-a-owner.testnet",
+  "artifact": {
+    "path": "artifacts/mainnet/policy.wasm",
+    "bytes": 625701,
+    "sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
+    "on_chain_code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ"
+  },
+  "txs": {
+    "create_account": "DpFGfjVHNNt67ycyYh8iuZBHCee1eWcfXnZAzACxKfSm",
+    "add_temp_key": "3RdMg4zxwPQ8TwJdQCwavdgFzfwgP26n3ad82B4WxTWe",
+    "fund_storage": "Dod67xTbg3oNYnYXwEY8CnDphEqW7Rn7bEU2o5gLGjYn",
+    "deploy_and_init": "5vQthfEkhepjRk9mbi1SMxHMLreSGcq4wQcDQvbgppiD",
+    "delete_temp_key": "2nBspRf6RJBguJGG1jgXgWH4ksSpMJmYxFWMmjvNmMD6",
+    "owner_pause": "DNdZTiQT1xpBCUVujXrPVMd3gDcFxjoZSGAu4py3AutD"
+  },
+  "state_after_init": {
+    "get_paused": true,
+    "get_mpc_signer": "v1.signer-prod.testnet"
+  },
+  "keys_after_temp_removal": [
+    {
+      "public_key": "ed25519:2TWST8ofn1XHDPGqTSnpTVcTexUZkx8yTHaKw2sX6ReN",
+      "permission": "FullAccess"
+    }
+  ],
+  "temp_key_removed": "ed25519:5ZCjHuoDuJTePYuziuYNVBge6TPKACGqvUqAS6yw51G6",
+  "mainnet_broadcast": false,
+  "pass": true,
+  "caveat": "Ledger Nano path syntax documented; device not attached for this rehearsal"
+}

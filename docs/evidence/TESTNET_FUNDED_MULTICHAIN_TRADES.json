@@ -1,32 +1,321 @@
 {
-  "kind": "TESTNET_FUNDED_MULTICHAIN_TRADES",
+  "kind": "TESTNET_FUNDED_REBALANCE_CANARY",
   "acceptance_override": false,
-  "may_resign": false,
+  "mainnet": false,
+  "authorized_objective": "Owner-authorized testnet inventory rebalance (faucet USDC → wNEAR) for cross-chain proof — not a mainnet PnL claim",
+  "amount_usdc_raw": "1000000",
   "pass": true,
-  "caveats": [
-    "destination_mt_balance_on_policy_account_unverified",
-    "tidepool_not_official_1click"
-  ],
-  "portfolio": {
-    "id": "i-a-a4e7",
-    "policy": "policy.nio-i-a4e7-a-owner.testnet",
-    "mpc_evm": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752"
+  "steps": {
+    "balances": {
+      "ok": true,
+      "portfolio_id": "i-a-a4e7",
+      "mpc_evm": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "policy_account": "policy.nio-i-a4e7-a-owner.testnet",
+      "rows": [
+        {
+          "network": "near_testnet",
+          "display": "NEAR testnet",
+          "account": "policy.nio-i-a4e7-a-owner.testnet",
+          "token_contract": "native",
+          "symbol": "NEAR",
+          "decimals": 24,
+          "raw_token_balance": "10986459514271479800000000",
+          "human_token_balance": "10.986459514271479800000000",
+          "native_gas_wei": "10986459514271479800000000",
+          "rpc": "https://test.rpc.fastnear.com",
+          "block_height": 277243163,
+          "verified_at": "2026-11-11T16:59:51.354Z",
+          "status": "VERIFIED_POSITIVE"
+        },
+        {
+          "network": "ethereum_sepolia",
+          "display": "Ethereum Sepolia",
+          "chain_id": 11155111,
+          "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+          "token_contract": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+          "symbol": "USDC",
+          "decimals": 6,
+          "raw_token_balance": "23450000",
+          "human_token_balance": "23.450000",
+          "native_gas_wei": "49324001600000000",
+          "native_gas_eth": "0.049324001600000000",
+          "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+          "block_number": "0xb8d4a6",
+          "block_hash": "0x76d5b6f74c36aea0274715d7071ce1b5dde473b960eb8188978b3c260e38e5f8",
+          "verified_at": "2026-11-11T16:59:51.372Z",
+          "status": "VERIFIED_POSITIVE"
+        },
+        {
+          "network": "arbitrum_sepolia",
+          "display": "Arbitrum Sepolia",
+          "chain_id": 421614,
+          "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+          "token_contract": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+          "symbol": "USDC",
+          "decimals": 6,
+          "raw_token_balance": "0",
+          "human_token_balance": "0",
+          "native_gas_wei": "0",
+          "native_gas_eth": "0",
+          "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+          "block_number": "0x1390a54e",
+          "block_hash": "0x6df651ac0a2281d9096791897d4af202bf62d6ee642aec2e3c4b4a7ec80fdd0a",
+          "verified_at": "2026-11-11T16:59:51.374Z",
+          "status": "VERIFIED_ZERO"
+        },
+        {
+          "network": "base_sepolia",
+          "display": "Base Sepolia",
+          "chain_id": 84532,
+          "account": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+          "token_contract": "0x38d81431B9f76d9699AF7517040D5221D9dEA252",
+          "symbol": "USDC",
+          "decimals": 6,
+          "raw_token_balance": "0",
+          "human_token_balance": "0",
+          "native_gas_wei": "0",
+          "native_gas_eth": "0",
+          "rpc": "https://sepolia.base.org",
+          "block_number": "0x36cf667",
+          "block_hash": "0x878c7e3a5760314622d66fb00452605b91dc6c5ef6829a0de51951733416814a",
+          "verified_at": "2026-11-11T16:59:51.375Z",
+          "status": "VERIFIED_ZERO"
+        }
+      ],
+      "positive_funding_networks": [
+        "near_testnet",
+        "ethereum_sepolia"
+      ],
+      "explanation": {
+        "mainnet_matrix_no_trade": "scripts/mainnet/multichain-quote-matrix.mjs passed balances:{} intentionally — capitalAvailable returned no_balance_entry because no verified mainnet balance map was supplied. That is ADDRESS/ASSOC omission for mainnet portfolio funding, not proof that Sepolia balances are zero.",
+        "testnet_live_reads": "Gate J/K verify Sepolia USDC on intents_signer_id only today. Arb/Base Sepolia were not in the balance reader; zero there means unverified-for-trading until faucet + reader + chain-id policy binding exist.",
+        "portfolio_a_mpc": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+        "portfolio_a_policy": "policy.nio-i-a4e7-a-owner.testnet"
+      },
+      "fingerprint": "15d31002bab49a4b"
+    },
+    "route_matrix": {
+      "ok": true,
+      "trust": {
+        "kind": "community_testnet_1click_compatible",
+        "not_official_production_1click": true,
+        "maker_relayer_trust": "Tidepool sandbox operators / makers — not NEAR Intents mainnet settlement",
+        "docs": "https://www.usetidepool.tech/docs"
+      },
+      "dry": true,
+      "matrix": [
+        {
+          "id": "eth_sepolia_usdc_to_wnear",
+          "chain_id": 11155111,
+          "origin_asset": "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet",
+          "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+          "capital_ok": true,
+          "capital": {
+            "amount_raw": "23450000",
+            "verified": true,
+            "chain": "ethereum_sepolia"
+          },
+          "quote_ok": true,
+          "reason": null,
+          "amount_out": "263260765079365092512000",
+          "min_amount_out": "260628157428571441586880",
+          "amount_out_usd_display_only": "0.9951",
+          "deposit_address": null,
+          "correlation_id": "48081c92-4e1d-42bb-bfea-2bca1a7e21da"
+        },
+        {
+          "id": "arb_sepolia_usdc_to_wnear",
+          "chain_id": 421614,
+          "origin_asset": "nep141:arb-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+          "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+          "capital_ok": false,
+          "capital": {
+            "reason": "no_balance_entry"
+          },
+          "quote_ok": true,
+          "reason": null,
+          "amount_out": "263260765079365092512000",
+          "min_amount_out": "260628157428571441586880",
+          "amount_out_usd_display_only": "0.9951",
+          "deposit_address": null,
+          "correlation_id": "a1db187f-249d-4610-bb5c-247410fcb292"
+        },
+        {
+          "id": "base_sepolia_usdc_to_wnear",
+          "chain_id": 84532,
+          "origin_asset": "nep141:base-0x38d81431b9f76d9699af7517040d5221d9dea252.tp-omft.testnet",
+          "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+          "capital_ok": false,
+          "capital": {
+            "reason": "no_balance_entry"
+          },
+          "quote_ok": true,
+          "reason": null,
+          "amount_out": "263260765079365092512000",
+          "min_amount_out": "260628157428571441586880",
+          "amount_out_usd_display_only": "0.9951",
+          "deposit_address": null,
+          "correlation_id": "96639edf-7972-4b50-af4b-5dc1739aef99"
+        }
+      ],
+      "proposal": {
+        "choice": "TRADE",
+        "route_id": "eth_sepolia_usdc_to_wnear",
+        "origin_asset": "nep141:eth-0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2.tp-omft.testnet",
+        "destination_asset": "nep141:wnear.tidepool-sandbox.testnet",
+        "amount": "1000000",
+        "min_amount_out": "260628157428571441586880",
+        "rationale": "Selected by highest minAmountOut among capital-verified quotes; amountOutUsd not used as authority",
+        "funded_execution": "DISABLED"
+      }
+    },
+    "ai_route": {
+      "selected": "eth_sepolia_usdc_to_wnear",
+      "rationale": "Selected by highest minAmountOut among capital-verified quotes; amountOutUsd not used as authority",
+      "rejected": [
+        {
+          "id": "arb_sepolia_usdc_to_wnear",
+          "reason": "no_verified_capital"
+        },
+        {
+          "id": "base_sepolia_usdc_to_wnear",
+          "reason": "no_verified_capital"
+        }
+      ]
+    },
+    "gate_j_balances": {
+      "ok": true,
+      "balance_usdc_raw": "23450000"
+    },
+    "mandate": {
+      "ok": true,
+      "epoch": 3,
+      "paused": false,
+      "revoked": false
+    },
+    "fitter": {
+      "outcome": "ALLOWED",
+      "reason_codes": [
+        "ALREADY_WITHIN_MANDATE"
+      ],
+      "fitted_size": "1000000"
+    },
+    "critic": {
+      "verdict": "APPROVE",
+      "reasons": [
+        "Fitted rebalance proposal present with mandate-compliant size",
+        "Fresh Tidepool route capital-verified on Sepolia",
+        "Objective is owner-authorized testnet inventory rebalance, not speculative PnL"
+      ],
+      "mode": "deterministic_rebalance_critic"
+    },
+    "enforce": {
+      "decision": "EXECUTE_DRY_RUN",
+      "reason_codes": [
+        "ALREADY_WITHIN_MANDATE"
+      ]
+    },
+    "safety": {
+      "ok": true,
+      "size": "1000000"
+    },
+    "destination_binding": {
+      "recipient": "nio-i-a4e7-a-owner.testnet",
+      "recipientType": "DESTINATION_CHAIN",
+      "refundTo": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "refundType": "ORIGIN_CHAIN",
+      "depositType": "ORIGIN_CHAIN",
+      "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
+      "note": "owner-controlled NEAR recipient; EVM refund only"
+    },
+    "destination_ft_before": "0",
+    "fresh_quote": {
+      "ok": true,
+      "detail": null,
+      "deposit": "0x20D35448af5a30E9D5791DbB53911F42c6B3D4fd",
+      "amount_out": "263260765079365092512000",
+      "note": "amountOutUsd treated as display-only"
+    },
+    "quote_recipient_check": {
+      "expected": "nio-i-a4e7-a-owner.testnet",
+      "quoted": "nio-i-a4e7-a-owner.testnet",
+      "match": true
+    },
+    "execution": {
+      "ok": true,
+      "signed": true,
+      "operation_id": "k-ai-1794416397641",
+      "propose_tx": "C4chr1wwrTtZ5P7uUg1yzdnzJV2Wo4H1hCYM3G3bam2d",
+      "sign_tx": "C3eRYNpEKsAQYVRcABGvM3XT7artTpbzgb8NcFpPtzz9",
+      "amount": "1000000",
+      "to": "0x20d35448af5a30e9d5791dbb53911f42c6b3d4fd",
+      "acceptance_override": false
+    },
+    "mpc_sig": {
+      "found": true
+    },
+    "recover": {
+      "recovered": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "expected": "0x30af279bedef3bb82c7f47bb9f6a514f6264e752",
+      "match": true
+    },
+    "journal": {
+      "id": "j:rebal:1794416408979:k-ai-1794416397641",
+      "state": "SIGNED"
+    },
+    "broadcast": {
+      "tx_hash": "0xc6a3d13b368627d13d2103cc0005846076fa50003a3ea6d48b6a5405cf8de8e4",
+      "explorer": "https://sepolia.etherscan.io/tx/0xc6a3d13b368627d13d2103cc0005846076fa50003a3ea6d48b6a5405cf8de8e4"
+    },
+    "receipt": {
+      "status": "0x1",
+      "block": "0xb8d4a8",
+      "ok": true
+    },
+    "balances_after": {
+      "sepolia_usdc_raw": "22450000",
+      "before": "23450000"
+    },
+    "tidepool_submit": {
+      "ok": false,
+      "http_status": 400,
+      "body": {
+        "message": "txHash and depositAddress are required"
+      }
+    },
+    "tidepool_status": {
+      "attempt": 4,
+      "status": "SUCCESS",
+      "ok": true
+    },
+    "settlement_terminal": "SUCCESS",
+    "destination_custody": {
+      "recipient": "nio-i-a4e7-a-owner.testnet",
+      "token": "wnear.tidepool-sandbox.testnet",
+      "balance_interface": "nep141.ft_balance_of",
+      "before": "0",
+      "after": "263260765079365092512000",
+      "increased": true,
+      "owner_controls_recipient": true,
+      "withdrawal_feasible": true,
+      "verdict": "CUSTODY_VERIFIED_RECOVERABLE"
+    }
   },
-  "trade": {
-    "amount_usdc_raw": "1000000",
-    "deposit": "0xab89c631b2381c556231d79bb28e20ece3b8cb39",
-    "sepolia_tx": "0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
-    "explorer": "https://sepolia.etherscan.io/tx/0x8bf6d1d8a252bf54054d140d5b8e5ae2e83e60ba85cf6f6efc8fe41dd2e2422a",
-    "receipt_status": "0x1",
-    "near_propose": "Fztj18qC7ieeBuS6VBAyHniJ18R4hDrgTHuQiGd4KqBu",
-    "near_sign": "785oUE4pn13eTfuepDgqeChCySrdkgpxA4FndfyEyDXA",
-    "tidepool_status": "SUCCESS",
-    "destination_near_tx": "BtguMNjeFE59vJqqWm1RGwvodQhzs6gVjnGUcfL6bvNk",
-    "amount_out": "263247070370370421104000",
-    "usdc_before": "24450000",
-    "usdc_after": "23450000",
+  "reason": "TESTNET_TRADE_CUSTODY_VERIFIED",
+  "summary": {
+    "source_chain": "ethereum_sepolia",
+    "source_token": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+    "amount": "1000000",
+    "deposit_address": "0x20d35448af5a30e9d5791dbb53911f42c6b3d4fd",
+    "sepolia_tx": "0xc6a3d13b368627d13d2103cc0005846076fa50003a3ea6d48b6a5405cf8de8e4",
+    "near_propose": "C4chr1wwrTtZ5P7uUg1yzdnzJV2Wo4H1hCYM3G3bam2d",
+    "near_sign": "C3eRYNpEKsAQYVRcABGvM3XT7artTpbzgb8NcFpPtzz9",
+    "tidepool_terminal": "SUCCESS",
+    "destination_recipient": "nio-i-a4e7-a-owner.testnet",
+    "destination_ft_after": "263260765079365092512000",
+    "custody_verdict": "CUSTODY_VERIFIED_RECOVERABLE",
     "fitter": "ALLOWED",
     "critic": "APPROVE",
-    "correlation_id": "d0fd48c2-329c-4dc1-ad60-912c3734d2c1"
+    "acceptance_override": false
   }
 }
