@@ -4,6 +4,7 @@ import {
   Bot,
   FileText,
   FolderLock,
+  KeyRound,
   LayoutDashboard,
   Layers2,
   LoaderCircle,
@@ -13,6 +14,7 @@ import {
   PanelLeftOpen,
   Settings,
   Shield,
+  UserRound,
   Wallet,
   WalletCards,
   X,
@@ -22,7 +24,9 @@ import type { NavId } from "./nav";
 
 const links: { id: NavId; label: string; icon: typeof Activity; separated?: boolean }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "portfolio", label: "Portfolio", icon: WalletCards },
+  { id: "portfolio", label: "Demo portfolio", icon: WalletCards },
+  { id: "owner", label: "Owner auth", icon: KeyRound },
+  { id: "my-portfolio", label: "My Portfolio", icon: UserRound },
   { id: "agent", label: "AI Agent", icon: Bot },
   { id: "mandate", label: "Mandate", icon: FileText },
   { id: "activity", label: "Transactions", icon: Activity },
@@ -33,7 +37,9 @@ const links: { id: NavId; label: string; icon: typeof Activity; separated?: bool
 
 const titles: Partial<Record<NavId, string>> = {
   overview: "Overview",
-  portfolio: "Portfolio",
+  portfolio: "Demo portfolio",
+  owner: "Owner authentication",
+  "my-portfolio": "My Portfolio",
   agent: "AI Agent",
   mandate: "Mandate",
   activity: "Transactions",

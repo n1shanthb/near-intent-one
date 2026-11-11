@@ -14,6 +14,8 @@ enum NEAR_INS {
   GET_VERSION = 0x06,
   GET_PUBLIC_KEY = 0x04,
   SIGN_TRANSACTION = 0x02,
+  /** NEP-413 off-chain message (NEAR Ledger app ≥2.1). */
+  SIGN_NEP413_MESSAGE = 0x07,
 }
 const P1_LAST = 0x80;
 const P1_MORE = 0x00;
@@ -78,7 +80,7 @@ export function mapLedgerError(err: unknown): string {
     return "NEAR app is not open on the Ledger — open the NEAR app and retry.";
   }
   if (lower.includes("0x6985") || lower.includes("conditions of use not satisfied")) {
-    return "Transaction rejected on the Ledger device.";
+    return "Rejected on the Ledger device (transaction or NEP-413 message).";
   }
   if (lower.includes("no device selected") || lower.includes("cannot find device")) {
     return "No Ledger selected — plug in via USB and choose the device.";
@@ -152,5 +154,42 @@ export class LedgerClient {
       }
     }
     throw new Error("Invalid data or derivation path");
+  }
+
+  /**
+   * Sign a NEP-413 Borsh payload on device (INS 0x07).
+   * `payload` must be borsh(NEP413Payload) — NOT the SHA-256 hash (device hashes).
+   * Requires NEAR Ledger app with NEP-413 support; approve on the physical device.
+   */
+  async signNep413Message(
+    payload: Uint8Array,
+    derivationPath: string
+  ): Promise<Uint8Array> {
+    if (!this.transport) throw new Error("Device not connected");
+    const version = await this.getVersion();
+    const [major, minor] = version.split(".").map((x) => Number(x));
+    if ((major ?? 0) < 2 || ((major ?? 0) === 2 && (minor ?? 0) < 1)) {
+      throw new Error(
+        `NEAR Ledger app ${version} cannot sign NEP-413 messages. Update the NEAR app to ≥2.1, then retry.`
+      );
+    }
+    const allData = Buffer.concat([
+      parseDerivationPath(derivationPath),
+      Buffer.from(payload),
+    ]);
+    for (let offset = 0; offset < allData.length; offset += CHUNK_SIZE) {
+      const isLastChunk = offset + CHUNK_SIZE >= allData.length;
+      const response = await this.transport.send(
+        CLA,
+        NEAR_INS.SIGN_NEP413_MESSAGE,
+        isLastChunk ? P1_LAST : P1_MORE,
+        networkId,
+        Buffer.from(allData.subarray(offset, offset + CHUNK_SIZE))
+      );
+      if (isLastChunk) {
+        return new Uint8Array(response.subarray(0, -2));
+      }
+    }
+    throw new Error("Invalid NEP-413 payload or derivation path");
   }
 }

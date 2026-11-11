@@ -49,6 +49,12 @@ export function finalEnforce({
   }
   push("revocation", true);
 
+  if (mandate.signing_revoked) {
+    push("signing_revoked", false);
+    return blocked([REASON.MANDATE_REVOKED], checks, ts, "signing_revoked");
+  }
+  push("signing_revoked", true);
+
   if (mandate.paused) {
     push("pause", false);
     return blocked([REASON.POLICY_PAUSED], checks, ts);

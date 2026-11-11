@@ -131,9 +131,21 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
     },
   ];
 
-  const demoAvailable = Boolean(demoStatus?.ok) && !demoStatus?.kill_switch;
   const clientLeft = demoStatus?.remaining?.client_calls;
   const globalLeft = demoStatus?.remaining?.global_calls;
+  const quotaExhausted =
+    (typeof globalLeft === "number" && globalLeft <= 0) ||
+    (typeof clientLeft === "number" && clientLeft <= 0);
+  const demoAvailable =
+    Boolean(demoStatus?.ok) &&
+    !demoStatus?.kill_switch &&
+    demoStatus?.enabled !== false &&
+    !quotaExhausted;
+  const liveButtonEnabled =
+    publicLiveAi &&
+    gateJ.available &&
+    demoAvailable &&
+    !liveBusy;
 
   return (
     <div className="page-enter nio-agent-page">
@@ -156,7 +168,13 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
           <div className="axis-actions" style={{ marginBottom: 10 }}>
             <span className="axis-badge">LIVE AI · DRY RUN</span>
             <span className="axis-badge">
-              {demoAvailable ? "Demo available" : publicLiveAi ? "Demo paused / exhausted" : "Live AI off"}
+              {demoAvailable
+                ? "Demo available"
+                : quotaExhausted
+                  ? "Quota exhausted"
+                  : publicLiveAi
+                    ? "Demo paused / unreachable"
+                    : "Live AI off"}
             </span>
             {typeof globalLeft === "number" ? (
               <span className="axis-badge">Global remaining {globalLeft}</span>
@@ -173,20 +191,28 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
               ? ` · ${demoStatus.reason}`
               : ""}
           </p>
-          <p>No signing or execution through this public control.</p>
+          <p>
+            Live AI stays dry-run only (<span className="mono">may_sign=false</span>).
+            Fixture scenarios below never spend OpenRouter budget.
+          </p>
+          {quotaExhausted ? (
+            <p role="status">
+              Quota exhausted — use fixture scenarios or recorded Gate K evidence instead of
+              repeating Live AI calls.
+            </p>
+          ) : null}
           {msg ? <p role="alert">{msg}</p> : null}
         </div>
         <button
           type="button"
           className="axis-button"
-          disabled={
-            liveBusy ||
-            !publicLiveAi ||
-            !gateJ.available ||
-            Boolean(demoStatus?.kill_switch) ||
-            demoStatus?.ok === false
-          }
+          disabled={!liveButtonEnabled}
           onClick={() => void runLive()}
+          title={
+            liveButtonEnabled
+              ? "Run one public dry-run"
+              : "Live AI disabled until health + demo-status report available quota"
+          }
         >
           {liveBusy ? "Running Live AI Analysis… (up to ~90s)" : "Run Live AI Analysis"}
         </button>

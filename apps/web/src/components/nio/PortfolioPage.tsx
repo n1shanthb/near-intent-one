@@ -194,22 +194,38 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
       <section className="axis-panel">
         <div className="axis-panel-heading">
           <h2>Personal portfolio</h2>
-          <span className="nio-badge nio-badge-idle">OWNER SESSION</span>
+          <span className="nio-badge nio-badge-idle">LEDGER OWNER</span>
         </div>
         <p className="axis-supporting">
-          Personal portfolio management requires an authenticated owner session and is
-          unavailable as a public mutation surface.{" "}
+          Personal data requires a physical Ledger NEP-413 owner session — not
+          claimed_owner and not the public demo BFF.{" "}
           {signedAccountId
-            ? `Connected as ${signedAccountId}.`
-            : "Connect a wallet only if you intend to manage your own testnet portfolio."}
+            ? `Optional software wallet connected as ${signedAccountId} (not owner proof).`
+            : "Use Owner auth to connect Ledger and verify ownership."}
         </p>
-        <button
-          type="button"
-          className="axis-button secondary"
-          onClick={() => setShowPersonal((v) => !v)}
-        >
-          {showPersonal ? "Hide personal controls" : "Show personal controls"}
-        </button>
+        <div className="axis-actions" style={{ flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="axis-button"
+            onClick={() => onNav("owner")}
+          >
+            Connect Ledger → Verify
+          </button>
+          <button
+            type="button"
+            className="axis-button secondary"
+            onClick={() => onNav("my-portfolio")}
+          >
+            Open My Portfolio
+          </button>
+          <button
+            type="button"
+            className="axis-button secondary"
+            onClick={() => setShowPersonal((v) => !v)}
+          >
+            {showPersonal ? "Hide legacy controls" : "Show legacy controls"}
+          </button>
+        </div>
         {showPersonal ? (
           <div className="legacy-embed" style={{ marginTop: 16 }}>
             <Portfolio

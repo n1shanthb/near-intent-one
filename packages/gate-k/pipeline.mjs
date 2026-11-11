@@ -59,6 +59,7 @@ export async function runGateKPipeline(opts) {
     viewFunction = null,
     quoteFn = null,
     executeDeps = null,
+    ownerSessionId = null,
     fixtureProposal = null,
     marketFixture = null,
     criticFixture = null,
@@ -386,16 +387,21 @@ export async function runGateKPipeline(opts) {
     authenticated,
     reconcilerOk,
     operatorConfirmed: operatorConfirm || mode === MODE.AUTONOMOUS,
+    ownerSessionId,
     mode,
   });
 
   trace.execution = exec;
   trace.signing = !!exec.signed;
   trace.enforcement = {
-    decision: exec.ok && exec.signed ? "SIGNED_PENDING_BROADCAST" : "NO_TRADE",
-    reason_codes: exec.ok ? ["SIGNED"] : [exec.reason || "EXECUTE_FAILED"],
+    decision: exec.ok && exec.signed ? "MPC_SIGNED" : "NO_TRADE",
+    reason_codes: exec.ok ? ["MPC_SIGNED_PENDING_BROADCAST"] : [exec.reason || "EXECUTE_FAILED"],
     may_sign: false,
     signed: !!exec.signed,
+    settled: false,
+    note: exec.ok
+      ? "Signature exported — settlement worker required; not a successful trade yet"
+      : undefined,
   };
   trace.finished_at = nowIso();
   return trace;

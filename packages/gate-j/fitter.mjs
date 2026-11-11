@@ -200,6 +200,12 @@ export function fitMandate({ proposal, mandate, market = null, critic = null }) 
   }
   pushCheck(checks, "mandate_active", true);
 
+  if (mandate.signing_revoked) {
+    pushCheck(checks, "signing_revoked", false);
+    return reject(REASON.MANDATE_REVOKED, "Signing capability revoked");
+  }
+  pushCheck(checks, "signing_revoked", true);
+
   if (mandate.paused) {
     pushCheck(checks, "not_paused", false);
     return reject(REASON.POLICY_PAUSED, "Policy paused");

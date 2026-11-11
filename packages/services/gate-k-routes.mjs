@@ -151,6 +151,19 @@ export function createGateKHandlers({
     },
 
     async decide(body = {}, meta = {}) {
+      // Normal path never accepts operator acceptance overrides
+      if (
+        body.acceptance_override === true ||
+        body.GATE_K_ACCEPTANCE === true ||
+        body.acceptance === true
+      ) {
+        return {
+          ok: false,
+          reason: "ACCEPTANCE_OVERRIDE_FORBIDDEN",
+          hint: "Normal execution requires Fitter + Critic + policy approval. Historical acceptance evidence is script-only.",
+        };
+      }
+
       const mode =
         body.mode === MODE.TESTNET_EXECUTION || body.mode === "execute"
           ? MODE.TESTNET_EXECUTION
@@ -165,6 +178,18 @@ export function createGateKHandlers({
           reason: REASON.UNAUTHENTICATED,
           hint: "API key required for AI_TESTNET_EXECUTION",
         };
+      }
+
+      // Personal / funded execution also requires verified owner session bound to portfolio owner
+      if (mode === MODE.TESTNET_EXECUTION) {
+        const ownerSess = meta.ownerSession;
+        if (!ownerSess?.ok || !ownerSess.account_id) {
+          return {
+            ok: false,
+            reason: "OWNER_SESSION_REQUIRED",
+            hint: "X-NIO-Owner-Session required for AI_TESTNET_EXECUTION",
+          };
+        }
       }
 
       if (body.use_llm === true) {
@@ -184,6 +209,19 @@ export function createGateKHandlers({
 
       const { mandate, portfolio, balances } = resolved;
       const recon = reconcilerHealth?.() || { ok: false };
+
+      if (mode === MODE.TESTNET_EXECUTION) {
+        const ownerSess = meta.ownerSession;
+        if (
+          String(ownerSess.account_id) !== String(portfolio.owner_account) ||
+          String(ownerSess.account_id) !== String(mandate.owner_account)
+        ) {
+          return {
+            ok: false,
+            reason: "OWNER_SESSION_PORTFOLIO_MISMATCH",
+          };
+        }
+      }
 
       const confirmSpend = Number(body.confirm_max_spend_usdc);
       const operatorConfirm =
@@ -219,6 +257,7 @@ export function createGateKHandlers({
         viewFunction,
         quoteFn: mode === MODE.DRY_RUN && body.skip_quote ? null : quoteFn,
         executeDeps,
+        ownerSessionId: meta.ownerSession?.session_id || null,
         fixtureProposal: body.use_llm ? null : body.proposal || null,
         marketFixture: body.market_fixture || null,
         criticFixture: body.use_llm ? null : body.critic_fixture || null,

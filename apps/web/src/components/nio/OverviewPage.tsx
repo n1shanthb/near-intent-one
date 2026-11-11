@@ -77,8 +77,22 @@ export function OverviewPage({
             <WalletCards size={20} />
           </span>
           <span>
-            <b>Portfolio</b>
-            <small>Balances & limits</small>
+            <b>Demo portfolio</b>
+            <small>Public balances & limits</small>
+          </span>
+          <ArrowUpRight />
+        </button>
+        <button
+          type="button"
+          className="axis-overview-action"
+          onClick={() => onNav("owner")}
+        >
+          <span className="axis-overview-action-icon">
+            <Shield size={20} />
+          </span>
+          <span>
+            <b>Owner auth</b>
+            <small>Ledger → verify → My Portfolio</small>
           </span>
           <ArrowUpRight />
         </button>

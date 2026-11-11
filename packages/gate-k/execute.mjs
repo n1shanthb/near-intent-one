@@ -47,6 +47,12 @@ export function preSignChecks({
   currentEpoch,
   reconcilerOk,
   authenticated,
+  /** Live Sepolia ETH balance (wei string/bigint) for gas floor. */
+  eth_balance_wei = null,
+  gas_price = null,
+  gas_limit = DEFAULT_GAS_LIMIT,
+  /** Live USDC balance (raw 6-dec string/bigint) immediately before sign. */
+  usdc_balance_raw = null,
 }) {
   const checks = [];
   const push = (name, ok, detail = {}) => checks.push({ name, ok, ...detail });
@@ -72,6 +78,12 @@ export function preSignChecks({
     };
   }
   push("mandate_active", true);
+
+  if (mandate.signing_revoked) {
+    push("signing_revoked", false);
+    return { ok: false, reason: REASON.SIGNING_REVOKED, checks };
+  }
+  push("signing_revoked", true);
 
   if (String(mandate.owner_account) !== String(portfolio.owner_account)) {
     push("owner", false);
@@ -114,6 +126,36 @@ export function preSignChecks({
   }
   push("amount", true, { amount });
 
+  if (usdc_balance_raw != null) {
+    try {
+      if (BigInt(usdc_balance_raw) < BigInt(amount)) {
+        push("usdc_balance", false, { usdc_balance_raw, amount });
+        return { ok: false, reason: REASON.INSUFFICIENT_BALANCE, checks };
+      }
+      push("usdc_balance", true);
+    } catch {
+      push("usdc_balance", false);
+      return { ok: false, reason: REASON.INSUFFICIENT_BALANCE, checks };
+    }
+  }
+
+  if (eth_balance_wei != null && gas_price != null) {
+    try {
+      const need = BigInt(gas_price) * BigInt(gas_limit);
+      if (BigInt(eth_balance_wei) < need) {
+        push("eth_gas", false, {
+          eth_balance_wei: String(eth_balance_wei),
+          need: need.toString(),
+        });
+        return { ok: false, reason: REASON.INSUFFICIENT_GAS, checks };
+      }
+      push("eth_gas", true, { need: need.toString() });
+    } catch {
+      push("eth_gas", false);
+      return { ok: false, reason: REASON.INSUFFICIENT_GAS, checks };
+    }
+  }
+
   return { ok: true, checks, amount };
 }
 
@@ -144,6 +186,7 @@ export async function executeGateKTrade(deps, args) {
     operatorConfirmed,
     mode,
     idempotencyKey,
+    ownerSessionId = null,
   } = args;
 
   if (!operatorConfirmed) {
@@ -155,6 +198,41 @@ export async function executeGateKTrade(deps, args) {
   }
 
   const epoch = await viewFunction(portfolio.policy_contract, "get_mandate_epoch");
+  const evm = portfolio.intents_signer_id;
+  if (!evm) {
+    return { ok: false, reason: "INTENTS_SIGNER_MISSING", signed: false };
+  }
+
+  let eth_balance_wei = null;
+  let usdc_balance_raw = null;
+  let gas_price = null;
+  try {
+    const [ethBal, gasPriceHex] = await Promise.all([
+      eth("eth_getBalance", [evm, "latest"]),
+      eth("eth_gasPrice", []),
+    ]);
+    eth_balance_wei = BigInt(ethBal?.result || "0x0");
+    gas_price = BigInt(gasPriceHex?.result || "0x0");
+    if (gas_price < 1_000_000_000n) gas_price = 1_000_000_000n;
+    if (gas_price > DEFAULT_MAX_GAS_PRICE) gas_price = DEFAULT_MAX_GAS_PRICE;
+  } catch {
+    eth_balance_wei = null;
+    gas_price = null;
+  }
+  try {
+    // ERC-20 balanceOf(address) selector 0x70a08231
+    const data =
+      "0x70a08231000000000000000000000000" +
+      String(evm).replace(/^0x/, "").toLowerCase().padStart(40, "0");
+    const bal = await eth("eth_call", [
+      { to: USDC_SEPOLIA, data },
+      "latest",
+    ]);
+    usdc_balance_raw = BigInt(bal?.result || "0x0");
+  } catch {
+    usdc_balance_raw = null;
+  }
+
   const pre = preSignChecks({
     portfolio,
     mandate,
@@ -165,16 +243,16 @@ export async function executeGateKTrade(deps, args) {
     currentEpoch: epoch,
     reconcilerOk,
     authenticated,
+    eth_balance_wei,
+    gas_price,
+    gas_limit: DEFAULT_GAS_LIMIT,
+    usdc_balance_raw,
   });
   if (!pre.ok) {
     return { ok: false, ...pre, signed: false };
   }
 
   const amount = pre.amount;
-  const evm = portfolio.intents_signer_id;
-  if (!evm) {
-    return { ok: false, reason: "INTENTS_SIGNER_MISSING", signed: false };
-  }
 
   const execKey =
     idempotencyKey ||
@@ -274,12 +352,14 @@ export async function executeGateKTrade(deps, args) {
 
     const result = {
       status: "SIGNED_PENDING_BROADCAST",
+      lifecycle: "MPC_SIGNED",
       kind: "gate_k_ai_trade",
       portfolio_id: portfolioId,
       operation_id: opId,
       amount,
       nonce: nonce.toString(),
       gas_price: gasPrice.toString(),
+      gas_limit: DEFAULT_GAS_LIMIT.toString(),
       chain_id: CHAIN_ID,
       token_contract: USDC_SEPOLIA.toLowerCase(),
       to: attest.attestation.deposit_address,
@@ -287,7 +367,9 @@ export async function executeGateKTrade(deps, args) {
       sign_tx: sign.transaction.hash,
       quote_hash: quote.quote_hash,
       mode,
-      note: "ECDSA exported — not revocable; reconciler must finish honestly",
+      owner_account: portfolio.owner_account || null,
+      owner_session_id: ownerSessionId || null,
+      note: "MPC_SIGNED / ECDSA exported — NOT settled; settlement worker must broadcast+reconcile without re-signing",
     };
 
     store.finishExecution(execKey, result);
@@ -295,6 +377,7 @@ export async function executeGateKTrade(deps, args) {
       last_settlement: {
         operation_id: opId,
         status: "SIGNED_PENDING_BROADCAST",
+        lifecycle: "MPC_SIGNED",
         near_tx: sign.transaction.hash,
         source: "gate_k",
       },

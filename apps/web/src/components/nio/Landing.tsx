@@ -188,11 +188,11 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
                 className="landing-button"
                 onClick={() => onOpen("agent")}
               >
-                Explore live demo
+                Start 60-second demo
                 <ArrowUpRight size={24} />
               </button>
-              <a className="landing-hero-how" href="#how-it-works">
-                See how it works
+              <a className="landing-hero-how" href="#judge-walkthrough">
+                Judge walkthrough
                 <ArrowDown size={22} />
               </a>
             </div>
@@ -224,6 +224,57 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
           <span aria-hidden="true">→</span>
           <span>VERIFIABLE EXECUTION</span>
         </div>
+
+        <section id="judge-walkthrough" className="landing-section landing-walkthrough">
+          <div className="landing-section-heading">
+            <h2>60-second judge path</h2>
+            <p>
+              Wallet-free. No private keys. Three honest layers: recorded Gate K
+              proof, live AI dry-run, and owner-only Ledger trading (hardware not
+              required for judging).
+            </p>
+          </div>
+          <ol className="landing-walkthrough-list">
+            <li>
+              <button type="button" onClick={() => onOpen("overview")}>
+                <strong>01 · Overview</strong>
+                <span>Status chips · what is live vs recorded</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => onOpen("agent")}>
+                <strong>02 · AI Agent</strong>
+                <span>Fixture scenarios free · Live AI only when backend allows</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => onOpen("evidence")}>
+                <strong>03 · Evidence</strong>
+                <span>Real Gate K Sepolia proof + override disclosure</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => onOpen("security")}>
+                <strong>04 · Security</strong>
+                <span>Ledger authority · signing locked · autonomous OFF</span>
+              </button>
+            </li>
+          </ol>
+          <div className="landing-honesty-grid">
+            <div>
+              <b>Ledger</b>
+              <p>Sets and signs owner policy on hardware. Owner login is separate from the public demo.</p>
+            </div>
+            <div>
+              <b>AI</b>
+              <p>Proposes and critiques. Public Live AI is dry-run only — may_sign stays false.</p>
+            </div>
+            <div>
+              <b>NEAR</b>
+              <p>Policy, MPC, and settlement boundaries. Enforcement is on-chain, not a browser toggle.</p>
+            </div>
+          </div>
+        </section>
 
         <section id="how-it-works" className="landing-section landing-pipeline">
           <div className="landing-section-heading">

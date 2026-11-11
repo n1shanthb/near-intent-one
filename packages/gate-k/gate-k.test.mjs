@@ -254,6 +254,55 @@ describe("Gate K pre-sign checks", () => {
     });
     assert.equal(r.reason, REASON.NO_FRESH_QUOTE);
   });
+
+  it("rejects signing_revoked", () => {
+    const r = preSignChecks({
+      portfolio: p,
+      mandate: { ...mandate, signing_revoked: true },
+      safeProposal: { proposed_size_usdc_raw: "1000000" },
+      quote: { quote_hash: "h", amount_out: "1" },
+      economic: { ok: true },
+      expectedEpoch: 3,
+      currentEpoch: 3,
+      reconcilerOk: true,
+      authenticated: true,
+    });
+    assert.equal(r.reason, REASON.SIGNING_REVOKED);
+  });
+
+  it("rejects insufficient Sepolia ETH for gas", () => {
+    const r = preSignChecks({
+      portfolio: p,
+      mandate,
+      safeProposal: { proposed_size_usdc_raw: "1000000" },
+      quote: { quote_hash: "h", amount_out: "1" },
+      economic: { ok: true },
+      expectedEpoch: 3,
+      currentEpoch: 3,
+      reconcilerOk: true,
+      authenticated: true,
+      eth_balance_wei: 1000n,
+      gas_price: 1_000_000_000n,
+      gas_limit: 250000n,
+    });
+    assert.equal(r.reason, REASON.INSUFFICIENT_GAS);
+  });
+
+  it("rejects insufficient USDC balance at sign time", () => {
+    const r = preSignChecks({
+      portfolio: p,
+      mandate,
+      safeProposal: { proposed_size_usdc_raw: "5000000" },
+      quote: { quote_hash: "h", amount_out: "1" },
+      economic: { ok: true },
+      expectedEpoch: 3,
+      currentEpoch: 3,
+      reconcilerOk: true,
+      authenticated: true,
+      usdc_balance_raw: "1000000",
+    });
+    assert.equal(r.reason, REASON.INSUFFICIENT_BALANCE);
+  });
 });
 
 describe("Gate K single-flight / concurrent / max trades", () => {

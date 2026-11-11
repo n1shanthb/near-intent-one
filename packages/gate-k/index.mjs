@@ -10,3 +10,9 @@ export {
 } from "./execute.mjs";
 export { runGateKPipeline } from "./pipeline.mjs";
 export { createAutonomousLoop } from "./autonomous.mjs";
+export * from "./lifecycle.mjs";
+export {
+  advanceBroadcast,
+  advanceConfirm,
+  extractMpcSigFromNearTx,
+} from "./settle.mjs";

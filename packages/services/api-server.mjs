@@ -19,6 +19,14 @@ import { createAgentService } from "./agent.mjs";
 import { createReconcilerService } from "./reconciler.mjs";
 import { createGateJHandlers, handleGateJRoute } from "./gate-j-routes.mjs";
 import { createGateKHandlers, handleGateKRoute } from "./gate-k-routes.mjs";
+import {
+  createOwnerAuth,
+  openOwnerAuthStore,
+} from "./ownerAuth.mjs";
+import { createPortfolioProvision } from "./portfolioProvision.mjs";
+import { createWithdrawLifecycle } from "./withdrawLifecycle.mjs";
+import { createSettlementWorker } from "./settlementWorker.mjs";
+import { nearRpc } from "../../scripts/lib/near-live.mjs";
 import { loadServicesEnv } from "../gate-j/llm.mjs";
 import {
   assertNotDemo,
@@ -43,6 +51,8 @@ const PORT = Number(process.env.GATE_I_PORT || process.env.PORT || 8787);
 const HOST = process.env.GATE_I_HOST || "0.0.0.0";
 const NETWORK = process.env.NEAR_NETWORK || "testnet";
 const API_KEY = process.env.GATE_I_API_KEY || "";
+const OWNER_AUTH_SECRET =
+  process.env.NIO_OWNER_AUTH_SECRET || API_KEY || "nio-owner-auth-dev-only";
 const CORS_ORIGINS = (process.env.GATE_I_CORS_ORIGINS || "*")
   .split(",")
   .map((s) => s.trim())
@@ -64,7 +74,72 @@ let agentSvc;
 let reconSvc;
 let gateJ;
 let gateK;
+let ownerAuth;
+let portfolioProvision;
+let withdrawLifecycle;
+let settlementWorker;
 const startedAt = new Date().toISOString();
+
+async function listNearAccessKeys(accountId) {
+  const res = await fetch(rpc, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "nio-owner-auth",
+      method: "query",
+      params: {
+        request_type: "view_access_key_list",
+        finality: "final",
+        account_id: accountId,
+      },
+    }),
+  });
+  const j = await res.json();
+  if (j.error) throw new Error(j.error.message || "rpc_error");
+  return j.result?.keys || [];
+}
+
+function ownerSessionFromReq(req) {
+  const hdr =
+    req.headers["x-nio-owner-session"] ||
+    (String(req.headers.authorization || "").startsWith("Owner ")
+      ? String(req.headers.authorization).slice(6).trim()
+      : "");
+  if (!hdr || !ownerAuth) return { ok: false, reason: "owner_session_required" };
+  return ownerAuth.resolveSession(hdr);
+}
+
+function listOwnerPortfolios(req, res, jsonFn) {
+  const sess = ownerSessionFromReq(req);
+  if (!sess.ok) return jsonFn(req, res, 401, sess);
+  syncProvisionIntoStore();
+  const all = Object.values(store.read().portfolios || {});
+  const mine = all.filter(
+    (p) => String(p.owner_account) === String(sess.account_id)
+  );
+  const ready = mine.filter((p) => p.deploy_status === "ready");
+  const pending = mine.filter((p) => p.deploy_status !== "ready");
+  return jsonFn(req, res, 200, {
+    ok: true,
+    owner_account: sess.account_id,
+    portfolios: mine,
+    ready,
+    pending,
+    ui: {
+      state: ready.length
+        ? "ready"
+        : pending.length
+          ? "awaiting_provision"
+          : "no_portfolio",
+      next_action: ready.length
+        ? "fund_deposit_address"
+        : pending.length
+          ? "wait_or_register_policy"
+          : "request_provision_or_register",
+    },
+  });
+}
 
 function corsHeaders(req) {
   const origin = req.headers.origin || "";
@@ -76,7 +151,8 @@ function corsHeaders(req) {
       : CORS_ORIGINS[0] || "*";
   return {
     "access-control-allow-origin": allow,
-    "access-control-allow-headers": "content-type, authorization, x-api-key",
+    "access-control-allow-headers":
+      "content-type, authorization, x-api-key, x-nio-owner-session",
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-max-age": "86400",
   };
@@ -172,6 +248,23 @@ async function boot() {
   rpc = await pickRpc();
   syncProvisionIntoStore();
 
+  ownerAuth = createOwnerAuth({
+    store: openOwnerAuthStore(DATA),
+    secret: OWNER_AUTH_SECRET,
+    network: NETWORK,
+    listAccessKeys: listNearAccessKeys,
+  });
+
+  const viewFnBoot = (accountId, method, args = {}) =>
+    viewFunction(rpc, accountId, method, args);
+
+  portfolioProvision = createPortfolioProvision({
+    store,
+    viewFunction: viewFnBoot,
+    selfProvisionEnabled: process.env.GATE_I_SELF_PROVISION === "1",
+  });
+  withdrawLifecycle = createWithdrawLifecycle({ store });
+
   agentSvc = createAgentService({
     store,
     getNearAccounts,
@@ -226,6 +319,23 @@ async function boot() {
     reconcilerHealth: () => reconSvc?.health() || { ok: false, reason: "not_booted" },
   });
 
+  // Settlement worker default OFF — never auto-broadcast without explicit env.
+  settlementWorker = createSettlementWorker({
+    store,
+    eth,
+    nearRpc,
+    rpcUrl: rpc,
+    viewFunction: viewFn,
+    reconciler: reconSvc,
+    logger: console,
+    enabled: process.env.GATE_K_SETTLEMENT_WORKER === "1",
+    dryRun: process.env.GATE_K_SETTLEMENT_DRY_RUN !== "0",
+    intervalMs: Number(process.env.GATE_K_SETTLEMENT_INTERVAL_MS || 30000),
+  });
+  if (process.env.GATE_K_SETTLEMENT_WORKER === "1") {
+    settlementWorker.start();
+  }
+
   const pending = agentSvc.recoverPending();
   writeFileSync(
     join(DATA, "last-boot.json"),
@@ -275,6 +385,15 @@ async function handle(req, res) {
   const isGateJDemoStatus =
     req.method === "GET" && path === "/gate-j/demo-status";
   const isGateKPublicHealth = req.method === "GET" && path === "/gate-k/health";
+  const isOwnerAuthPublic =
+    (req.method === "POST" &&
+      (path === "/owner/challenge" || path === "/owner/verify")) ||
+    (req.method === "GET" &&
+      (path === "/owner/session" ||
+        path === "/owner/portfolios" ||
+        path === "/owner/provision-requests" ||
+        path === "/portfolios/mine")) ||
+    (req.method === "POST" && path === "/owner/logout");
   const gateJPrivilegedGet =
     req.method === "GET" &&
     (path === "/gate-j/decisions" || path === "/gate-j/market");
@@ -287,7 +406,8 @@ async function handle(req, res) {
     !isHealth &&
     !isGateJPublicHealth &&
     !isGateJDemoStatus &&
-    !isGateKPublicHealth
+    !isGateKPublicHealth &&
+    !isOwnerAuthPublic
   ) {
     const auth = authorize(req, {
       mutating: mutating || gateJPrivilegedGet || gateKPrivilegedGet,
@@ -308,9 +428,11 @@ async function handle(req, res) {
           reconciler: reconSvc?.health() || { ok: false, reason: "not_booted" },
           gate_j: { ok: true, dry_run_default: true },
           gate_k: gateK?.health() || { ok: false },
+          settlement_worker: settlementWorker?.health() || { ok: false },
         },
         pending_recoveries: agentSvc?.recoverPending()?.length || 0,
         auth: API_KEY ? "api_key_required_for_mutations" : "open_dev_mode",
+        owner_auth: "nep413",
       });
     }
 
@@ -366,10 +488,58 @@ async function handle(req, res) {
           ip: req.socket?.remoteAddress || "",
           apiKeyHash: apiKeyHdr ? `k${apiKeyHdr.length}` : "none",
           authenticated,
+          ownerSession: ownerSessionFromReq(req),
         },
       });
       if (gateKHandled) return;
       return json(req, res, 404, { reason: "unknown_gate_k_route", path });
+    }
+
+    if (path.startsWith("/owner")) {
+      if (req.method === "POST" && path === "/owner/challenge") {
+        const body = await readBody(req);
+        const out = ownerAuth.issueChallenge({
+          account_id: body.account_id,
+          domain: body.domain,
+        });
+        return json(req, res, out.ok ? 200 : 400, out);
+      }
+      if (req.method === "POST" && path === "/owner/verify") {
+        const body = await readBody(req);
+        const out = await ownerAuth.verifyChallenge({
+          challenge_id: body.challenge_id,
+          account_id: body.account_id,
+          public_key: body.public_key,
+          signature: body.signature,
+          domain: body.domain,
+        });
+        return json(req, res, out.ok ? 200 : 401, out);
+      }
+      if (req.method === "GET" && path === "/owner/session") {
+        const sess = ownerSessionFromReq(req);
+        return json(req, res, sess.ok ? 200 : 401, sess);
+      }
+      if (req.method === "POST" && path === "/owner/logout") {
+        const hdr = req.headers["x-nio-owner-session"] || "";
+        const out = ownerAuth.revokeSession(hdr);
+        return json(req, res, out.ok ? 200 : 401, out);
+      }
+      if (req.method === "GET" && path === "/owner/portfolios") {
+        return listOwnerPortfolios(req, res, json);
+      }
+      if (req.method === "GET" && path === "/owner/provision-requests") {
+        const sess = ownerSessionFromReq(req);
+        if (!sess.ok) return json(req, res, 401, sess);
+        const reqs = Object.values(store.read().provision_requests || {}).filter(
+          (r) => String(r.owner_account) === String(sess.account_id)
+        );
+        return json(req, res, 200, {
+          ok: true,
+          owner_account: sess.account_id,
+          requests: reqs,
+        });
+      }
+      return json(req, res, 404, { reason: "unknown_owner_route", path });
     }
 
     if (req.method === "POST" && path === "/portfolios") {
@@ -381,21 +551,87 @@ async function handle(req, res) {
             "demo Ledger owner accounts cannot be used for Gate I onboarding",
         });
       }
-      syncProvisionIntoStore();
-      const match = Object.values(store.read().portfolios).find(
-        (p) => p.owner_account === body.owner_account
-      );
-      if (match) {
-        return json(req, res, 200, {
-          status: "ready",
-          portfolio: match,
-          next_action: "fund_deposit_address",
+      const sess = ownerSessionFromReq(req);
+      if (!sess.ok) {
+        return json(req, res, 401, {
+          status: "blocked",
+          reason: "owner_session_required",
+          detail:
+            "Authenticate via POST /v1/owner/challenge + /v1/owner/verify before portfolio actions. claimed_owner is not authentication.",
         });
       }
-      return json(req, res, 200, {
+      if (String(body.owner_account || "") !== String(sess.account_id)) {
+        return json(req, res, 403, {
+          status: "blocked",
+          reason: "owner_account_mismatch",
+        });
+      }
+      syncProvisionIntoStore();
+      const action = String(body.action || "create");
+      if (action === "lookup" || action === "status") {
+        syncProvisionIntoStore();
+        const mine = Object.values(store.read().portfolios || {}).filter(
+          (p) => String(p.owner_account) === String(sess.account_id)
+        );
+        const ready = mine.find((p) => p.deploy_status === "ready") || null;
+        const pending = mine.filter((p) => p.deploy_status !== "ready");
+        return json(req, res, 200, {
+          ok: true,
+          status: ready
+            ? "ready"
+            : pending.length
+              ? "awaiting_provision"
+              : "no_portfolio",
+          portfolio: ready,
+          pending_portfolios: pending,
+          deposit_address: ready?.intents_signer_id || null,
+          derivation_path: ready?.derivation_path || null,
+          owner_authenticated: true,
+          next_action: ready
+            ? "fund_deposit_address"
+            : pending.length
+              ? "wait_or_register_policy"
+              : "request_provision_or_register",
+        });
+      }
+      if (action === "register") {
+        const out = await portfolioProvision.registerExisting({
+          owner_account: body.owner_account,
+          policy_contract: body.policy_contract,
+          portfolio_id: body.portfolio_id || null,
+        });
+        return json(req, res, out.ok ? 200 : 400, out);
+      }
+      if (action === "request_provision" || action === "create") {
+        const match = Object.values(store.read().portfolios).find(
+          (p) =>
+            p.owner_account === body.owner_account && p.deploy_status === "ready"
+        );
+        if (match) {
+          return json(req, res, 200, {
+            ok: true,
+            status: "ready",
+            portfolio: match,
+            next_action: "fund_deposit_address",
+            owner_authenticated: true,
+          });
+        }
+        const out = portfolioProvision.requestProvision({
+          owner_account: body.owner_account,
+          notes: body.notes || null,
+        });
+        return json(req, res, 200, { ...out, owner_authenticated: true });
+      }
+      return json(req, res, 400, {
         status: "blocked",
-        reason:
-          "Interactive wallet factory not yet self-serve on this host. Use scripts/gate-i-provision.mjs then connect that owner.",
+        reason: "unknown_portfolio_action",
+        allowed: [
+          "lookup",
+          "status",
+          "register",
+          "request_provision",
+          "create",
+        ],
       });
     }
 
@@ -404,6 +640,25 @@ async function handle(req, res) {
       const id = decodeURIComponent(balMatch[1]);
       const p = store.getPortfolio(id);
       if (!p) return json(req, res, 404, { reason: "not_found" });
+      // Personal portfolios require owner session; demo/first-test IDs stay readable for BFF
+      const isDemoOrFirst =
+        String(p.owner_account || "").startsWith(DEMO_PREFIX) ||
+        id === "i-a-a4e7" ||
+        id === "i-b-a4e7";
+      if (!isDemoOrFirst) {
+        const sess = ownerSessionFromReq(req);
+        if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+          return json(req, res, 401, { reason: "owner_session_required" });
+        }
+      }
+      if (!p.intents_signer_id) {
+        return json(req, res, 200, {
+          ok: false,
+          status: "awaiting_provision",
+          balances: [],
+          reason: "deposit_address_not_ready",
+        });
+      }
       const evm = p.intents_signer_id;
       const [gas, usdc, intentsUsdc, intentsWnear] = await Promise.all([
         ethBalance(evm),
@@ -447,11 +702,28 @@ async function handle(req, res) {
       ]);
     }
 
+    if (req.method === "GET" && path === "/portfolios/mine") {
+      return listOwnerPortfolios(req, res, json);
+    }
+
     const getMatch = path.match(/^\/portfolios\/([^/]+)$/);
     if (req.method === "GET" && getMatch) {
       const id = decodeURIComponent(getMatch[1]);
       const p = store.getPortfolio(id);
       if (!p) return json(req, res, 404, { reason: "not_found" });
+      const isDemoOrFirst =
+        String(p.owner_account || "").startsWith(DEMO_PREFIX) ||
+        id === "i-a-a4e7" ||
+        id === "i-b-a4e7";
+      if (!isDemoOrFirst) {
+        const sess = ownerSessionFromReq(req);
+        if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+          return json(req, res, 401, {
+            reason: "owner_session_required",
+            detail: "Personal portfolio reads require matching owner session",
+          });
+        }
+      }
       return json(req, res, 200, p);
     }
 
@@ -460,12 +732,35 @@ async function handle(req, res) {
       const id = decodeURIComponent(depMatch[1]);
       const p = store.getPortfolio(id);
       if (!p) return json(req, res, 404, { reason: "not_found" });
+      const isDemoOrFirst =
+        String(p.owner_account || "").startsWith(DEMO_PREFIX) ||
+        id === "i-a-a4e7" ||
+        id === "i-b-a4e7";
+      if (!isDemoOrFirst) {
+        const sess = ownerSessionFromReq(req);
+        if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+          return json(req, res, 401, { reason: "owner_session_required" });
+        }
+      }
+      if (!p.intents_signer_id) {
+        return json(req, res, 200, {
+          portfolio_id: id,
+          status: "awaiting_provision",
+          reason: "deposit_address_not_ready",
+          derivation_path_expected: `trading/v1/portfolio/${id}`,
+        });
+      }
+      const expectedPath = `trading/v1/portfolio/${id}`;
+      const pathOk =
+        !p.derivation_path || String(p.derivation_path) === expectedPath;
       return json(req, res, 200, {
         portfolio_id: id,
         chain: "sepolia",
         asset: "USDC",
         deposit_address: p.intents_signer_id,
         memo: p.derivation_path,
+        derivation_path: p.derivation_path,
+        derivation_path_ok: pathOk,
         status: "awaiting_funds",
       });
     }
@@ -481,6 +776,15 @@ async function handle(req, res) {
           destination_valid: false,
           requires_owner_signature: true,
           blocked_reason: "not_found",
+        });
+      }
+      const sess = ownerSessionFromReq(req);
+      if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+        return json(req, res, 401, {
+          ok: false,
+          destination_valid: false,
+          requires_owner_signature: true,
+          blocked_reason: "owner_session_required",
         });
       }
       const dest = String(body.destination || "").toLowerCase();
@@ -500,17 +804,62 @@ async function handle(req, res) {
       });
     }
 
+    const wdGet = path.match(/^\/portfolios\/([^/]+)\/withdrawals\/([^/]+)$/);
+    if (req.method === "GET" && wdGet) {
+      const id = decodeURIComponent(wdGet[1]);
+      const wid = decodeURIComponent(wdGet[2]);
+      const p = store.getPortfolio(id);
+      const sess = ownerSessionFromReq(req);
+      if (!p) return json(req, res, 404, { reason: "not_found" });
+      if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+        return json(req, res, 401, { reason: "owner_session_required" });
+      }
+      const w = withdrawLifecycle.get(wid);
+      if (!w || w.portfolio_id !== id) {
+        return json(req, res, 404, { reason: "withdraw_not_found" });
+      }
+      return json(req, res, 200, { ok: true, withdraw: w });
+    }
+
     const wd = path.match(/^\/portfolios\/([^/]+)\/withdrawals$/);
     if (req.method === "POST" && wd) {
       const id = decodeURIComponent(wd[1]);
       const p = store.getPortfolio(id);
       const body = await readBody(req);
       if (!p) return json(req, res, 404, { status: "blocked", reason: "not_found" });
-      if (process.env.GATE_I_ALLOW_SERVER_OWNER_SIGN !== "1") {
-        return json(req, res, 200, {
+      const sess = ownerSessionFromReq(req);
+      if (!sess.ok || String(sess.account_id) !== String(p.owner_account)) {
+        return json(req, res, 401, {
           status: "blocked",
-          reason:
-            "Owner must sign owner_request_withdraw_signature via wallet/Ledger. Server never holds owner keys in production.",
+          reason: "owner_session_required",
+        });
+      }
+
+      // Attach already-signed NEAR tx (Ledger/wallet) into lifecycle tracker
+      if (body.near_tx_hash && body.withdraw_id) {
+        const attached = withdrawLifecycle.attachOwnerTx({
+          withdraw_id: body.withdraw_id,
+          owner_account: sess.account_id,
+          near_tx_hash: body.near_tx_hash,
+        });
+        return json(req, res, attached.ok ? 200 : 400, attached);
+      }
+
+      // Prepare hardware-authorized withdraw (no server signing)
+      if (process.env.GATE_I_ALLOW_SERVER_OWNER_SIGN !== "1") {
+        const prepared = withdrawLifecycle.prepare({
+          portfolio: p,
+          owner_account: sess.account_id,
+          destination: body.destination,
+          amount: body.amount,
+          session_id: sess.session_id,
+        });
+        return json(req, res, prepared.ok ? 200 : 400, {
+          ...prepared,
+          owner_authenticated: true,
+          server_owner_sign: false,
+          ecdsa_recall_limitation:
+            "Already-exported EVM signatures cannot be recalled by revoking the NEAR mandate.",
         });
       }
       assertNotDemo(p.owner_account);

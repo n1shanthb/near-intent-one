@@ -1,10 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNearWallet } from "near-connect-hooks";
 import { ProductSessionProvider, useProductSession } from "./state/ProductSession";
+import { OwnerSessionProvider, useOwnerSession } from "./state/OwnerSession";
 import { Landing } from "./components/nio/Landing";
 import { OverviewPage } from "./components/nio/OverviewPage";
 import { AgentWorkspace } from "./components/nio/AgentWorkspace";
 import { PortfolioPage } from "./components/nio/PortfolioPage";
+import { OwnerAuthPage } from "./components/nio/OwnerAuthPage";
+import { MyPortfolioPage } from "./components/nio/MyPortfolioPage";
 import { EvidencePage } from "./components/nio/EvidencePage";
 import { TransactionsPage } from "./components/nio/TransactionsPage";
 import { MandatePage } from "./components/nio/MandatePage";
@@ -27,6 +30,7 @@ function AppInner() {
   const [demoChip, setDemoChip] = useState("demo…");
   const { signedAccountId, signIn, signOut, loading } = useNearWallet();
   const { gateI, syncOwner, clearSession } = useProductSession();
+  const { verified, session, clearOwner } = useOwnerSession();
 
   useEffect(() => {
     syncOwner(signedAccountId ?? null);
@@ -68,10 +72,18 @@ function AppInner() {
       walletSlot={
         <WalletControl
           loading={loading}
-          accountId={signedAccountId ?? null}
-          onConnect={() => void signIn()}
+          accountId={
+            verified
+              ? session?.account_id ?? signedAccountId ?? null
+              : signedAccountId ?? null
+          }
+          onConnect={() => {
+            if (!verified) onNav("owner");
+            else void signIn();
+          }}
           onDisconnect={() => {
             clearSession();
+            void clearOwner();
             void signOut();
           }}
         />
@@ -86,6 +98,8 @@ function AppInner() {
         />
       )}
       {nav === "portfolio" && <PortfolioPage onNav={onNav} />}
+      {nav === "owner" && <OwnerAuthPage onNav={onNav} />}
+      {nav === "my-portfolio" && <MyPortfolioPage onNav={onNav} />}
       {nav === "funds" && (
         <div className="legacy-embed">
           <Funds
@@ -143,7 +157,9 @@ function AppInner() {
 export default function App() {
   return (
     <ProductSessionProvider>
-      <AppInner />
+      <OwnerSessionProvider>
+        <AppInner />
+      </OwnerSessionProvider>
     </ProductSessionProvider>
   );
 }
