@@ -1,0 +1,37 @@
+{
+  "kind": "MAINNET_CHECKPOINT_D_VERIFY",
+  "network": "mainnet",
+  "rpc": "https://rpc.mainnet.fastnear.com",
+  "chain_id": "mainnet",
+  "verified_block_height": 224240369,
+  "create_tx": "8QdaEvSXdLpHqjmaAwKt8hU7Bw5jdCjWwKBkK9VB53kQ",
+  "tx_status": "SuccessValue",
+  "signer": "nishanthb.near",
+  "receiver": "policy.nishanthb.near",
+  "actions_confirmed": [
+    "CreateAccount",
+    "Transfer 8000000000000000000000000",
+    "AddKey FullAccess ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+  ],
+  "owner": {
+    "account_id": "nishanthb.near",
+    "balance_near": "3.2428850104625",
+    "reported_fee_near": "0.0071149895375",
+    "keys": ["ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58 FullAccess"]
+  },
+  "policy": {
+    "account_id": "policy.nishanthb.near",
+    "exists": true,
+    "balance_near": "8",
+    "code_hash": "11111111111111111111111111111111",
+    "keys": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess"
+      }
+    ],
+    "key_inventory_pass": true
+  },
+  "checkpoint_e_status": "PREPARED_NOT_EXECUTED",
+  "funded_trading": false
+}

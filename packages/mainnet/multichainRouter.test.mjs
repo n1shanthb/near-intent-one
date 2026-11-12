@@ -27,6 +27,17 @@ const SAMPLE_TOKENS = [
     contractAddress: "wrap.near",
   },
   {
+    assetId:
+      "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    decimals: 6,
+    blockchain: "near",
+    symbol: "USDC",
+    price: 1,
+    priceUpdatedAt: new Date().toISOString(),
+    contractAddress:
+      "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+  },
+  {
     assetId: "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
     decimals: 6,
     blockchain: "arb",
@@ -77,9 +88,10 @@ describe("token catalog four-chain", () => {
     assert.equal(mapProviderChain("eth"), "ethereum");
     assert.equal(mapProviderChain("sol"), null);
     const u = buildFourChainUniverse(SAMPLE_TOKENS);
-    assert.equal(u.counts.four_chain, 5);
-    assert.equal(u.counts.total_catalog, 6);
+    assert.equal(u.counts.four_chain, 6);
+    assert.equal(u.counts.total_catalog, 7);
     assert.equal(resolveCanonicalAssets(u).complete, true);
+    assert.ok(DEMO_ROUTES.length >= 12, "four-chain route matrix not arb-only");
   });
 });
 
@@ -181,7 +193,8 @@ describe("matrix with mock quotes", () => {
       mandate: { paused: true },
     });
     assert.equal(out.ok, true);
-    assert.equal(out.quoted_count, 4);
+    assert.equal(out.matrix.length, DEMO_ROUTES.length);
+    assert.ok(out.quoted_count >= 12);
     assert.equal(out.proposal.choice, "NO_TRADE");
     assert.equal(out.funded_execution, "DISABLED");
   });

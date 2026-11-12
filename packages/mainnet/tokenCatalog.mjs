@@ -185,13 +185,43 @@ export function resolveCanonicalAssets(universe) {
     "near",
     (t) => t.asset_id === "nep141:wrap.near" || t.contract_address === "wrap.near"
   );
+  const nearUsdc = find(
+    "near",
+    (t) =>
+      t.asset_id ===
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1" ||
+      String(t.contract_address || "") ===
+        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+  );
+  const nearUsdt = find(
+    "near",
+    (t) =>
+      t.asset_id === "nep141:usdt.tether-token.near" ||
+      t.contract_address === "usdt.tether-token.near"
+  );
+  const arbWeth = find(
+    "arbitrum",
+    (t) =>
+      String(t.contract_address || "").toLowerCase() ===
+      "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+  );
+  const baseWeth = find(
+    "base",
+    (t) =>
+      String(t.contract_address || "").toLowerCase() ===
+      "0x4200000000000000000000000000000000000006"
+  );
 
   return {
     arb_usdc: arbUsdc,
     base_usdc: baseUsdc,
     eth_usdc: ethUsdc,
     eth_weth: ethWeth,
+    arb_weth: arbWeth,
+    base_weth: baseWeth,
     wrap_near: wrapNear,
+    near_usdc: nearUsdc,
+    near_usdt: nearUsdt,
     complete: Boolean(arbUsdc && baseUsdc && ethUsdc && ethWeth && wrapNear),
   };
 }

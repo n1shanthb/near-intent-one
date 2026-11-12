@@ -1,0 +1,59 @@
+{
+  "kind": "MAINNET_CHECKPOINT_BC_PREP",
+  "network": "mainnet",
+  "rpc": "https://rpc.mainnet.fastnear.com",
+  "chain_id": "mainnet",
+  "block_height": 224235754,
+  "approved": false,
+  "transactions_executed": false,
+  "owner": {
+    "account_id": "nishanthb.near",
+    "exists": true,
+    "amount_yocto": "0",
+    "amount_near": "0",
+    "storage_usage": 182,
+    "code_hash": "11111111111111111111111111111111",
+    "keys": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess",
+        "hd_path": "m/44'/397'/0'/0'/1'",
+        "device": "Ledger Nano S Plus"
+      }
+    ]
+  },
+  "children": {
+    "policy.nishanthb.near": { "exists": false, "available_to_create": true },
+    "agent.nishanthb.near": { "exists": false, "available_to_create": true }
+  },
+  "artifact": {
+    "path": "artifacts/mainnet/policy.wasm",
+    "bytes": 625701,
+    "sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
+    "sidecar_sha256_fixed": true
+  },
+  "protocol": {
+    "storage_amount_per_byte": "10000000000000000000",
+    "wasm_storage_near": "6.25701"
+  },
+  "funding_plan": {
+    "receive_address": "nishanthb.near",
+    "network": "NEAR mainnet",
+    "cautious_first_inbound_near": "2.0",
+    "total_owner_target_near": "9.0",
+    "max_deployment_budget_near": "9.0",
+    "policy_child_initial_balance_near": "8.0",
+    "owner_reserve_after_create_near": "~1.0",
+    "components": {
+      "wasm_storage_near": "6.25701",
+      "keys_state_gas_buffer_near": "0.75",
+      "owner_ops_reserve_near": "1.0",
+      "create_account_fee_near": "~0.001-0.01"
+    }
+  },
+  "proposed_first_ledger_signed_tx": {
+    "blocked_until": "nishanthb.near funded with spendable NEAR (live balance currently 0)",
+    "action": "create_account policy.nishanthb.near",
+    "status": "PREPARED_FOR_REVIEW_NOT_SENT"
+  }
+}

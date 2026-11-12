@@ -17,40 +17,61 @@ import {
   NIO_CHAINS,
 } from "./tokenCatalog.mjs";
 
-export const DEMO_ROUTES = Object.freeze([
-  {
-    id: "arb_usdc_to_near_wnear",
-    source_chain: "arbitrum",
-    destination_chain: "near",
-    source_key: "arb_usdc",
-    dest_key: "wrap_near",
-    label: "Arbitrum USDC → NEAR wNEAR",
-  },
-  {
-    id: "arb_usdc_to_base_usdc",
-    source_chain: "arbitrum",
-    destination_chain: "base",
-    source_key: "arb_usdc",
-    dest_key: "base_usdc",
-    label: "Arbitrum USDC → Base USDC",
-  },
-  {
-    id: "base_usdc_to_eth_weth",
-    source_chain: "base",
-    destination_chain: "ethereum",
-    source_key: "base_usdc",
-    dest_key: "eth_weth",
-    label: "Base USDC → Ethereum WETH",
-  },
-  {
-    id: "eth_usdc_to_arb_usdc",
-    source_chain: "ethereum",
-    destination_chain: "arbitrum",
-    source_key: "eth_usdc",
-    dest_key: "arb_usdc",
-    label: "Ethereum USDC → Arbitrum USDC",
-  },
-]);
+/** Four-chain route universe — not Arbitrum-only. Discovery ≠ funded readiness. */
+function buildFourChainDemoRoutes() {
+  const usdcSources = [
+    { chain: "ethereum", key: "eth_usdc", label: "Ethereum USDC" },
+    { chain: "arbitrum", key: "arb_usdc", label: "Arbitrum USDC" },
+    { chain: "base", key: "base_usdc", label: "Base USDC" },
+  ];
+  const usdcDests = [
+    { chain: "ethereum", key: "eth_usdc", label: "Ethereum USDC" },
+    { chain: "arbitrum", key: "arb_usdc", label: "Arbitrum USDC" },
+    { chain: "base", key: "base_usdc", label: "Base USDC" },
+    { chain: "near", key: "wrap_near", label: "NEAR wNEAR" },
+    { chain: "near", key: "near_usdc", label: "NEAR USDC" },
+  ];
+  const routes = [];
+  for (const src of usdcSources) {
+    for (const dst of usdcDests) {
+      if (src.key === dst.key) continue;
+      routes.push({
+        id: `${src.key}_to_${dst.key}`,
+        source_chain: src.chain,
+        destination_chain: dst.chain,
+        source_key: src.key,
+        dest_key: dst.key,
+        label: `${src.label} → ${dst.label}`,
+      });
+    }
+  }
+  // NEAR-origin discovery rows (signing may_use=false until NEP-141 path exists)
+  for (const dst of [
+    { chain: "ethereum", key: "eth_usdc", label: "Ethereum USDC" },
+    { chain: "arbitrum", key: "arb_usdc", label: "Arbitrum USDC" },
+    { chain: "base", key: "base_usdc", label: "Base USDC" },
+  ]) {
+    routes.push({
+      id: `near_usdc_to_${dst.key}`,
+      source_chain: "near",
+      destination_chain: dst.chain,
+      source_key: "near_usdc",
+      dest_key: dst.key,
+      label: `NEAR USDC → ${dst.label}`,
+    });
+    routes.push({
+      id: `wrap_near_to_${dst.key}`,
+      source_chain: "near",
+      destination_chain: dst.chain,
+      source_key: "wrap_near",
+      dest_key: dst.key,
+      label: `NEAR wNEAR → ${dst.label}`,
+    });
+  }
+  return Object.freeze(routes);
+}
+
+export const DEMO_ROUTES = buildFourChainDemoRoutes();
 
 /**
  * @param {object} balances — map asset_id → { amount_raw, verified: boolean, chain }

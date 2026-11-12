@@ -1,0 +1,185 @@
+{
+  "kind": "MAINNET_CHECKPOINT_H_VERIFY",
+  "rpc": "https://rpc.mainnet.fastnear.com",
+  "chain_id": "mainnet",
+  "block_height": 224245306,
+  "verified_at": "2026-11-12T17:41:23.749Z",
+  "txs": {
+    "add_temp_key": {
+      "hash": "EnJbg2ny72wLsQMgpVTtMQkXXFPiYwd1aCVCpP1DAkkN",
+      "found": true,
+      "signer_id": "policy.nishanthb.near",
+      "receiver_id": "policy.nishanthb.near",
+      "actions": [
+        {
+          "AddKey": {
+            "access_key": {
+              "nonce": 0,
+              "permission": "FullAccess"
+            },
+            "public_key": "ed25519:31TGgey54ydpdL2cmC5vrBF2BjEByV3XLqkL48J7rRrK"
+          }
+        }
+      ],
+      "status": {
+        "SuccessValue": ""
+      },
+      "ok": true,
+      "error": null
+    },
+    "deploy_init": {
+      "hash": "7dP54cvyDvy3FY97a6oBvUfLHhnVzhixxFCAVVKW21wU",
+      "found": true,
+      "signer_id": "policy.nishanthb.near",
+      "receiver_id": "policy.nishanthb.near",
+      "actions": [
+        {
+          "DeployContract": {
+            "code": "O8fBEgofWTpMlv9YFxzpUh94DO7AQn2X+Q8MrJ7MT5A="
+          }
+        },
+        {
+          "FunctionCall": {
+            "args": "eyJvd25lciI6Im5pc2hhbnRoYi5uZWFyIiwiYWdlbnQiOiJhZ2VudC5uaXNoYW50aGIubmVhciIsIm1wY19zaWduZXIiOiJ2MS5zaWduZXIiLCJwb3J0Zm9saW9faWQiOiJuaW8tbWFpbm5ldC12MSIsInZlcmlmeWluZ19jb250cmFjdCI6ImludGVudHMubmVhciIsImxpbWl0cyI6eyJtYXhfdHJhZGVfdmFsdWUiOiI1MDAwMDAwIiwiZGFpbHlfdHVybm92ZXJfbGltaXQiOiIyNTAwMDAwMCIsIm1heF9wZW5kaW5nX2V4cG9zdXJlIjoiMTAwMDAwMDAiLCJtYXhfc2xpcHBhZ2VfYnBzIjoxMDAsImFsbG93ZWRfYXNzZXRzIjpbIm5lcDE0MTpldGgtMHhhMGI4Njk5MWM2MjE4YjM2YzFkMTlkNGEyZTllYjBjZTM2MDZlYjQ4Lm9tZnQubmVhciIsIm5lcDE0MTphcmItMHhhZjg4ZDA2NWU3N2M4Y2MyMjM5MzI3YzVlZGIzYTQzMjI2OGU1ODMxLm9tZnQubmVhciIsIm5lcDE0MTpiYXNlLTB4ODMzNTg5ZmNkNmVkYjZlMDhmNGM3YzMyZDRmNzFiNTRiZGEwMjkxMy5vbWZ0Lm5lYXIiLCJuZXAxNDE6MTcyMDg2MjhmODRmNWQ2YWQzM2YwZGEzYmJiZWIyN2ZmY2IzOThlYWM1MDFhMzFiZDZhZDIwMTFlMzYxMzNhMSIsIm5lcDE0MTp1c2R0LnRldGhlci10b2tlbi5uZWFyIiwibmVwMTQxOndyYXAubmVhciIsIm5lcDE0MTpldGgtMHhjMDJhYWEzOWIyMjNmZThkMGEwZTVjNGYyN2VhZDkwODNjNzU2Y2MyLm9tZnQubmVhciIsIm5lcDE0MTphcmItMHg4MmFmNDk0NDdkOGEwN2UzYmQ5NWJkMGQ1NmYzNTI0MTUyM2ZiYWIxLm9tZnQubmVhciIsIm5lcDE0MTpiYXNlLTB4NDIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNi5vbWZ0Lm5lYXIiXSwiYWxsb3dlZF9kZXN0aW5hdGlvbnMiOlsibmlzaGFudGhiLm5lYXIiXSwidmFsaWRfdW50aWwiOiIxNzk4NzYxNjAwMDAwMDAwMDAwIiwidG9rZW5fc2NvcGUiOiJhbGxvd2xpc3QiLCJhbGxvd2VkX2NoYWlucyI6WyJuZWFyIiwiZWlwMTU1OjEiLCJlaXAxNTU6NDIxNjEiLCJlaXAxNTU6ODQ1MyJdLCJhbGxvd2VkX3ZlbnVlcyI6WyJuZWFyX2ludGVudHNfMWNsaWNrIl0sIm1heF9nYXNfYnVkZ2V0IjoiMjUwMDAwMDAwMDAwMDAwMCJ9fQ==",
+            "deposit": "0",
+            "gas": 300000000000000,
+            "method_name": "new"
+          }
+        }
+      ],
+      "status": {
+        "SuccessValue": ""
+      },
+      "ok": true,
+      "error": null
+    },
+    "delete_temp_key": {
+      "hash": "A6Ygy6UdFLNr7fibFbXv2obeGEUU1fWWfHN95FctckKj",
+      "found": true,
+      "signer_id": "policy.nishanthb.near",
+      "receiver_id": "policy.nishanthb.near",
+      "actions": [
+        {
+          "DeleteKey": {
+            "public_key": "ed25519:31TGgey54ydpdL2cmC5vrBF2BjEByV3XLqkL48J7rRrK"
+          }
+        }
+      ],
+      "status": {
+        "SuccessValue": ""
+      },
+      "ok": true,
+      "error": null
+    }
+  },
+  "account": {
+    "amount_yocto": "7995189049648321200000000",
+    "amount_near": "7.9951890496483212",
+    "locked": "0",
+    "storage_usage": 626848,
+    "code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "block_height": 224245306
+  },
+  "keys": {
+    "count": 1,
+    "keys": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess",
+        "nonce": 224240008000002
+      }
+    ],
+    "sole_ledger_fa": true,
+    "temp_key_absent": true
+  },
+  "views": {
+    "get_owner": "nishanthb.near",
+    "get_agent": "agent.nishanthb.near",
+    "get_mpc_signer": "v1.signer",
+    "get_verifying_contract": "intents.near",
+    "get_portfolio_id": "nio-mainnet-v1",
+    "get_limits": {
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 100,
+      "allowed_assets": [
+        "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "nep141:usdt.tether-token.near",
+        "nep141:wrap.near",
+        "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+        "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+        "nep141:base-0x4200000000000000000000000000000000000006.omft.near"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near"
+      ],
+      "valid_until": "1798761600000000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "2500000000000000"
+    },
+    "get_paused": true,
+    "get_autonomous_trading": false,
+    "get_mandate_epoch": 1,
+    "get_derivation_path": "trading/v1/portfolio/nio-mainnet-v1",
+    "get_revoked": {
+      "error": "wasm execution failed with error: MethodResolveError(MethodNotFound)"
+    }
+  },
+  "wasm": {
+    "local_bytes": 625701,
+    "local_sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
+    "expected_sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
+    "sha_match": true,
+    "on_chain_code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "expected_code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "code_hash_match": true
+  },
+  "catalog_check": {
+    "required": [
+      "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "nep141:wrap.near",
+      "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+    ],
+    "present": {
+      "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near": true,
+      "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near": true,
+      "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near": true,
+      "nep141:wrap.near": true,
+      "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1": true
+    },
+    "all_required_present": true,
+    "allowed_chains": [
+      "near",
+      "eip155:1",
+      "eip155:42161",
+      "eip155:8453"
+    ],
+    "allowed_destinations": [
+      "nishanthb.near"
+    ],
+    "token_scope": "allowlist"
+  },
+  "gaps": [
+    "NO_EVM_MPC_DESTINATION_BOUND_YET",
+    "RAW_UNIT_CAPS_NOT_USD_NORMALIZED",
+    "FUNDED_TRADING_MUST_REMAIN_OFF",
+    "MPC_EVM_ADDRESS_NOT_DERIVED",
+    "AGENT_ACCOUNT_NOT_PROVISIONED"
+  ],
+  "verdict": "PASS"
+}

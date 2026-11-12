@@ -1,0 +1,39 @@
+{
+  "owner": "nishanthb.near",
+  "agent": "agent.nishanthb.near",
+  "mpc_signer": "v1.signer",
+  "portfolio_id": "nio-mainnet-v1",
+  "verifying_contract": "intents.near",
+  "limits": {
+    "max_trade_value": "5000000",
+    "daily_turnover_limit": "25000000",
+    "max_pending_exposure": "10000000",
+    "max_slippage_bps": 100,
+    "allowed_assets": [
+      "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "nep141:usdt.tether-token.near",
+      "nep141:wrap.near",
+      "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+      "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+      "nep141:base-0x4200000000000000000000000000000000000006.omft.near"
+    ],
+    "allowed_destinations": [
+      "nishanthb.near"
+    ],
+    "valid_until": "1798761600000000000",
+    "token_scope": "allowlist",
+    "allowed_chains": [
+      "near",
+      "eip155:1",
+      "eip155:42161",
+      "eip155:8453"
+    ],
+    "allowed_venues": [
+      "near_intents_1click"
+    ],
+    "max_gas_budget": "2500000000000000"
+  }
+}

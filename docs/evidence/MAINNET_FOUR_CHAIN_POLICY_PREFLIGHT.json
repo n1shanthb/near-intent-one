@@ -1,0 +1,118 @@
+{
+  "kind": "MAINNET_FOUR_CHAIN_POLICY_PREFLIGHT",
+  "catalog": {
+    "api": "https://1click.chaindefuser.com",
+    "counts": {
+      "total_catalog": 230,
+      "four_chain": 89,
+      "near": 35,
+      "ethereum": 29,
+      "arbitrum": 7,
+      "base": 18
+    }
+  },
+  "canonical_assets": {
+    "arb_usdc": {
+      "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "decimals": 6,
+      "contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "symbol": "USDC"
+    },
+    "base_usdc": {
+      "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "decimals": 6,
+      "contract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "symbol": "USDC"
+    },
+    "eth_usdc": {
+      "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "decimals": 6,
+      "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "symbol": "USDC"
+    },
+    "eth_weth": {
+      "asset_id": "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+      "decimals": 18,
+      "contract": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "symbol": "WETH"
+    },
+    "arb_weth": {
+      "asset_id": "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+      "decimals": 18,
+      "contract": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+      "symbol": "WETH"
+    },
+    "base_weth": {
+      "asset_id": "nep141:base-0x4200000000000000000000000000000000000006.omft.near",
+      "decimals": 18,
+      "contract": "0x4200000000000000000000000000000000000006",
+      "symbol": "WETH"
+    },
+    "wrap_near": {
+      "asset_id": "nep141:wrap.near",
+      "decimals": 24,
+      "contract": "wrap.near",
+      "symbol": "wNEAR"
+    },
+    "near_usdc": {
+      "asset_id": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "decimals": 6,
+      "contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "symbol": "USDC"
+    },
+    "near_usdt": {
+      "asset_id": "nep141:usdt.tether-token.near",
+      "decimals": 6,
+      "contract": "usdt.tether-token.near",
+      "symbol": "USDT"
+    }
+  },
+  "denomination_mismatch": {
+    "severity": "P0_FOR_FUNDED_MIXED_DECIMALS",
+    "detail": "max_trade_value/daily_turnover/max_pending_exposure compare raw amount_in units with no USD normalization. Safe initial mandate: treat caps as USDC-6 raw units; 18/24-dec asset_in is fail-closed at dust sizes.",
+    "wasm_change_required_for_shared_usd_caps": true,
+    "inert_deploy_ok_with_allowlist_discipline": true
+  },
+  "near_origin_gap": {
+    "signing_may_use": false,
+    "primitive": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+    "note": "EVM ERC-20 MPC path does not authorize NEP-141 deposits"
+  },
+  "recipient_refund_model": {
+    "near_destination": "nishanthb.near",
+    "evm_destination_and_refund": "MPC EVM address — derive AFTER policy deploy; owner set_policy to add before any EVM DESTINATION_CHAIN/ORIGIN refund execution",
+    "init_allowed_destinations": [
+      "nishanthb.near"
+    ],
+    "no_arbitrary_evm_deposits": true
+  },
+  "route_matrix_counts": {
+    "ethereum": {
+      "routes": 4,
+      "funded_ready_signing": 4
+    },
+    "arbitrum": {
+      "routes": 4,
+      "funded_ready_signing": 4
+    },
+    "base": {
+      "routes": 4,
+      "funded_ready_signing": 4
+    },
+    "near": {
+      "routes": 6,
+      "funded_ready_signing": 0
+    }
+  },
+  "route_count": 18,
+  "wasm": {
+    "bytes": 625701,
+    "sha256": "3bc7c1120a1f593a4c96ff58171ce9521f780ceec0427d97f90f0cac9ecc4f90",
+    "changed": false
+  },
+  "paused_on_init": true,
+  "token_scope": "allowlist",
+  "any_eligible_token": false,
+  "funded_trading": false,
+  "checkpoint_ef": "READY_FOR_OPERATOR_ADDKEY_THEN_DEPLOY_WITH_THIS_INIT"
+}
