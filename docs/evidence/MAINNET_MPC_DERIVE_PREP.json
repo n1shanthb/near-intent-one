@@ -1,0 +1,41 @@
+{
+  "derived": {
+    "network": "mainnet",
+    "signer": "v1.signer",
+    "domain_id": 0,
+    "path": "trading/v1/portfolio/nio-mainnet-v1",
+    "predecessor": "policy.nishanthb.near",
+    "evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "status": "DERIVED_ADDRESS_ONLY",
+    "note": "Derived address is NOT a completed mainnet signature request",
+    "near_secp_key_present": true
+  },
+  "balances": {
+    "ethereum": {
+      "chain_id": 1,
+      "address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "native_wei": "0",
+      "native_eth": 0,
+      "usdc_raw": "0",
+      "usdc": 0
+    },
+    "arbitrum": {
+      "chain_id": 42161,
+      "address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "native_wei": "0",
+      "native_eth": 0,
+      "usdc_raw": "0",
+      "usdc": 0
+    },
+    "base": {
+      "chain_id": 8453,
+      "address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "native_wei": "0",
+      "native_eth": 0,
+      "usdc_raw": "0",
+      "usdc": 0
+    }
+  },
+  "intents_signer_id_on_policy": "",
+  "set_policy_needed": true
+}
