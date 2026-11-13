@@ -127,7 +127,7 @@ function hmacKey(env = process.env) {
 }
 
 function canonicalPayload(p) {
-  return JSON.stringify({
+  const base = {
     operation_id: p.operation_id,
     owner: p.owner,
     policy: p.policy,
@@ -147,7 +147,32 @@ function canonicalPayload(p) {
       ? String(p.deposit_address).toLowerCase()
       : null,
     expires_at: p.expires_at,
-  });
+  };
+  // Versioned recovery binding — rejects modified recovery metadata.
+  if (p.kind === RECOVERY_KIND) {
+    return JSON.stringify({
+      ...base,
+      kind: RECOVERY_KIND,
+      recovery_payload_version: 1,
+      recovery_of_fingerprint: p.recovery_of_fingerprint || null,
+      near_propose_tx: p.near_propose_tx || null,
+      forbids_propose: true,
+      digest_hex: p.digest_hex ? String(p.digest_hex).toLowerCase() : null,
+      quote_deadline_ms:
+        p.quote_deadline_ms != null ? Number(p.quote_deadline_ms) : null,
+      min_amount_out: p.min_amount_out != null ? String(p.min_amount_out) : null,
+      recipient: p.recipient ? String(p.recipient).toLowerCase() : null,
+      refund_to: p.refund_to ? String(p.refund_to).toLowerCase() : null,
+      base_usdc_before:
+        p.base_usdc_before != null ? String(p.base_usdc_before) : null,
+      locked_nonce: p.locked_nonce != null ? Number(p.locked_nonce) : null,
+      locked_gas_price:
+        p.locked_gas_price != null ? String(p.locked_gas_price) : null,
+      locked_gas_limit:
+        p.locked_gas_limit != null ? String(p.locked_gas_limit) : null,
+    });
+  }
+  return JSON.stringify(base);
 }
 
 export function signApprovalPayload(payload, env = process.env) {
@@ -434,8 +459,8 @@ export function validateCanaryApproval(
 }
 
 /**
- * Prefer unused recovery auth when original is consumed; else original.
- * Never writes to a used original when recovery exists.
+ * Once a recovery auth file exists, ALL further lifecycle writes go there.
+ * Never mutates the original consumed approval.
  */
 export function resolveWritableApproval(
   operationId,
@@ -443,14 +468,11 @@ export function resolveWritableApproval(
 ) {
   const original = loadCanaryApproval(operationId, { env, storeDir });
   const recovery = loadRecoveryAuthorization(operationId, { env, storeDir });
-  if (recovery.ok && recovery.record.used !== true) {
-    if (!original.ok || original.record.used === true) {
-      return { ...recovery, is_recovery: true };
-    }
+  if (recovery.ok) {
+    return { ...recovery, is_recovery: true };
   }
   if (original.ok) return { ...original, is_recovery: false };
-  if (recovery.ok) return { ...recovery, is_recovery: true };
-  return original.ok === false ? original : { ok: false, reason: "approval_not_found" };
+  return { ok: false, reason: "approval_not_found" };
 }
 
 export function recordOperatorConfirmation(

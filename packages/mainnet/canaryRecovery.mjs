@@ -50,6 +50,114 @@ export async function createViewOnlyPolicyAdapters(opts = {}) {
     async listPending() {
       return viewFunction(rpc, policy, "list_pending", {});
     },
+    async waitNearTx(txHash, signerId = MAINNET_IDENTITIES.agent) {
+      const res = await fetch(rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "nio-near-tx",
+          method: "EXPERIMENTAL_tx_status",
+          params: [txHash, signerId],
+        }),
+      });
+      const j = await res.json();
+      if (j.error) throw new Error(j.error.message || "near_tx_status_failed");
+      return j.result || j;
+    },
+  };
+}
+
+/**
+ * Independently verify the original NEAR propose receipt.
+ * A supplied hash alone is NOT proof.
+ */
+export function verifyNearProposeReceipt(nearTxFull, {
+  operationId,
+  expectedDigest = null,
+} = {}) {
+  if (!nearTxFull) {
+    return { ok: false, reason: "near_tx_receipt_missing" };
+  }
+  const outcomes = [
+    ...(nearTxFull?.receipts_outcome || []),
+    ...(nearTxFull?.result?.receipts_outcome || []),
+  ];
+  const txOutcome =
+    nearTxFull?.transaction_outcome || nearTxFull?.result?.transaction_outcome;
+  const status =
+    txOutcome?.outcome?.status ||
+    nearTxFull?.status ||
+    nearTxFull?.result?.status;
+  const success =
+    status?.SuccessValue != null ||
+    status?.SuccessReceiptId != null ||
+    (typeof status === "string" && /success/i.test(status));
+  if (!success && outcomes.length === 0) {
+    return { ok: false, reason: "near_tx_not_successful", status };
+  }
+
+  let logs = [];
+  for (const r of outcomes) {
+    logs = logs.concat(r?.outcome?.logs || []);
+  }
+  if (txOutcome?.outcome?.logs) logs = logs.concat(txOutcome.outcome.logs);
+
+  const joined = logs.join("\n");
+  const hasReserved =
+    /quoted_evm_reserved/i.test(joined) ||
+    logs.some((l) => {
+      try {
+        const j = JSON.parse(String(l).replace(/^EVENT_JSON:/, ""));
+        return j?.event === "quoted_evm_reserved";
+      } catch {
+        return false;
+      }
+    });
+  if (!hasReserved && !success) {
+    return { ok: false, reason: "quoted_evm_reserved_not_found_in_receipt" };
+  }
+
+  let eventOp = null;
+  let eventDigest = null;
+  for (const l of logs) {
+    try {
+      const raw = String(l).startsWith("EVENT_JSON:")
+        ? String(l).slice("EVENT_JSON:".length)
+        : String(l);
+      const j = JSON.parse(raw);
+      if (j?.event === "quoted_evm_reserved") {
+        eventOp = j.operation_id || null;
+        eventDigest = j.digest || null;
+      }
+    } catch {
+      /* */
+    }
+  }
+  if (operationId && eventOp && String(eventOp) !== String(operationId)) {
+    return {
+      ok: false,
+      reason: "near_receipt_operation_id_mismatch",
+      got: eventOp,
+    };
+  }
+  if (
+    expectedDigest &&
+    eventDigest &&
+    String(eventDigest).toLowerCase() !== String(expectedDigest).toLowerCase()
+  ) {
+    return {
+      ok: false,
+      reason: "near_receipt_digest_mismatch",
+      got: eventDigest,
+    };
+  }
+  return {
+    ok: true,
+    independently_verified: true,
+    operation_id: eventOp || operationId || null,
+    digest: eventDigest || expectedDigest || null,
+    has_quoted_evm_reserved: hasReserved || success,
   };
 }
 
@@ -197,7 +305,11 @@ export async function inspectReservedOperation({
 
   let nearTx = deps.nearTx || null;
   if (!nearTx && nearProposeTx && a.waitNearTx) {
-    nearTx = await a.waitNearTx(nearProposeTx);
+    try {
+      nearTx = await a.waitNearTx(nearProposeTx);
+    } catch (e) {
+      nearTx = { fetch_error: String(e.message || e) };
+    }
   }
 
   const original = loadCanaryApproval(operationId, { env, storeDir });
@@ -223,6 +335,13 @@ export async function inspectReservedOperation({
   const signing = normalizeSigningState(op?.signing_state);
   const settlement = String(op?.settlement_state || "");
 
+  const receiptCheck =
+    deps.nearReceiptVerify ||
+    verifyNearProposeReceipt(nearTx, {
+      operationId,
+      expectedDigest: wantDigest,
+    });
+
   const checks = {
     pending_exists: Boolean(op),
     digest_match: wantDigest ? digest === wantDigest : null,
@@ -240,6 +359,7 @@ export async function inspectReservedOperation({
         getLifecycleState(original.record)
       ),
     original_immutable_used: original.ok ? original.record.used === true : null,
+    near_propose_receipt_verified: receiptCheck.ok === true,
   };
 
   const safeToRecover =
@@ -250,7 +370,10 @@ export async function inspectReservedOperation({
     checks.deposit_match !== false &&
     checks.signing_reserved &&
     checks.settlement_none &&
+    checks.policy_paused &&
     checks.no_local_broadcast &&
+    checks.original_immutable_used === true &&
+    checks.near_propose_receipt_verified &&
     signing !== "Signed" &&
     signing !== "Signing";
 
@@ -279,13 +402,15 @@ export async function inspectReservedOperation({
     pending: op,
     list_hit: fromList || null,
     near_propose_tx: nearProposeTx,
-    near_tx_present: Boolean(nearTx),
+    near_tx_present: Boolean(nearTx) && !nearTx.fetch_error,
+    near_receipt: receiptCheck,
     local_original: original.ok
       ? {
           used: original.record.used,
           lifecycle_state: getLifecycleState(original.record),
           consume_reason: original.record.consume_reason || null,
           locked_digest_hex: original.record.locked_digest_hex,
+          fingerprint: original.record.fingerprint,
           path: original.path,
         }
       : null,
@@ -296,7 +421,7 @@ export async function inspectReservedOperation({
       ? "SAFE_TO_RESUME_ORIGINAL_OPERATION"
       : "NO-GO",
     abort_ledger: abortPath,
-    note: "No mutations performed. Original approval must remain immutable if used.",
+    note: "No mutations performed. Original approval must remain immutable if used. Hash alone is not proof — receipt verified independently.",
   };
 }
 
@@ -351,14 +476,15 @@ export async function createRecoveryAuthorization({
     };
   }
 
+  const proposeTx =
+    nearProposeTx ||
+    original.record.outcomes?.[CANARY_STATES.RECONCILIATION_REQUIRED]
+      ?.near_tx ||
+    original.record.outcomes?.[CANARY_STATES.PROPOSED]?.near_tx ||
+    null;
   const inspect = await inspectReservedOperation({
     operationId,
-    nearProposeTx:
-      nearProposeTx ||
-      original.record.outcomes?.[CANARY_STATES.RECONCILIATION_REQUIRED]
-        ?.near_tx ||
-      original.record.outcomes?.[CANARY_STATES.PROPOSED]?.near_tx ||
-      null,
+    nearProposeTx: proposeTx,
     expectedDigest: original.record.locked_digest_hex,
     expectedDeposit: original.record.payload.deposit_address,
     env,
@@ -375,6 +501,13 @@ export async function createRecoveryAuthorization({
       verdict: "NO-GO",
     };
   }
+  if (inspect.policy_paused_onchain !== true) {
+    return {
+      ok: false,
+      reason: "policy_must_be_paused_before_recovery_auth",
+      inspect,
+    };
+  }
 
   const dir = storeDir || canaryStoreDir(env);
   mkdirSync(dir, { recursive: true });
@@ -383,7 +516,28 @@ export async function createRecoveryAuthorization({
     return { ok: false, reason: "recovery_auth_already_exists", path };
   }
 
+  const qv = original.record.outcomes?.[CANARY_STATES.QUOTE_VERIFIED] || {};
+  const at = original.record.outcomes?.[CANARY_STATES.ATTESTED] || {};
+  const quote_deadline_ms =
+    qv.quote_deadline_ms ?? at.quote_deadline_ms ?? null;
+  const min_amount_out = String(qv.min_out || at.min_out || "");
+  const recipient =
+    at.propose_args?.attestation?.recipient ||
+    MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
+  const refund_to =
+    at.propose_args?.attestation?.refund_to ||
+    MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
+
+  if (quote_deadline_ms == null || !min_amount_out) {
+    return {
+      ok: false,
+      reason: "original_quote_economics_missing",
+      note: "Cannot recover without verified quote deadline and min_amount_out",
+    };
+  }
+
   const expires_at = new Date(Date.now() + ttlMs).toISOString();
+  // Both auth TTL and original 1Click deadline remain enforced.
   const payload = {
     operation_id: operationId,
     owner: MAINNET_IDENTITIES.owner,
@@ -404,8 +558,20 @@ export async function createRecoveryAuthorization({
     expires_at,
     kind: RECOVERY_KIND,
     recovery_of_fingerprint: original.record.fingerprint,
-    near_propose_tx: nearProposeTx || inspect.near_propose_tx || null,
+    near_propose_tx: proposeTx,
     forbids_propose: true,
+    digest_hex: String(original.record.locked_digest_hex).toLowerCase(),
+    quote_deadline_ms: Number(quote_deadline_ms),
+    min_amount_out,
+    recipient: String(recipient).toLowerCase(),
+    refund_to: String(refund_to).toLowerCase(),
+    base_usdc_before:
+      original.record.base_usdc_before != null
+        ? String(original.record.base_usdc_before)
+        : "0",
+    locked_nonce: Number(original.record.locked_nonce),
+    locked_gas_price: String(original.record.locked_gas_price),
+    locked_gas_limit: String(original.record.locked_gas_limit),
   };
   const { mac, fingerprint } = signApprovalPayload(payload, env);
   const record = {
@@ -425,11 +591,31 @@ export async function createRecoveryAuthorization({
     locked_gas_limit: original.record.locked_gas_limit || null,
     base_usdc_before: original.record.base_usdc_before,
     outcomes: {
+      // Preserve original quote economics for deadline + settlement validators
+      [CANARY_STATES.QUOTE_VERIFIED]: {
+        at: qv.at || new Date().toISOString(),
+        quote_hash: original.record.payload.quote_hash,
+        deposit: original.record.payload.deposit_address,
+        min_out: min_amount_out,
+        quote_deadline_ms: Number(quote_deadline_ms),
+        quote_deadline: qv.quote_deadline || null,
+        recovered_from_original: true,
+      },
+      [CANARY_STATES.ATTESTED]: {
+        at: at.at || new Date().toISOString(),
+        digest_hex: String(original.record.locked_digest_hex).toLowerCase(),
+        nonce: original.record.locked_nonce,
+        min_out: min_amount_out,
+        quote_deadline_ms: Number(quote_deadline_ms),
+        propose_args: at.propose_args || null,
+        recovered_from_original: true,
+      },
       [CANARY_STATES.PROPOSED]: {
         at: new Date().toISOString(),
         recovery: true,
         near_tx: payload.near_propose_tx,
         payload_commitment: inspect.pending.payload_commitment,
+        near_receipt: inspect.near_receipt,
         original_snapshot: originalSnapshot,
       },
     },

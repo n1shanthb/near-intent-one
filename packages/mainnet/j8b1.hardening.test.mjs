@@ -672,6 +672,12 @@ describe("J8B-1 sequential state machine", () => {
       env: ENV,
       requiredState: CANARY_STATES.PROPOSED,
     });
+    const { loadCanaryApproval } = await import("./canaryOneShot.mjs");
+    const loaded = loadCanaryApproval("op-mpc-pend", {
+      storeDir: STORE,
+      env: ENV,
+    });
+    const digest = loaded.record.locked_digest_hex;
     const r = await canaryStepRequestSignature({
       operationId: "op-mpc-pend",
       storeDir: STORE,
@@ -685,6 +691,12 @@ describe("J8B-1 sequential state machine", () => {
             transaction_hash: "nearTxPending",
           }),
           waitNearTx: async () => null,
+          getPaused: async () => false,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            signing_state: "Reserved",
+            payload_commitment: digest,
+          }),
         },
       },
     });

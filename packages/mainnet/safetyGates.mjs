@@ -11,6 +11,8 @@ import { mainnetAuthGates } from "../networks/profiles.mjs";
 import {
   validateCanaryApproval,
   validateExecutableApproval,
+  loadCanaryApproval,
+  RECOVERY_KIND,
 } from "./canaryOneShot.mjs";
 
 export function mainnetExecutionGates(env = process.env) {
@@ -63,6 +65,45 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
   if (opts.canaryUnlock?.autonomous_execution_enabled === true) {
     return { ok: false, reason: "canary_autonomous_forbidden" };
   }
+
+  // Recovery unlock is scoped to the SAME existing operation only.
+  if (v.is_recovery) {
+    if (v.payload?.kind !== RECOVERY_KIND || v.payload?.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_payload_invalid" };
+    }
+    const original = loadCanaryApproval(opId, {
+      env,
+      storeDir: opts.storeDir,
+    });
+    if (!original.ok || original.record.used !== true) {
+      return { ok: false, reason: "recovery_requires_consumed_original" };
+    }
+    if (
+      String(v.payload.recovery_of_fingerprint) !==
+      String(original.record.fingerprint)
+    ) {
+      return { ok: false, reason: "recovery_fingerprint_mismatch" };
+    }
+    const wantDigest =
+      opts.expected?.digest_hex ||
+      v.payload.digest_hex ||
+      v.record.locked_digest_hex;
+    if (
+      wantDigest &&
+      String(v.record.locked_digest_hex || "").toLowerCase() !==
+        String(wantDigest).toLowerCase()
+    ) {
+      return { ok: false, reason: "recovery_digest_mismatch" };
+    }
+    if (
+      wantDigest &&
+      String(original.record.locked_digest_hex || "").toLowerCase() !==
+        String(wantDigest).toLowerCase()
+    ) {
+      return { ok: false, reason: "recovery_original_digest_mismatch" };
+    }
+  }
+
   return {
     ok: true,
     mode: v.is_recovery ? "one_shot_canary_recovery" : "one_shot_canary",
@@ -74,6 +115,7 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     autonomous_execution_enabled: false,
     freshly_validated: true,
     is_recovery: Boolean(v.is_recovery),
+    scoped_operation_only: Boolean(v.is_recovery),
   };
 }
 
@@ -85,16 +127,20 @@ export function assertMainnetBroadcastAllowed(env = process.env, opts = {}) {
       ok: true,
       submitted: false,
       reason: null,
-      mode: "one_shot_canary",
+      mode: canary.mode,
       operation_id: canary.operation_id,
       freshly_validated: true,
+      is_recovery: Boolean(canary.is_recovery),
       gates: {
         funded_trading: gates.funded_trading,
         mainnet_broadcast_enabled: gates.mainnet_broadcast_enabled,
         autonomous_execution_enabled: false,
         canary_one_shot: true,
+        canary_recovery: Boolean(canary.is_recovery),
       },
-      note: "Scoped canary unlock only — revalidated from disk",
+      note: canary.is_recovery
+        ? "Scoped recovery unlock for existing operation only"
+        : "Scoped canary unlock only — revalidated from disk",
     };
   }
   return {

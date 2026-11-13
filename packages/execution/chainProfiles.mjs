@@ -132,9 +132,12 @@ export function assertMainnetFundedAllowed(
   if (profile.id !== CHAIN_PROFILE.MAINNET_1CLICK) return { ok: true };
 
   const unlock = canaryUnlock || canary || null;
+  const modeOk =
+    unlock?.mode === "one_shot_canary" ||
+    unlock?.mode === "one_shot_canary_recovery";
   const canaryOk =
     unlock?.ok === true &&
-    unlock?.mode === "one_shot_canary" &&
+    modeOk &&
     unlock?.allows_sign === true &&
     unlock?.allows_broadcast === true &&
     unlock?.autonomous_execution_enabled !== true;
@@ -166,8 +169,9 @@ export function assertMainnetFundedAllowed(
   if (canaryOk) {
     return {
       ok: true,
-      mode: "one_shot_canary",
+      mode: unlock.mode,
       operation_id: unlock.operation_id,
+      is_recovery: unlock.mode === "one_shot_canary_recovery",
       note: "Scoped canary unlock — not a permanent funded-path enable",
     };
   }

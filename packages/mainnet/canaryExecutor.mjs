@@ -123,6 +123,7 @@ function assertQuoteDeadlineFresh(record, { nowMs = Date.now(), minRemainingMs =
   const deadlineMs =
     record?.outcomes?.[CANARY_STATES.QUOTE_VERIFIED]?.quote_deadline_ms ||
     record?.outcomes?.[CANARY_STATES.ATTESTED]?.quote_deadline_ms ||
+    record?.payload?.quote_deadline_ms ||
     null;
   if (deadlineMs == null) {
     return { ok: false, reason: "quote_deadline_missing" };
@@ -815,6 +816,44 @@ export async function canaryStepRequestSignature({
     return { ok: false, reason: "near_sign_adapter_missing" };
   }
 
+  // Independent pre-sign recheck — never sign twice / never sign non-Reserved.
+  if (typeof a.getPaused !== "function") {
+    return { ok: false, reason: "near_pause_adapter_missing" };
+  }
+  if (typeof a.getMandateEpoch !== "function") {
+    return { ok: false, reason: "near_epoch_adapter_missing" };
+  }
+  if (typeof a.getPending !== "function" && !deps.pendingPreSign) {
+    return { ok: false, reason: "near_pending_adapter_missing" };
+  }
+  const paused = await a.getPaused();
+  if (paused !== false) {
+    return { ok: false, reason: "policy_not_unpaused_for_sign" };
+  }
+  const epoch = await a.getMandateEpoch();
+  if (Number(epoch) !== 2) {
+    return { ok: false, reason: "epoch_changed_before_sign", epoch };
+  }
+  const pendingPre =
+    deps.pendingPreSign || (await a.getPending(operationId));
+  if (!pendingPre) {
+    return { ok: false, reason: "pending_missing_before_sign" };
+  }
+  if (String(pendingPre.signing_state) !== "Reserved") {
+    return {
+      ok: false,
+      reason: "signing_state_not_reserved",
+      signing_state: pendingPre.signing_state,
+      note: "Do not request_signature twice",
+    };
+  }
+  if (
+    String(pendingPre.payload_commitment || "").toLowerCase() !==
+    String(v.record.locked_digest_hex || "").toLowerCase()
+  ) {
+    return { ok: false, reason: "payload_commitment_mismatch_before_sign" };
+  }
+
   const res = await a.requestSignature(operationId);
   const full = res.transaction_hash
     ? await a.waitNearTx(res.transaction_hash)
@@ -970,6 +1009,11 @@ export async function canaryStepBroadcast({
       storeDir,
       requireQuoteBound: true,
       allowRecovery: true,
+      expected: {
+        digest_hex: v.record.locked_digest_hex,
+        quote_hash: v.payload.quote_hash,
+        deposit_address: v.payload.deposit_address,
+      },
     },
     env
   );
@@ -1051,6 +1095,7 @@ export async function canaryStepBroadcast({
       operationId,
       storeDir,
       env,
+      allowRecovery: Boolean(v.is_recovery),
       depositBound: {
         deposit_address: v.payload.deposit_address,
         binding_ok: true,
@@ -1060,6 +1105,7 @@ export async function canaryStepBroadcast({
       expected: {
         quote_hash: v.payload.quote_hash,
         deposit_address: v.payload.deposit_address,
+        digest_hex: v.record.locked_digest_hex,
       },
     },
   });
@@ -1123,18 +1169,29 @@ export async function canaryStepSettle({
   testHarness = false,
   deps = {},
 } = {}) {
-  const v = validateCanaryApproval(operationId, {
-    env,
-    storeDir,
-    requireQuoteBound: true,
-  });
-  // May already be consumed on failure paths — allow read of record via load
-  const { loadCanaryApproval } = await import("./canaryOneShot.mjs");
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const { resolveWritableApproval } = await import("./canaryOneShot.mjs");
+  // Prefer unused recovery record; original FAILED/used stays immutable.
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const rec = loaded.record;
   if (getLifecycleState(rec) !== CANARY_STATES.SETTLEMENT_PENDING) {
     return { ok: false, reason: `bad_state:${getLifecycleState(rec)}` };
+  }
+  // Soft MAC check (used originals are not required here — recovery path)
+  if (loaded.is_recovery) {
+    const v = validateExecutableApproval(operationId, {
+      env,
+      storeDir,
+      requireQuoteBound: true,
+      allowRecovery: true,
+    });
+    // After broadcast, approval may still be unused until settle consumes
+    if (!v.ok && v.reason !== "approval_already_used") {
+      // Allow reading SETTLEMENT_PENDING even if partially progressed
+      if (getLifecycleState(rec) !== CANARY_STATES.SETTLEMENT_PENDING) {
+        return { ok: false, reason: v.reason };
+      }
+    }
   }
 
   const mpc = MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
@@ -1214,6 +1271,8 @@ export async function canaryStepSettle({
   const minOut =
     deps.minAmountOut ||
     rec.outcomes?.[CANARY_STATES.QUOTE_VERIFIED]?.min_out ||
+    rec.outcomes?.[CANARY_STATES.ATTESTED]?.min_out ||
+    rec.payload?.min_amount_out ||
     null;
   if (!minOut) {
     return { ok: false, reason: "min_amount_out_missing_for_base_check" };
@@ -1281,8 +1340,8 @@ export async function canaryStepReconcilePending({
   evidenceHash = null,
   settlementState = "Success",
 } = {}) {
-  const { loadCanaryApproval } = await import("./canaryOneShot.mjs");
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const { resolveWritableApproval } = await import("./canaryOneShot.mjs");
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const need = requireOperatorConfirmation(loaded.record, "reconcile");
   if (!need.ok) return { ok: false, reason: need.reason };

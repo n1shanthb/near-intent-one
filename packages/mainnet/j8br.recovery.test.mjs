@@ -353,6 +353,7 @@ describe("J8B-R recovery authorization", () => {
       deps: {
         pending: reservedPending(),
         listPending: [{ operation_id: op, ...reservedPending() }],
+        nearReceiptVerify: { ok: true, independently_verified: true },
         adapters: {
           getPaused: async () => true,
           getMandateEpoch: async () => 2,
@@ -363,6 +364,7 @@ describe("J8B-R recovery authorization", () => {
     assert.equal(insp.verdict, "SAFE_TO_RESUME_ORIGINAL_OPERATION");
     assert.equal(insp.checks.signing_reserved, true);
     assert.equal(insp.policy_paused_onchain, true);
+    assert.equal(insp.checks.near_propose_receipt_verified, true);
   });
 
   it("refuses recovery without operatorConfirmed; creates immutable recovery auth", async () => {
@@ -383,6 +385,23 @@ describe("J8B-R recovery authorization", () => {
     loaded.record.locked_nonce = 0;
     loaded.record.locked_gas_price = "30000000";
     loaded.record.locked_gas_limit = "100000";
+    loaded.record.base_usdc_before = "0";
+    loaded.record.outcomes = {
+      QUOTE_VERIFIED: {
+        min_out: "994904",
+        quote_deadline_ms: Date.now() + 86400000,
+      },
+      ATTESTED: {
+        min_out: "994904",
+        quote_deadline_ms: Date.now() + 86400000,
+        propose_args: {
+          attestation: {
+            recipient: MAINNET_IDENTITIES.mpc_evm_address,
+            refund_to: MAINNET_IDENTITIES.mpc_evm_address,
+          },
+        },
+      },
+    };
     const { writeFileSync } = await import("node:fs");
     writeFileSync(loaded.path, JSON.stringify(loaded.record, null, 2));
 
@@ -404,6 +423,7 @@ describe("J8B-R recovery authorization", () => {
       operatorConfirmed: true,
       deps: {
         pending: reservedPending(),
+        nearReceiptVerify: { ok: true, independently_verified: true },
         adapters: {
           getPaused: async () => true,
           getMandateEpoch: async () => 2,
@@ -415,6 +435,9 @@ describe("J8B-R recovery authorization", () => {
     assert.equal(created.ok, true);
     assert.equal(created.verdict, "SAFE_TO_RESUME_ORIGINAL_OPERATION");
     assert.equal(created.forbids_propose, true);
+    const recCheck = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    assert.equal(recCheck.record.payload.min_amount_out, "994904");
+    assert.ok(recCheck.record.outcomes.QUOTE_VERIFIED.quote_deadline_ms);
 
     const orig = loadCanaryApproval(op, { storeDir: STORE, env: ENV });
     assert.equal(orig.record.used, true);
@@ -469,6 +492,7 @@ describe("J8B-R recovery authorization", () => {
       testHarness: true,
       deps: {
         pending: reservedPending({ signing_state: "Signed" }),
+        nearReceiptVerify: { ok: true, independently_verified: true },
         adapters: {
           getPaused: async () => true,
           getMandateEpoch: async () => 2,
@@ -496,6 +520,10 @@ describe("J8B-R recovery authorization", () => {
     loaded.record.locked_nonce = 0;
     loaded.record.locked_gas_price = "1";
     loaded.record.locked_gas_limit = "1";
+    loaded.record.outcomes = {
+      QUOTE_VERIFIED: { min_out: "994904", quote_deadline_ms: Date.now() + 9e7 },
+      ATTESTED: { min_out: "994904", quote_deadline_ms: Date.now() + 9e7 },
+    };
     const { writeFileSync } = await import("node:fs");
     writeFileSync(loaded.path, JSON.stringify(loaded.record, null, 2));
     await createRecoveryAuthorization({
@@ -507,6 +535,7 @@ describe("J8B-R recovery authorization", () => {
       ttlMs: 1,
       deps: {
         pending: reservedPending(),
+        nearReceiptVerify: { ok: true, independently_verified: true },
         adapters: {
           getPaused: async () => true,
           getMandateEpoch: async () => 2,
@@ -572,6 +601,7 @@ describe("J8B-R recovery authorization", () => {
       testHarness: true,
       deps: {
         pending: reservedPending(),
+        nearReceiptVerify: { ok: true, independently_verified: true },
         adapters: {
           getPaused: async () => true,
           getMandateEpoch: async () => 2,
@@ -582,5 +612,41 @@ describe("J8B-R recovery authorization", () => {
     assert.equal(r.ok, true);
     assert.equal(r.mutations_invoked, false);
     assert.equal(r.verdict, "SAFE_TO_RESUME_ORIGINAL_OPERATION");
+  });
+
+  it("rejects inspect without independently verified NEAR receipt", async () => {
+    const op = "op-no-receipt";
+    createCanaryApproval({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      quoteHash: "h",
+      depositAddress: ESCROW,
+    });
+    const loaded = loadCanaryApproval(op, { storeDir: STORE, env: ENV });
+    loaded.record.used = true;
+    loaded.record.lifecycle_state = CANARY_STATES.FAILED;
+    loaded.record.locked_digest_hex = DIGEST;
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(loaded.path, JSON.stringify(loaded.record, null, 2));
+    const insp = await inspectReservedOperation({
+      operationId: op,
+      nearProposeTx: "hash-only-not-proof",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        pending: reservedPending(),
+        nearTx: null,
+        nearReceiptVerify: { ok: false, reason: "near_tx_receipt_missing" },
+        adapters: {
+          getPaused: async () => true,
+          getMandateEpoch: async () => 2,
+          getPending: async () => reservedPending(),
+        },
+      },
+    });
+    assert.equal(insp.verdict, "NO-GO");
+    assert.equal(insp.checks.near_propose_receipt_verified, false);
   });
 });

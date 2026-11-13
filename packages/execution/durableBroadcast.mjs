@@ -58,6 +58,7 @@ export async function broadcastWithJournal({
         storeDir: opts.storeDir,
         requireQuoteBound: true,
         expected: opts.expected || {},
+        allowRecovery: opts.allowRecovery === true,
       },
       opts.env || process.env
     );
@@ -155,6 +156,7 @@ export async function broadcastWithJournal({
         storeDir: opts.storeDir,
         requireQuoteBound: true,
         expected: opts.expected || {},
+        allowRecovery: opts.allowRecovery === true,
       });
       if (!gate.ok) {
         return {
