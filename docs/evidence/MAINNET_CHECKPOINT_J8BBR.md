@@ -36,23 +36,34 @@ Short-lived `one_shot_mainnet_canary_broadcast_reauth_v1` auth that:
 - never auto-broadcasts on create
 - marks journal UNKNOWN on ambiguous RPC (no automatic second send)
 
-## Next safe operator command
+## Approved execution outcome
 
-```powershell
-node scripts/mainnet/canary-operator.mjs inspect-broadcast-reauth `
-  --op j8b-canary-1794572720062-8db4f42a `
-  --near-tx 27VQYinCZFddL6aXzyajktex6dbEJsjjVdUVD5KjsPVp `
-  --propose-tx HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad
+The operator explicitly approved one broadcast of the exact existing signed
+transaction. The short-lived authorization was created only after a fresh
+read-only preflight:
 
-# Only if still SAFE_TO_CREATE_BROADCAST_REAUTH:
-node scripts/mainnet/canary-operator.mjs create-broadcast-reauth `
-  --op j8b-canary-1794572720062-8db4f42a `
-  --near-tx 27VQYinCZFddL6aXzyajktex6dbEJsjjVdUVD5KjsPVp `
-  --propose-tx HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad `
-  --confirm-broadcast-reauth
-```
+| Field | Value |
+|-------|-------|
+| Authorization fingerprint | `367531716a4ad88edb130e31f40d841daa38e87c290c958f115e08c6fc394493` |
+| Authorization expiry | `2026-11-13T15:50:39.586Z` |
+| Arbitrum transaction | `0x4e9583a86d9cc62dd508e72d5e6d965711ef7eeecce5422c42fa7fa37c0d6c48` |
+| Arbitrum receipt | success (`status=0x1`), 1,000,000 USDC transferred to the exact deposit |
+| 1Click terminal status | `SUCCESS` |
+| Base transaction | `0x2251df330813e77546d0e01ce15a7797b50871faa578fb8a597055f80da3b36f` |
+| Base receipt | success (`status=0x1`) |
+| Destination USDC | `997398` raw units (`0.997398 USDC`) |
+| Required minimum | `994904` raw units (`0.994904 USDC`) |
+| Local authorization state | `SETTLED`, used=true, exact broadcast hash bound |
+| NEAR policy | paused=true (independently read after settlement) |
+| NEAR PendingOp | Signed / None; on-chain reconciliation not invoked |
 
-After create: `confirm --phase broadcast` → `broadcast` (dry) → separate unpause window → `broadcast --invoke`. Never `request_signature` again for this operation.
+The first live CLI attempt stopped before submission because
+`NIO_AGENT_OPS_KEY_PATH` was absent. Before retrying, the journal was verified
+still `SIGNED`, nonce remained 0/0, and transaction/receipt were absent. The
+single network submission then used the secured existing agent ops credential.
+
+No Ledger signing, unpause, propose, request_signature, re-sign, replacement
+swap, duplicate broadcast, or NEAR reconciliation mutation occurred.
 
 ## Tests
 
@@ -60,4 +71,7 @@ After create: `confirm --phase broadcast` → `broadcast` (dry) → separate unp
 
 ## Verdict
 
-**PASS** — broadcast-only reauth path ready; create only after fresh inspect SAFE.
+**PASS / SETTLED** — exact existing transaction broadcast once; Arbitrum source
+receipt, terminal 1Click result, and Base destination USDC independently
+verified. Separate owner approval remains required before any NEAR
+`reconcile_pending` mutation.
