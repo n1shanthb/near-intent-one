@@ -1,0 +1,198 @@
+{
+  "checkpoint": "J7A",
+  "at": "2026-11-13T08:51:53.724Z",
+  "safety": {
+    "transfers_executed": false,
+    "evm_funding_auto": false,
+    "escrow_deposit": false,
+    "unpause": false,
+    "autonomous": false,
+    "mainnet_broadcast": false,
+    "ledger_signed": false,
+    "contract_upgrade": false,
+    "reused_old_quote": false,
+    "secrets_logged": false
+  },
+  "policy": {
+    "paused": true,
+    "autonomous_trading": false,
+    "mandate_epoch": 2,
+    "is_trusted_quote_signer": true,
+    "trusted_attestor": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+    "mpc_signer": "v1.signer"
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false
+  },
+  "mpc_derivation": {
+    "predecessor": "policy.nishanthb.near",
+    "path": "trading/v1/portfolio/nio-mainnet-v1",
+    "signer": "v1.signer",
+    "domain_id": 0,
+    "evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "expected_identity": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "match": true,
+    "status": "DERIVED_ADDRESS_ONLY",
+    "near_secp_key_present": true
+  },
+  "arbitrum": {
+    "rpc_host": "arb1.arbitrum.io",
+    "chain_id_check": {
+      "ok": true,
+      "chain_id": 42161,
+      "expected": 42161
+    },
+    "balances": {
+      "address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "native_eth_wei": "0",
+      "native_eth": 0,
+      "native_usdc_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "native_usdc_raw": "0",
+      "native_usdc": 0,
+      "usdc_e_contract": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+      "usdc_e_raw": "0",
+      "usdc_e": 0
+    },
+    "native_usdc_meta": {
+      "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "symbol": "USDC",
+      "name": "USD Coin",
+      "decimals": 6
+    },
+    "bridged_usdc_e_meta": {
+      "token": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+      "symbol": "USDC",
+      "name": "USD Coin (Arb1)",
+      "decimals": 6
+    },
+    "native_usdc_verified": true,
+    "gas": {
+      "eth_gasPrice_wei": "20180000",
+      "eth_gasPrice_gwei": 0.02018,
+      "transfer_estimate": {
+        "ok": true,
+        "method": "eth_estimateGas_from_funded_holder",
+        "gas": 63261,
+        "observed_gas_used_sample": 62382,
+        "proxy_from": "0xa953be37eb763c76ca631b05c0fa3db54311ce0f",
+        "mpc_estimate_error": "execution reverted: ERC20: transfer amount exceeds balance",
+        "data": "0xa9059cbb000000000000000000000000c660abc28579c3ef4993b6f3976a903e07ee937b00000000000000000000000000000000000000000000000000000000000f4240"
+      },
+      "node_interface_l1": {
+        "ok": true,
+        "gas_estimate_for_l1": 265,
+        "base_fee_wei": "20498000",
+        "l1_base_fee_estimate_wei": "1449880",
+        "l1_component_fee_wei": "5431970000"
+      },
+      "attestor_bounds": {
+        "max_gas_price_wei": "100000000",
+        "gas_limit": "250000"
+      },
+      "fit": {
+        "ok": true,
+        "executable_under_attestor_bounds": true,
+        "incompatibilities": [],
+        "live_case_fee_wei": "1276606980000",
+        "attestor_ceiling_fee_wei": "25000000000000"
+      }
+    }
+  },
+  "funding_recommendation": {
+    "eth": {
+      "recommended_wei": "63000000000000",
+      "recommended_eth": 0.000063,
+      "basis": {
+        "base_fee_model": "max(live_case, attestor_ceiling) * retries * (1+margin)",
+        "success_plus_retry": 2,
+        "margin_bps": 2500,
+        "live_case_fee_wei": "1276606980000",
+        "attestor_ceiling_fee_wei": "25000000000000",
+        "pre_round_wei": "62500000000000"
+      }
+    },
+    "eth_have_wei": "0",
+    "eth_deficit_wei": "63000000000000",
+    "usdc": {
+      "trade_units": "1000000",
+      "trade_usdc": 1,
+      "remainder_units": "1000000",
+      "remainder_usdc": 1,
+      "recommended_units": "2000000",
+      "recommended_usdc": 2,
+      "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "note": "1 USDC for the first test transfer/trade + 1 USDC operational remainder"
+    },
+    "usdc_have_raw": "0",
+    "usdc_deficit_raw": "2000000",
+    "instructions": {
+      "A_eth": {
+        "chain": "Arbitrum One (42161)",
+        "asset": "native ETH",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "amount_eth": 0.000063,
+        "amount_wei": "63000000000000"
+      },
+      "B_usdc": {
+        "chain": "Arbitrum One (42161)",
+        "asset": "native USDC only",
+        "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "not_token": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "amount_usdc": 2,
+        "amount_raw": "2000000"
+      }
+    }
+  },
+  "j7b_operator_checklist": {
+    "title": "J7B operator transfer checklist (external wallet only)",
+    "preconditions": [
+      "Confirm MetaMask/Rabby network = Arbitrum One, chainId 42161",
+      "Confirm destination = 0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4 (re-derived MPC)",
+      "Confirm USDC token contract = 0xaf88d065e77c8cc2239327c5edb3a432268e5831 (symbol USDC, decimals 6)",
+      "Reject USDC.e 0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+      "Do not use NIO broadcast, agent key, attestor key, or Ledger for funding",
+      "Keep policy paused=true; do not unpause; do not deposit to 1Click escrow yet"
+    ],
+    "steps": [
+      {
+        "id": "A",
+        "action": "Send native ETH",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "amount_wei": "63000000000000",
+        "amount_eth": 0.000063,
+        "deficit_wei": "63000000000000",
+        "verify": [
+          "Wait for receipt status == 0x1 (success)",
+          "receipt.chainId / network == 42161",
+          "tx.to == 0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4 OR value recipient == 0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "asset == native ETH (no token contract)",
+          "post eth_getBalance(MPC) - pre >= recommended_wei (or deficit covered)"
+        ]
+      },
+      {
+        "id": "B",
+        "action": "Send native USDC ERC-20 transfer",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "amount_raw": "2000000",
+        "amount_usdc": 2,
+        "deficit_raw": "2000000",
+        "verify": [
+          "Wait for receipt status == 0x1",
+          "network chainId == 42161",
+          "receipt.to / logs address == 0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "Transfer topic to == 0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "Confirm NOT USDC.e contract",
+          "post balanceOf(MPC) - pre >= 2000000 (or deficit covered)"
+        ]
+      }
+    ],
+    "success_gate": "Funding is successful ONLY after both receipt checks and positive balance deltas. Never mark success from wallet UI alone.",
+    "stop_after": "Stop after verified balances. No escrow deposit, no unpause, no trade."
+  },
+  "readiness_j7b": "READY_FOR_J7B_EXTERNAL_WALLET_FUNDING",
+  "next_approved_action": "J7B: operator sends Arbitrum ETH then native USDC from an external wallet to the verified MPC address; verify receipts before any further step"
+}
