@@ -573,6 +573,7 @@ Never paste seed phrases.
       maxGasPrice: MAX_GAS_PRICE.toString(),
       gasLimit: GAS_LIMIT.toString(),
       secretKey64: attestorSk,
+      allowUnverifiedOneClick: true,
     });
     execution.attest = {
       ok: attest.ok,

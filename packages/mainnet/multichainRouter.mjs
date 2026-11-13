@@ -546,19 +546,60 @@ export async function runFourChainQuoteMatrix(opts = {}) {
       eth_weth: canonical.eth_weth.asset_id,
       wrap_near: canonical.wrap_near.asset_id,
     },
-    matrix: results.map((r) => ({
-      id: r.route?.id,
-      label: r.route?.label,
-      ok: r.ok,
-      status: r.status,
-      reason: r.reason || null,
-      amount_out: r.amount_out || null,
-      amount_out_usd: r.amount_out_usd ?? null,
-      capital: r.capital || null,
-      signing: r.signing?.primitive || null,
-      score: r.score_result?.score ?? null,
-      decision: r.score_result?.decision || null,
-    })),
+    matrix: results.map((r) => {
+      const q = r.quote?.quote || r.quote || {};
+      return {
+        id: r.route?.id,
+        label: r.route?.label,
+        ok: r.ok,
+        status: r.status,
+        reason: r.reason || null,
+        amount_out: r.amount_out || null,
+        amount_out_usd: r.amount_out_usd ?? null,
+        capital: r.capital || null,
+        signing: r.signing?.primitive || null,
+        score: r.score_result?.score ?? null,
+        decision: r.score_result?.decision || null,
+        funded_execution: r.funded_execution || "DISABLED",
+        // J5: quote-level economics for AI (not counts-only)
+        route: r.route || null,
+        source: r.source || null,
+        destination: r.destination || null,
+        request: r.request || null,
+        quote: r.quote
+          ? {
+              ok: r.quote.ok,
+              dry: r.quote.dry !== false,
+              quoted_at: r.quote.quoted_at || null,
+              correlation_id: r.quote.correlation_id || null,
+              deadline: r.quote.deadline || null,
+              deposit_address: r.quote.deposit_address || null,
+              amount_in: r.quote.amount_in || q.amountIn || null,
+              amount_out: r.quote.amount_out || q.amountOut || null,
+              quote: {
+                amountIn: q.amountIn || null,
+                amountOut: q.amountOut || null,
+                minAmountOut: q.minAmountOut || null,
+                amountInUsd: q.amountInUsd || null,
+                amountOutUsd: q.amountOutUsd || null,
+                refundFee: q.refundFee ?? null,
+                withdrawFee: q.withdrawFee ?? null,
+                timeEstimate: q.timeEstimate ?? null,
+                deadline: q.deadline || null,
+              },
+              request: r.quote.request || r.request || null,
+            }
+          : null,
+        bound: r.bound
+          ? {
+              ok: r.bound.ok,
+              correlationId: r.bound.correlationId || null,
+              amount_in: r.bound.amount_in || null,
+              amount_out: r.bound.amount_out || null,
+            }
+          : null,
+      };
+    }),
     proposal,
     quoted_count: quoted.length,
     eligible_count: eligible.length,

@@ -381,6 +381,8 @@ async function main() {
     maxGasPrice: MAX_GAS_PRICE.toString(),
     gasLimit: GAS_LIMIT.toString(),
     secretKey64: attestorSk,
+    // Legacy Gate F evidence path — mainnet J5 refuses unverified 1Click.
+    allowUnverifiedOneClick: true,
   });
   out.f1.attestor_rejects_arbitrary_destination = {
     ok: evilAttest.ok,
@@ -402,6 +404,7 @@ async function main() {
     maxGasPrice: MAX_GAS_PRICE.toString(),
     gasLimit: GAS_LIMIT.toString(),
     secretKey64: attestorSk,
+    allowUnverifiedOneClick: true,
   });
   out.f1.honest_attest = {
     ok: goodAttest.ok,
@@ -886,6 +889,7 @@ async function main() {
     maxGasPrice: MAX_GAS_PRICE.toString(),
     gasLimit: GAS_LIMIT.toString(),
     secretKey64: attestorSk,
+    allowUnverifiedOneClick: true,
   });
   out.f4.attest = {
     ok: attest4.ok,

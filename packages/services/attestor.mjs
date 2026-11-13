@@ -42,9 +42,11 @@ export function createAttestorService({ seedPath, logger = console }) {
       return { ok: true, role: "attestor", publicKey: attestor.publicKey };
     },
     attest(args) {
+      // Mainnet/J5: require official 1Click verify unless caller sets allowUnverifiedOneClick.
       const result = attestTidepoolQuote({
         ...args,
         secretKey64: attestor.secretKey64,
+        allowUnverifiedOneClick: Boolean(args.allowUnverifiedOneClick),
       });
       // Strip nothing secret from response — attestation has no seed
       return {

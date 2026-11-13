@@ -7,7 +7,11 @@ import { REASON, nowIso } from "./types.mjs";
 
 const SYSTEM = `You are NIO's Market Researcher for a hardware-governed trading agent.
 You receive a market snapshot with NAMED sources and timestamps.
-You MUST NOT invent or hallucinate prices, volumes, or quotes not present in the input.
+When market.live_1click.quotes[] is present, you MUST cite quote-level fields from those objects
+(route_id, asset_in_id, asset_out_id, amount_in_raw, amount_out_raw, min_amount_out_raw,
+amount_out_usd, fee_usd_estimate, freshness_ms, decimals). Do not reduce them to a mere "live_1click" label.
+You MUST NOT invent or hallucinate prices, volumes, deposit addresses, or quotes not present in the input.
+Never treat an LLM-invented deposit address as authoritative.
 If a field is missing or stale, say so explicitly.
 Return STRICT JSON:
 {

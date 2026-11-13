@@ -13,6 +13,10 @@ import { finalEnforce } from "../gate-j/enforce.mjs";
 import { runGateJPipeline } from "../gate-j/pipeline.mjs";
 import { loadServicesEnv, getLlmConfig } from "../gate-j/llm.mjs";
 import { NIO_CHAINS } from "./tokenCatalog.mjs";
+import {
+  buildLiveQuoteMarketFragment,
+  assertQuoteLevelConsumed,
+} from "./quoteEconomics.mjs";
 
 export { NIO_CHAINS };
 
@@ -154,24 +158,7 @@ export async function runMainnetObservation(opts = {}) {
     as_of: new Date().toISOString(),
     stale: false,
     sources: ["1click.chaindefuser.com/v0/quote", "on_chain_balances"],
-    live_1click: {
-      ok: Boolean(quoteMatrix?.ok),
-      dry: true,
-      quoted_count: quoteMatrix?.quoted_count ?? 0,
-      eligible_count: quoteMatrix?.eligible_count ?? 0,
-      proposal: quoteMatrix?.proposal || null,
-      top_discovery: (quoteMatrix?.matrix || [])
-        .filter((r) => r.ok && r.amount_out_usd != null)
-        .sort((a, b) => (b.amount_out_usd || 0) - (a.amount_out_usd || 0))
-        .slice(0, 5)
-        .map((r) => ({
-          id: r.id || r.route?.id,
-          label: r.label || r.route?.label,
-          amount_out_usd: r.amount_out_usd,
-          amount_out: r.amount_out,
-        })),
-      note: "Dry quotes only — not funding authorization",
-    },
+    live_1click: buildLiveQuoteMarketFragment(quoteMatrix),
     verified_balances: {
       near_available: agentNear.available_near,
       evm_usdc: evmBalances?.chains
@@ -297,6 +284,14 @@ export async function runMainnetObservation(opts = {}) {
       strategist_choice: gateJ?.strategist?.proposal?.choice || gateJ?.strategist?.choice || null,
       researcher_ok: gateJ?.researcher?.ok ?? null,
       critic: gateJ?.critic?.verdict || gateJ?.critic?.review?.verdict || null,
+      market_inputs: {
+        quote_level: assertQuoteLevelConsumed(liveQuoteMarket, {
+          strategist_choice: gateJ?.strategist?.proposal?.choice || null,
+          enforcement: gateJ?.enforcement,
+          may_sign: false,
+        }),
+        live_1click_quote_count: liveQuoteMarket.live_1click?.quotes?.length ?? 0,
+      },
     },
     gates: {
       funded_trading: gates.funded_trading,

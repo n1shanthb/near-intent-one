@@ -9,8 +9,8 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 import {
   quoteHash as oneClickQuoteHash,
-  verifyQuoteSignature,
 } from "@defuse-protocol/one-click-sdk-typescript";
+import { verifySignedOneClickQuote } from "./oneClickVerify.mjs";
 
 export function attestationMessageV2({
   depositAddress,
@@ -69,6 +69,13 @@ export function attestTidepoolQuote({
   gasLimit,
   secretKey64,
   tidepoolManagerPubKey = null,
+  /**
+   * J5 default: refuse to attest unless official 1Click signature verifies.
+   * Legacy Gate F may pass allowUnverifiedOneClick=true explicitly (not for mainnet funded).
+   */
+  allowUnverifiedOneClick = false,
+  maxAgeMs,
+  nowMs,
 }) {
   const checks = [];
   const fail = (reason) => {
@@ -114,25 +121,34 @@ export function attestTidepoolQuote({
     depositAddress: q.depositAddress,
   });
 
-  // Tidepool maker verify attempt (may be BLOCKED)
-  let tidepoolVerify = { status: "BLOCKED", verified: false };
-  try {
-    const verified = tidepoolManagerPubKey
-      ? verifyQuoteSignature(quoteResponse, tidepoolManagerPubKey)
-      : verifyQuoteSignature(quoteResponse);
-    tidepoolVerify = {
-      status: verified ? "PASS" : "BLOCKED",
-      verified,
-      note: verified
-        ? "verified against provided/default manager key"
-        : "Tidepool maker pubkey unpublished or not 1Click manager key — attestation is delegated trust",
-    };
-  } catch (e) {
-    tidepoolVerify = { status: "BLOCKED", verified: false, error: String(e) };
+  // Official 1Click signature MUST verify before we generate our attestation (J5).
+  const oneClick = verifySignedOneClickQuote(quoteResponse, {
+    agentRequest,
+    managerPublicKey: tidepoolManagerPubKey || undefined,
+    maxAgeMs,
+    nowMs,
+    forbidLlmDeposit: true,
+    llmDepositAddress: agentRequest?.requestedDeposit || null,
+  });
+  checks.push({
+    ok: oneClick.ok,
+    check: "one_click_signature_verify",
+    verified: oneClick.verified,
+    reason: oneClick.reason || null,
+    quote_hash: oneClick.quote_hash || null,
+  });
+  if (!oneClick.ok && !allowUnverifiedOneClick) {
+    return fail(`one_click_verify_failed:${oneClick.reason}`);
   }
-  checks.push({ ok: true, check: "tidepool_maker_verify", ...tidepoolVerify });
+  if (!oneClick.ok && allowUnverifiedOneClick) {
+    checks.push({
+      ok: true,
+      check: "allow_unverified_legacy_escape",
+      note: "explicit allowUnverifiedOneClick — not safe for mainnet funded path",
+    });
+  }
 
-  const qh = oneClickQuoteHash(quoteResponse);
+  const qh = oneClick.quote_hash || oneClickQuoteHash(quoteResponse);
   const deadlineIso = q.deadline || agentRequest.deadline;
   const quoteDeadlineNs = String(BigInt(Date.parse(deadlineIso)) * 1_000_000n);
 
@@ -175,13 +191,20 @@ export function attestTidepoolQuote({
   return {
     ok: true,
     checks,
-    tidepoolVerify,
+    oneClickVerify: oneClick,
+    tidepoolVerify: {
+      status: oneClick.ok ? "PASS" : "BLOCKED",
+      verified: oneClick.verified,
+      reason: oneClick.reason || null,
+    },
     attestation,
     signature,
     publicKey,
     message_utf8: msg.toString("utf8"),
     attestation_id: attestationId(msg),
-    trust_model: "trusted_attestor_not_tidepool_maker",
+    trust_model: oneClick.ok
+      ? "one_click_verified_then_trusted_attestor"
+      : "trusted_attestor_not_tidepool_maker",
   };
 }
 
