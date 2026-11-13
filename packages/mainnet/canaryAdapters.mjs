@@ -84,6 +84,9 @@ export async function createMainnetCanaryAdapters(opts = {}) {
         operation_id: operationId,
       });
     },
+    async listPending() {
+      return viewFunction(rpc, policy, "list_pending", {});
+    },
     async getGateJMandate() {
       return viewFunction(rpc, policy, "get_gate_j_mandate", {});
     },

@@ -8,7 +8,10 @@
  * include operation_id and pass a fresh disk validation.
  */
 import { mainnetAuthGates } from "../networks/profiles.mjs";
-import { validateCanaryApproval } from "./canaryOneShot.mjs";
+import {
+  validateCanaryApproval,
+  validateExecutableApproval,
+} from "./canaryOneShot.mjs";
 
 export function mainnetExecutionGates(env = process.env) {
   const auth = mainnetAuthGates(env);
@@ -44,12 +47,17 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     return { ok: false, reason: "no_canary_unlock" };
   }
   // Reject trusting caller flags — re-validate MAC/expiry/bindings from disk.
-  const v = validateCanaryApproval(opId, {
+  const validate =
+    opts.allowRecovery === true
+      ? validateExecutableApproval
+      : validateCanaryApproval;
+  const v = validate(opId, {
     env,
     storeDir: opts.storeDir,
     requireQuoteBound: opts.requireQuoteBound !== false,
     expected: opts.expected || {},
     nowMs: opts.nowMs,
+    allowRecovery: opts.allowRecovery === true,
   });
   if (!v.ok) return v;
   if (opts.canaryUnlock?.autonomous_execution_enabled === true) {
@@ -57,7 +65,7 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
   }
   return {
     ok: true,
-    mode: "one_shot_canary",
+    mode: v.is_recovery ? "one_shot_canary_recovery" : "one_shot_canary",
     operation_id: opId,
     payload: v.payload,
     record: v.record,
@@ -65,6 +73,7 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     allows_broadcast: true,
     autonomous_execution_enabled: false,
     freshly_validated: true,
+    is_recovery: Boolean(v.is_recovery),
   };
 }
 

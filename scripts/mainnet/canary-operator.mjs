@@ -28,9 +28,15 @@ import {
 import {
   confirmPhaseAfterOutcome,
   loadCanaryApproval,
+  loadRecoveryAuthorization,
   CANARY_STATES,
 } from "../../packages/mainnet/canaryOneShot.mjs";
 import { buildLedgerRunbook } from "../../packages/mainnet/canaryLedgerRunbook.mjs";
+import {
+  inspectReservedOperation,
+  createRecoveryAuthorization,
+  runRecoveryRehearsal,
+} from "../../packages/mainnet/canaryRecovery.mjs";
 import { redactSecrets } from "../../packages/mainnet/agentCredentials.mjs";
 
 function arg(name, def = null) {
@@ -63,6 +69,10 @@ async function main() {
   verify-paused
   status --op <id>
   dry-rehearsal [--op <id>]
+  inspect --op <id> [--near-tx <hash>]
+  recovery-rehearsal --op <id> [--near-tx <hash>]
+  create-recovery-auth --op <id> [--near-tx <hash>] [--confirm-recovery]
+  show-abort --op <id>
 `);
     return;
   }
@@ -70,6 +80,49 @@ async function main() {
   if (cmd === "dry-rehearsal") {
     const r = await runCanaryDryRehearsal({ operationId: op || undefined });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "inspect") {
+    if (!op) throw new Error("--op required");
+    const r = await inspectReservedOperation({
+      operationId: op,
+      nearProposeTx: arg("near-tx"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "recovery-rehearsal") {
+    if (!op) throw new Error("--op required");
+    const r = await runRecoveryRehearsal({
+      operationId: op,
+      nearProposeTx: arg("near-tx"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "create-recovery-auth") {
+    if (!op) throw new Error("--op required");
+    const r = await createRecoveryAuthorization({
+      operationId: op,
+      nearProposeTx: arg("near-tx"),
+      operatorConfirmed: flag("confirm-recovery"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "show-abort") {
+    if (!op) throw new Error("--op required");
+    const r = await inspectReservedOperation({
+      operationId: op,
+      nearProposeTx: arg("near-tx"),
+    });
+    console.log(r.abort_ledger?.command || JSON.stringify(r.abort_ledger, null, 2));
+    console.log("\n# DO NOT RUN unless aborting the reserved PendingOp");
+    console.log(r.abort_ledger?.view_pending_command || "");
     return;
   }
 
@@ -90,7 +143,14 @@ async function main() {
   if (cmd === "status") {
     if (!op) throw new Error("--op required");
     const loaded = loadCanaryApproval(op);
-    console.log(JSON.stringify(redactSecrets(loaded), null, 2));
+    const recovery = loadRecoveryAuthorization(op);
+    console.log(
+      JSON.stringify(
+        redactSecrets({ original: loaded, recovery }),
+        null,
+        2
+      )
+    );
     return;
   }
 

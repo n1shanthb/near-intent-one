@@ -43,13 +43,15 @@ export const CANARY_STATES = Object.freeze({
   RECONCILED: "RECONCILED",
   REFUNDED: "REFUNDED",
   FAILED: "FAILED",
+  /** Propose submitted but on-chain PendingOp not yet verified — never auto-resubmit. */
+  RECONCILIATION_REQUIRED: "RECONCILIATION_REQUIRED",
 });
 
 const ALLOWED_TRANSITIONS = Object.freeze({
   PREPARED: ["QUOTE_VERIFIED", "FAILED"],
   QUOTE_VERIFIED: ["ATTESTED", "FAILED"],
   ATTESTED: ["OWNER_UNPAUSED", "FAILED"],
-  OWNER_UNPAUSED: ["PROPOSED", "FAILED"],
+  OWNER_UNPAUSED: ["PROPOSED", "FAILED", "RECONCILIATION_REQUIRED"],
   PROPOSED: ["MPC_SIGNED", "FAILED"],
   MPC_SIGNED: ["READY_TO_BROADCAST", "FAILED"],
   READY_TO_BROADCAST: ["BROADCASTED", "FAILED"],
@@ -59,7 +61,10 @@ const ALLOWED_TRANSITIONS = Object.freeze({
   RECONCILED: [],
   REFUNDED: [],
   FAILED: [],
+  RECONCILIATION_REQUIRED: ["PROPOSED", "FAILED"],
 });
+
+export const RECOVERY_KIND = "one_shot_mainnet_canary_recovery_v1";
 
 export function canaryStoreDir(env = process.env) {
   return (
@@ -103,6 +108,10 @@ export const QUOTE_DEADLINE_MIN_REMAINING_MS = 60_000;
 
 function approvalPath(operationId, dir) {
   return join(dir, `${operationId}.json`);
+}
+
+export function recoveryApprovalPath(operationId, dir) {
+  return join(dir, `recovery-${operationId}.json`);
 }
 
 function hmacKey(env = process.env) {
@@ -233,6 +242,142 @@ export function loadCanaryApproval(operationId, { env = process.env, storeDir = 
   return { ok: true, record, path };
 }
 
+/**
+ * Load recovery authorization for an already-consumed original approval.
+ * Never mutates the original file.
+ */
+export function loadRecoveryAuthorization(
+  operationId,
+  { env = process.env, storeDir = null } = {}
+) {
+  const dir = storeDir || canaryStoreDir(env);
+  const path = recoveryApprovalPath(operationId, dir);
+  if (!existsSync(path)) return { ok: false, reason: "recovery_auth_not_found" };
+  const record = JSON.parse(readFileSync(path, "utf8"));
+  if (record?.payload?.kind !== RECOVERY_KIND) {
+    return { ok: false, reason: "not_recovery_authorization" };
+  }
+  return { ok: true, record, path, is_recovery: true };
+}
+
+/**
+ * Validate either active original approval OR unused recovery authorization.
+ * Prefer recovery when preferRecovery=true or original is used.
+ */
+export function validateExecutableApproval(
+  operationId,
+  {
+    env = process.env,
+    storeDir = null,
+    nowMs = Date.now(),
+    requireQuoteBound = false,
+    expected = {},
+    preferRecovery = false,
+    allowRecovery = true,
+  } = {}
+) {
+  const original = loadCanaryApproval(operationId, { env, storeDir });
+  const recovery = allowRecovery
+    ? loadRecoveryAuthorization(operationId, { env, storeDir })
+    : { ok: false };
+
+  const tryRec =
+    preferRecovery ||
+    (original.ok && original.record.used === true) ||
+    (!original.ok && recovery.ok);
+
+  if (tryRec && recovery.ok) {
+    return validateApprovalRecord(recovery.record, {
+      operationId,
+      env,
+      nowMs,
+      requireQuoteBound,
+      expected,
+      path: recovery.path,
+      is_recovery: true,
+    });
+  }
+  if (!original.ok) return original;
+  return validateApprovalRecord(original.record, {
+    operationId,
+    env,
+    nowMs,
+    requireQuoteBound,
+    expected,
+    path: original.path,
+    is_recovery: false,
+  });
+}
+
+function validateApprovalRecord(
+  record,
+  { operationId, env, nowMs, requireQuoteBound, expected, path, is_recovery }
+) {
+  if (!verifyApprovalMac(record, env)) {
+    return { ok: false, reason: "approval_mac_invalid" };
+  }
+  if (record.used) return { ok: false, reason: "approval_already_used" };
+  const p = record.payload;
+  if (Date.parse(p.expires_at) <= nowMs) {
+    return { ok: false, reason: "approval_expired" };
+  }
+  if (String(p.operation_id) !== String(operationId)) {
+    return { ok: false, reason: "operation_id_mismatch" };
+  }
+  const checks = [
+    ["owner", p.owner, MAINNET_IDENTITIES.owner],
+    ["policy", p.policy, MAINNET_IDENTITIES.policy],
+    ["agent", p.agent, MAINNET_IDENTITIES.agent],
+    ["mandate_epoch", Number(p.mandate_epoch), 2],
+    ["chain_id", Number(p.chain_id), CANARY_CHAIN_ID],
+    ["token", String(p.token).toLowerCase(), CANARY_TOKEN],
+    ["amount", String(p.amount), CANARY_AMOUNT],
+    ["mpc", String(p.mpc).toLowerCase(), MAINNET_IDENTITIES.mpc_evm_address.toLowerCase()],
+    ["asset_in", p.asset_in, CANARY_ASSET_IN],
+    ["asset_out", p.asset_out, CANARY_ASSET_OUT],
+    ["attestor", p.attestor_public_key, CANARY_ATTESTOR_PK],
+  ];
+  for (const [name, got, want] of checks) {
+    if (got !== want) {
+      return { ok: false, reason: `approval_mismatch_${name}`, got, want };
+    }
+  }
+  if (expected.quote_hash && p.quote_hash !== expected.quote_hash) {
+    return { ok: false, reason: "approval_quote_hash_mismatch" };
+  }
+  if (
+    expected.deposit_address &&
+    String(p.deposit_address).toLowerCase() !==
+      String(expected.deposit_address).toLowerCase()
+  ) {
+    return { ok: false, reason: "approval_deposit_mismatch" };
+  }
+  if (expected.digest_hex) {
+    const locked = String(record.locked_digest_hex || "").toLowerCase();
+    if (locked !== String(expected.digest_hex).toLowerCase()) {
+      return { ok: false, reason: "approval_digest_mismatch" };
+    }
+  }
+  if (requireQuoteBound && (!p.quote_hash || !p.deposit_address)) {
+    return { ok: false, reason: "approval_quote_not_bound" };
+  }
+  if (is_recovery && p.kind !== RECOVERY_KIND) {
+    return { ok: false, reason: "recovery_kind_required" };
+  }
+  if (is_recovery && p.forbids_propose !== true) {
+    return { ok: false, reason: "recovery_must_forbid_propose" };
+  }
+  return {
+    ok: true,
+    mode: is_recovery ? "one_shot_canary_recovery" : "one_shot_canary",
+    operation_id: operationId,
+    payload: p,
+    record,
+    path,
+    is_recovery: Boolean(is_recovery),
+  };
+}
+
 export function bindQuoteToApproval(
   operationId,
   { quoteHash, depositAddress, env = process.env, storeDir = null }
@@ -263,7 +408,7 @@ function atomicWrite(path, obj) {
 }
 
 /**
- * Validate approval for a phase. Does not consume unless consume=true.
+ * Validate original approval only (not recovery). Does not consume.
  */
 export function validateCanaryApproval(
   operationId,
@@ -277,57 +422,35 @@ export function validateCanaryApproval(
 ) {
   const loaded = loadCanaryApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
-  const { record } = loaded;
-  if (!verifyApprovalMac(record, env)) {
-    return { ok: false, reason: "approval_mac_invalid" };
-  }
-  if (record.used) return { ok: false, reason: "approval_already_used" };
-  const p = record.payload;
-  if (Date.parse(p.expires_at) <= nowMs) {
-    return { ok: false, reason: "approval_expired" };
-  }
-  const checks = [
-    ["owner", p.owner, MAINNET_IDENTITIES.owner],
-    ["policy", p.policy, MAINNET_IDENTITIES.policy],
-    ["agent", p.agent, MAINNET_IDENTITIES.agent],
-    ["mandate_epoch", Number(p.mandate_epoch), 2],
-    ["chain_id", Number(p.chain_id), CANARY_CHAIN_ID],
-    ["token", String(p.token).toLowerCase(), CANARY_TOKEN],
-    ["amount", String(p.amount), CANARY_AMOUNT],
-    ["mpc", String(p.mpc).toLowerCase(), MAINNET_IDENTITIES.mpc_evm_address.toLowerCase()],
-    ["asset_in", p.asset_in, CANARY_ASSET_IN],
-    ["asset_out", p.asset_out, CANARY_ASSET_OUT],
-    ["attestor", p.attestor_public_key, CANARY_ATTESTOR_PK],
-  ];
-  for (const [name, got, want] of checks) {
-    if (got !== want) {
-      return { ok: false, reason: `approval_mismatch_${name}`, got, want };
+  return validateApprovalRecord(loaded.record, {
+    operationId,
+    env,
+    nowMs,
+    requireQuoteBound,
+    expected,
+    path: loaded.path,
+    is_recovery: false,
+  });
+}
+
+/**
+ * Prefer unused recovery auth when original is consumed; else original.
+ * Never writes to a used original when recovery exists.
+ */
+export function resolveWritableApproval(
+  operationId,
+  { env = process.env, storeDir = null } = {}
+) {
+  const original = loadCanaryApproval(operationId, { env, storeDir });
+  const recovery = loadRecoveryAuthorization(operationId, { env, storeDir });
+  if (recovery.ok && recovery.record.used !== true) {
+    if (!original.ok || original.record.used === true) {
+      return { ...recovery, is_recovery: true };
     }
   }
-  if (expected.quote_hash && p.quote_hash !== expected.quote_hash) {
-    return { ok: false, reason: "approval_quote_hash_mismatch" };
-  }
-  if (
-    expected.deposit_address &&
-    String(p.deposit_address).toLowerCase() !==
-      String(expected.deposit_address).toLowerCase()
-  ) {
-    return { ok: false, reason: "approval_deposit_mismatch" };
-  }
-  if (requireQuoteBound && (!p.quote_hash || !p.deposit_address)) {
-    return { ok: false, reason: "approval_quote_not_bound" };
-  }
-  return {
-    ok: true,
-    mode: "one_shot_canary",
-    operation_id: operationId,
-    payload: p,
-    record,
-    path: loaded.path,
-    allows_sign: true,
-    allows_broadcast: true,
-    note: "Valid only for this operation_id; env alone does not unlock",
-  };
+  if (original.ok) return { ...original, is_recovery: false };
+  if (recovery.ok) return { ...recovery, is_recovery: true };
+  return original.ok === false ? original : { ok: false, reason: "approval_not_found" };
 }
 
 export function recordOperatorConfirmation(
@@ -335,7 +458,7 @@ export function recordOperatorConfirmation(
   phase,
   { env = process.env, storeDir = null, confirmed = true, note = null } = {}
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   if (!confirmed) return { ok: false, reason: "operator_denied" };
   const next = {
@@ -349,7 +472,7 @@ export function recordOperatorConfirmation(
     },
   };
   atomicWrite(loaded.path, next);
-  return { ok: true, phase, record: next };
+  return { ok: true, phase, record: next, is_recovery: loaded.is_recovery };
 }
 
 export function requireOperatorConfirmation(record, phase) {
@@ -364,7 +487,7 @@ export function consumeCanaryApproval(
   operationId,
   { env = process.env, storeDir = null, reason = "consumed" } = {}
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   if (loaded.record.used) return { ok: false, reason: "approval_already_used" };
   const next = {
@@ -407,7 +530,7 @@ export function advanceLifecycle(
   toState,
   { env = process.env, storeDir = null, outcome = null } = {}
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const from = getLifecycleState(loaded.record);
   const allowed = ALLOWED_TRANSITIONS[from] || [];
@@ -426,7 +549,7 @@ export function advanceLifecycle(
     },
   };
   atomicWrite(loaded.path, next);
-  return { ok: true, from, to: toState, record: next };
+  return { ok: true, from, to: toState, record: next, is_recovery: loaded.is_recovery };
 }
 
 /**
@@ -443,7 +566,7 @@ export function confirmPhaseAfterOutcome(
     note = null,
   } = {}
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const state = getLifecycleState(loaded.record);
   if (requiredState && state !== requiredState) {
@@ -452,7 +575,6 @@ export function confirmPhaseAfterOutcome(
       reason: `confirm_wrong_state:have=${state}:need=${requiredState}`,
     };
   }
-  // Reject if this phase was already confirmed for a prior attempt without outcome
   return recordOperatorConfirmation(operationId, phase, {
     env,
     storeDir,
@@ -473,7 +595,7 @@ export function bindTxAuthorization(
     storeDir = null,
   }
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   if (loaded.record.used) return { ok: false, reason: "approval_already_used" };
   if (
@@ -513,7 +635,7 @@ export function bindBroadcastHash(
   broadcastHash,
   { env = process.env, storeDir = null } = {}
 ) {
-  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const next = {
     ...loaded.record,

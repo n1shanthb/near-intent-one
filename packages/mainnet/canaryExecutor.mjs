@@ -31,6 +31,8 @@ import {
   windowStatusReport,
   getLifecycleState,
   resolveCanaryJournalSecret,
+  validateExecutableApproval,
+  loadRecoveryAuthorization,
   QUOTE_DEADLINE_MIN_REMAINING_MS,
   CANARY_STATES,
   CANARY_AMOUNT,
@@ -83,6 +85,10 @@ import {
   buildLedgerRunbook,
   buildReconcileLedgerCommand,
 } from "./canaryLedgerRunbook.mjs";
+import {
+  waitForPendingOp,
+  assertProposeForbiddenForRecovery,
+} from "./canaryRecovery.mjs";
 
 function openCanaryJournal({ env, storeDir, deps = {} }) {
   if (deps.journal) return { ok: true, journal: deps.journal };
@@ -579,7 +585,7 @@ export async function canaryStepVerifyUnpaused({
   };
 }
 
-/** Propose — requires confirm AFTER OWNER_UNPAUSED. */
+/** Propose — requires confirm AFTER OWNER_UNPAUSED. Never auto-resubmit. */
 export async function canaryStepPropose({
   operationId,
   proposeArgs = null,
@@ -591,17 +597,42 @@ export async function canaryStepPropose({
   deps = {},
 } = {}) {
   // Confirmations are recorded ONLY by CLI `confirm` — never auto-recorded here.
+  const recovery = loadRecoveryAuthorization(operationId, { env, storeDir });
+  if (recovery.ok) {
+    return {
+      ok: false,
+      reason: "propose_forbidden_recovery_auth_exists",
+      note: "Resume at sign; never call propose_quoted_evm_transfer again",
+    };
+  }
+
   const v = validateCanaryApproval(operationId, {
     env,
     storeDir,
     requireQuoteBound: true,
   });
   if (!v.ok) return { ok: false, reason: v.reason };
+  const forbid = assertProposeForbiddenForRecovery(v.record);
+  if (!forbid.ok) return forbid;
   const need = requireOperatorConfirmation(v.record, "propose");
   if (!need.ok) return { ok: false, reason: need.reason };
 
-  if (getLifecycleState(v.record) !== CANARY_STATES.OWNER_UNPAUSED) {
-    return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
+  const state = getLifecycleState(v.record);
+  if (state === CANARY_STATES.RECONCILIATION_REQUIRED) {
+    return {
+      ok: false,
+      reason: "reconciliation_required_no_resubmit",
+      note: "Inspect on-chain PendingOp; create recovery auth or abort — never re-propose",
+    };
+  }
+  if (state === CANARY_STATES.PROPOSED) {
+    return {
+      ok: false,
+      reason: "already_proposed_no_resubmit",
+    };
+  }
+  if (state !== CANARY_STATES.OWNER_UNPAUSED) {
+    return { ok: false, reason: `bad_state:${state}` };
   }
 
   const args =
@@ -612,7 +643,6 @@ export async function canaryStepPropose({
     return { ok: false, reason: "propose_args_missing_rerun_quote_step" };
   }
 
-  // Re-check live epoch + paused
   const a =
     adapters ||
     deps.adapters ||
@@ -642,47 +672,100 @@ export async function canaryStepPropose({
     const epoch = await a.getMandateEpoch();
     if (Number(epoch) !== 2) return { ok: false, reason: "epoch_changed" };
 
+    // Refuse duplicate propose if already reserved on-chain
+    const existing =
+      deps.existingPending !== undefined
+        ? deps.existingPending
+        : await a.getPending(operationId);
+    if (existing?.payload_commitment) {
+      return {
+        ok: false,
+        reason: "already_on_chain_reserved",
+        pending: existing,
+        note: "Do not resubmit propose; use inspect + recovery auth",
+      };
+    }
+
     const res = await a.proposeQuotedEvmTransfer(args);
-    const pending = await a.getPending(operationId);
     const digest = v.record.locked_digest_hex;
-    if (
-      !pending?.payload_commitment ||
-      String(pending.payload_commitment).toLowerCase() !==
-        String(digest).toLowerCase()
-    ) {
+    const verified = await waitForPendingOp({
+      adapters: a,
+      operationId,
+      expectedDigest: digest,
+      attempts: deps.pendingAttempts ?? 8,
+      delayMs: deps.pendingDelayMs ?? 750,
+      sleepFn: deps.sleepFn,
+    });
+
+    if (verified.ok) {
+      advanceLifecycle(operationId, CANARY_STATES.PROPOSED, {
+        env,
+        storeDir,
+        outcome: {
+          near_tx: res.transaction_hash,
+          payload_commitment: verified.pending.payload_commitment,
+          pending_source: verified.source,
+          pending_attempts: verified.attempts,
+        },
+      });
+      return {
+        ok: true,
+        stage: CANARY_STATES.PROPOSED,
+        propose: res,
+        pending: verified.pending,
+        mutations_invoked: true,
+        next: "Review propose outcome; CLI confirm --phase sign; canaryStepRequestSignature",
+        window: windowStatusReport({
+          policyPausedOnchain: false,
+          lifecycle: CANARY_STATES.PROPOSED,
+        }),
+      };
+    }
+
+    if (verified.reason === "payload_commitment_mismatch") {
       advanceLifecycle(operationId, CANARY_STATES.FAILED, {
         env,
         storeDir,
-        outcome: { reason: "payload_commitment_mismatch" },
+        outcome: {
+          reason: "payload_commitment_mismatch",
+          near_tx: res.transaction_hash,
+          pending: verified.pending,
+        },
       });
       consumeCanaryApproval(operationId, {
         env,
         storeDir,
         reason: "payload_commitment_mismatch",
       });
-      return { ok: false, reason: "payload_commitment_mismatch", pending };
+      return {
+        ok: false,
+        reason: "payload_commitment_mismatch",
+        pending: verified.pending,
+        propose: res,
+      };
     }
 
-    advanceLifecycle(operationId, CANARY_STATES.PROPOSED, {
+    // Null / stale RPC — reconciliation required. Do NOT consume as mismatch.
+    // Do NOT resubmit propose.
+    advanceLifecycle(operationId, CANARY_STATES.RECONCILIATION_REQUIRED, {
       env,
       storeDir,
       outcome: {
+        reason: verified.reason || "pending_op_temporarily_unverified",
         near_tx: res.transaction_hash,
-        payload_commitment: pending.payload_commitment,
+        expected_digest: digest,
+        attempts: verified.attempts,
       },
     });
-
     return {
-      ok: true,
-      stage: CANARY_STATES.PROPOSED,
+      ok: false,
+      reason: "reconciliation_required",
+      stage: CANARY_STATES.RECONCILIATION_REQUIRED,
       propose: res,
-      pending,
-      mutations_invoked: true,
-      next: "Review propose outcome; CLI confirm --phase sign; canaryStepRequestSignature",
-      window: windowStatusReport({
-        policyPausedOnchain: false,
-        lifecycle: CANARY_STATES.PROPOSED,
-      }),
+      near_tx: res.transaction_hash,
+      may_resubmit_propose: false,
+      note: "Propose may have succeeded on-chain. Inspect get_pending/list_pending; never re-propose.",
+      next: "canary inspect --op …; recovery-rehearsal; optionally create-recovery-auth",
     };
   } finally {
     releaseExecutionClaim(operationId, deps.workerId || "propose", {
@@ -702,10 +785,11 @@ export async function canaryStepRequestSignature({
   testHarness = false,
   deps = {},
 } = {}) {
-  const v = validateCanaryApproval(operationId, {
+  const v = validateExecutableApproval(operationId, {
     env,
     storeDir,
     requireQuoteBound: true,
+    allowRecovery: true,
   });
   if (!v.ok) return { ok: false, reason: v.reason };
   const need = requireOperatorConfirmation(v.record, "sign");
@@ -718,7 +802,8 @@ export async function canaryStepRequestSignature({
     return {
       ok: true,
       dry: true,
-      note: "Pass invoke:true to submit request_signature with 1 yocto",
+      is_recovery: Boolean(v.is_recovery),
+      note: "Pass invoke:true to submit request_signature with 1 yocto (requires separate unpause window)",
     };
   }
 
@@ -866,10 +951,11 @@ export async function canaryStepBroadcast({
   testHarness = false,
   deps = {},
 } = {}) {
-  const v = validateCanaryApproval(operationId, {
+  const v = validateExecutableApproval(operationId, {
     env,
     storeDir,
     requireQuoteBound: true,
+    allowRecovery: true,
   });
   if (!v.ok) return { ok: false, reason: v.reason };
   const need = requireOperatorConfirmation(v.record, "broadcast");
@@ -879,7 +965,12 @@ export async function canaryStepBroadcast({
   }
 
   const unlock = resolveCanaryUnlock(
-    { operationId, storeDir, requireQuoteBound: true },
+    {
+      operationId,
+      storeDir,
+      requireQuoteBound: true,
+      allowRecovery: true,
+    },
     env
   );
   if (!unlock.ok) return { ok: false, reason: unlock.reason };
