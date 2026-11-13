@@ -111,9 +111,14 @@ export async function runMainnetObservation(opts = {}) {
     // Use actual USDC contract asset ids from matrix canonical resolution inside runner;
     // capitalAvailable looks up by asset_id from catalog — pass verified zeros on those ids
     // via opts.balances after first resolving catalog in runFourChainQuoteMatrix.
+    const evmAddr = mpc?.evm_address || ids.mpc_evm_address;
     quoteMatrix = await runFourChainQuoteMatrix({
-      recipient: mpc?.evm_address || ids.owner,
-      refundTo: mpc?.evm_address || ids.owner,
+      recipient: evmAddr,
+      refundTo: evmAddr,
+      evmRecipient: evmAddr,
+      evmRefund: evmAddr,
+      nearRecipient: ids.owner,
+      nearRefund: ids.owner,
       amount: "1000000", // 1 USDC discovery size — dry quote only
       balances: {}, // empty → capital fails → NO_TRADE (honest: unfunded)
       mandate: {
@@ -121,7 +126,6 @@ export async function runMainnetObservation(opts = {}) {
         max_notional_usd: mandate.per_trade_limit_usd,
         allowed_destinations: mandate.allowed_destinations,
       },
-      // discovery still runs dry quotes even when capital missing
     });
   } catch (e) {
     quoteMatrix = {
@@ -142,14 +146,45 @@ export async function runMainnetObservation(opts = {}) {
     allowExecute: false,
   });
 
-  // Genuine multi-model path when OpenRouter configured; else deterministic fixtures
+  // Genuine multi-model path when OpenRouter configured; else deterministic fixtures.
+  // Live 1Click matrix is injected into market so strategist cannot silently use mocks only.
   let gateJ = null;
   const llm = getLlmConfig();
+  const liveQuoteMarket = {
+    as_of: new Date().toISOString(),
+    stale: false,
+    sources: ["1click.chaindefuser.com/v0/quote", "on_chain_balances"],
+    live_1click: {
+      ok: Boolean(quoteMatrix?.ok),
+      dry: true,
+      quoted_count: quoteMatrix?.quoted_count ?? 0,
+      eligible_count: quoteMatrix?.eligible_count ?? 0,
+      proposal: quoteMatrix?.proposal || null,
+      top_discovery: (quoteMatrix?.matrix || [])
+        .filter((r) => r.ok && r.amount_out_usd != null)
+        .sort((a, b) => (b.amount_out_usd || 0) - (a.amount_out_usd || 0))
+        .slice(0, 5)
+        .map((r) => ({
+          id: r.id || r.route?.id,
+          label: r.label || r.route?.label,
+          amount_out_usd: r.amount_out_usd,
+          amount_out: r.amount_out,
+        })),
+      note: "Dry quotes only — not funding authorization",
+    },
+    verified_balances: {
+      near_available: agentNear.available_near,
+      evm_usdc: evmBalances?.chains
+        ? Object.fromEntries(
+            Object.entries(evmBalances.chains).map(([k, v]) => [k, v.usdc_ui])
+          )
+        : {},
+    },
+  };
   try {
     gateJ = await runGateJPipeline({
       mandate: {
         ...mandate,
-        // Gate J balance fields — honest zeros until EVM funded
         balance_usd: 0,
         usdc_balance_raw: "0",
       },
@@ -158,13 +193,19 @@ export async function runMainnetObservation(opts = {}) {
         eth_wei: "0",
         verified: true,
       },
+      marketFixture: liveQuoteMarket,
       useLlm: Boolean(llm.configured),
       dryRun: true,
       allowExecute: false,
-      // When LLM not configured, strategist fixture will NO_TRADE via enforce on pause
       fixtureProposal: llm.configured
         ? null
-        : { choice: "NO_TRADE", rationale: "llm_not_configured_observe_fixture" },
+        : {
+            choice: "NO_TRADE",
+            rationale:
+              "llm_not_configured — live_1click matrix recorded but strategist fixture NO_TRADE",
+            live_quotes_seen: Boolean(quoteMatrix?.ok),
+            quoted_count: quoteMatrix?.quoted_count ?? 0,
+          },
       criticFixture: llm.configured ? null : "REJECT",
     });
   } catch (e) {

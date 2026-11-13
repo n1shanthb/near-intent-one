@@ -1,0 +1,532 @@
+{
+  "checkpoint": "J4",
+  "at": "2026-11-13T05:53:42.567Z",
+  "node": "v22.13.0",
+  "tls": {
+    "ok": true,
+    "bind": "10.149.188.39",
+    "node": "v22.13.0",
+    "subject": "chaindefuser.com",
+    "issuerCN": "WE1",
+    "issuerO": "Google Trust Services",
+    "fingerprint256": "46:16:C5:AE:50:81:0D:3E:F8:E4:AB:FC:63:F6:40:AB:44:FA:0A:D9:A6:01:47:19:4B:7D:62:9E:37:1A:54:92",
+    "fortinet_mitm": false
+  },
+  "tokens": {
+    "ok": true,
+    "count": 230,
+    "api": "https://1click.chaindefuser.com",
+    "bind": "10.149.188.39",
+    "tls": "verified",
+    "reason": null
+  },
+  "quote_matrix": {
+    "ok": true,
+    "reason": null,
+    "dry": true,
+    "funded_execution": "DISABLED",
+    "quoted_count": 15,
+    "eligible_count": 0,
+    "proposal": {
+      "choice": "NO_TRADE",
+      "rationale": "No candidate passed verified capital + fitter + critic + signing readiness. Dry quotes may still exist for discovery.",
+      "best_discovery": {
+        "route_id": "base_usdc_to_wrap_near",
+        "label": "Base USDC → NEAR wNEAR",
+        "amount_out_usd": 0.999552,
+        "capital_ok": false,
+        "capital_reason": "no_balance_entry",
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT"
+      }
+    },
+    "chains": [
+      "NEAR",
+      "Ethereum",
+      "Arbitrum",
+      "Base"
+    ],
+    "catalog_counts": {
+      "total_catalog": 230,
+      "four_chain": 89,
+      "near": 35,
+      "ethereum": 29,
+      "arbitrum": 7,
+      "base": 18
+    },
+    "canonical_assets": {
+      "arb_usdc": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "base_usdc": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "eth_usdc": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "eth_weth": "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+      "wrap_near": "nep141:wrap.near"
+    },
+    "rows": [
+      {
+        "id": "eth_usdc_to_arb_usdc",
+        "label": "Ethereum USDC → Arbitrum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "994498",
+        "amount_out_usd": 0.994041525418,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "eth_usdc_to_base_usdc",
+        "label": "Ethereum USDC → Base USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "997398",
+        "amount_out_usd": 0.996940194318,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "eth_usdc_to_wrap_near",
+        "label": "Ethereum USDC → NEAR wNEAR",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "299970200180011589403973",
+        "amount_out_usd": 0.998900766599,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "eth_usdc_to_near_usdc",
+        "label": "Ethereum USDC → NEAR USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "995633",
+        "amount_out_usd": 0.995176004453,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "arb_usdc_to_eth_usdc",
+        "label": "Arbitrum USDC → Ethereum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "699798",
+        "amount_out_usd": 0.699476792718,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "arb_usdc_to_base_usdc",
+        "label": "Arbitrum USDC → Base USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "997398",
+        "amount_out_usd": 0.996940194318,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "arb_usdc_to_wrap_near",
+        "label": "Arbitrum USDC → NEAR wNEAR",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "300239720085182926829267",
+        "amount_out_usd": 0.999541,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "arb_usdc_to_near_usdc",
+        "label": "Arbitrum USDC → NEAR USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "995633",
+        "amount_out_usd": 0.995176004453,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "base_usdc_to_eth_usdc",
+        "label": "Base USDC → Ethereum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "699798",
+        "amount_out_usd": 0.699476792718,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "base_usdc_to_arb_usdc",
+        "label": "Base USDC → Arbitrum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "994498",
+        "amount_out_usd": 0.994052464896,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "base_usdc_to_wrap_near",
+        "label": "Base USDC → NEAR wNEAR",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "300301433574094936708860",
+        "amount_out_usd": 0.999552,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "base_usdc_to_near_usdc",
+        "label": "Base USDC → NEAR USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "995596",
+        "amount_out_usd": 0.995149972992,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "near_usdc_to_eth_usdc",
+        "label": "NEAR USDC → Ethereum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "699798",
+        "amount_out_usd": 0.699484490496,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "wrap_near_to_eth_usdc",
+        "label": "NEAR wNEAR → Ethereum USDC",
+        "ok": false,
+        "status": "NO_SAFE_LIQUIDITY",
+        "reason": "NO_SAFE_LIQUIDITY",
+        "amount_out": null,
+        "amount_out_usd": null,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:wrap.near"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": null,
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "near_usdc_to_arb_usdc",
+        "label": "NEAR USDC → Arbitrum USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "994498",
+        "amount_out_usd": 0.994052464896,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "wrap_near_to_arb_usdc",
+        "label": "NEAR wNEAR → Arbitrum USDC",
+        "ok": false,
+        "status": "NO_SAFE_LIQUIDITY",
+        "reason": "NO_SAFE_LIQUIDITY",
+        "amount_out": null,
+        "amount_out_usd": null,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:wrap.near"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": null,
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "near_usdc_to_base_usdc",
+        "label": "NEAR USDC → Base USDC",
+        "ok": true,
+        "status": "QUOTED",
+        "reason": null,
+        "amount_out": "997398",
+        "amount_out_usd": 0.996951165696,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": "REJECT",
+        "funded_execution": "DISABLED"
+      },
+      {
+        "id": "wrap_near_to_base_usdc",
+        "label": "NEAR wNEAR → Base USDC",
+        "ok": false,
+        "status": "NO_SAFE_LIQUIDITY",
+        "reason": "NO_SAFE_LIQUIDITY",
+        "amount_out": null,
+        "amount_out_usd": null,
+        "capital": {
+          "ok": false,
+          "reason": "no_balance_entry",
+          "asset_id": "nep141:wrap.near"
+        },
+        "signing": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "score": null,
+        "decision": null,
+        "funded_execution": "DISABLED"
+      }
+    ],
+    "note": "Dry quotes only. NO_TRADE is valid. Do not treat discovery ranking as authorization."
+  },
+  "ai_observation": {
+    "decision": {
+      "choice": "NO_TRADE",
+      "vetoes": [
+        "POLICY_PAUSED",
+        "FUNDED_TRADING_OFF",
+        "BROADCAST_DISABLED",
+        "AUTONOMOUS_OFF",
+        "NO_VERIFIED_EVM_USDC"
+      ],
+      "route_discovery": {
+        "choice": "NO_TRADE",
+        "rationale": "No candidate passed verified capital + fitter + critic + signing readiness. Dry quotes may still exist for discovery.",
+        "best_discovery": {
+          "route_id": "eth_usdc_to_wrap_near",
+          "label": "Ethereum USDC → NEAR wNEAR",
+          "amount_out_usd": 0.999552,
+          "capital_ok": false,
+          "capital_reason": "no_balance_entry",
+          "signing": "EVM_ERC20_TRANSFER_TO_DEPOSIT"
+        }
+      },
+      "quote_discovery_ok": true,
+      "quote_discovery_reason": null,
+      "gate_j_decision": "BLOCKED",
+      "gate_j_reason_codes": [
+        "POLICY_PAUSED"
+      ],
+      "may_sign": false,
+      "may_broadcast": false,
+      "observation_only": true
+    },
+    "gate_j": {
+      "llm_configured": true,
+      "llm_models": {
+        "researcher": "google/gemini-2.5-flash",
+        "strategist": "anthropic/claude-sonnet-4.6",
+        "critic": "openai/gpt-5.2",
+        "copilot": "google/gemini-2.5-flash"
+      },
+      "enforcement": {
+        "decision": "BLOCKED",
+        "reason_codes": [
+          "POLICY_PAUSED"
+        ],
+        "checks": [
+          {
+            "name": "refit_outcome",
+            "ok": true,
+            "outcome": "REJECTED",
+            "reason_codes": [
+              "STRATEGIST_NO_TRADE"
+            ]
+          },
+          {
+            "name": "revocation",
+            "ok": true
+          },
+          {
+            "name": "signing_revoked",
+            "ok": true
+          },
+          {
+            "name": "pause",
+            "ok": false
+          }
+        ],
+        "may_sign": false,
+        "dry_run": true,
+        "timestamp": "2026-11-13T05:53:42.566Z",
+        "note": "LLM/Fitter outputs are not signing authorization"
+      },
+      "strategist_choice": "NO_TRADE",
+      "researcher_ok": true,
+      "critic": "APPROVE"
+    },
+    "enforcement": {
+      "decision": "BLOCKED",
+      "reason_codes": [
+        "POLICY_PAUSED"
+      ],
+      "may_sign": false
+    },
+    "quotes_ok": true,
+    "quote_reason": null,
+    "policy": {
+      "paused": true,
+      "autonomous_trading": false,
+      "mandate_epoch": 2,
+      "owner": "nishanthb.near",
+      "agent": "agent.nishanthb.near",
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "allowed_networks": [
+        "near",
+        "ethereum",
+        "arbitrum",
+        "base"
+      ],
+      "derivation_path": "trading/v1/portfolio/nio-mainnet-v1",
+      "intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+    },
+    "balances": {
+      "near": 0.499958035075,
+      "evm": {
+        "ethereum": {
+          "native_ether": 0,
+          "usdc_ui": 0,
+          "verified": true
+        },
+        "arbitrum": {
+          "native_ether": 0,
+          "usdc_ui": 0,
+          "verified": true
+        },
+        "base": {
+          "native_ether": 0,
+          "usdc_ui": 0,
+          "verified": true
+        }
+      }
+    },
+    "mpc": {
+      "path": "trading/v1/portfolio/nio-mainnet-v1",
+      "evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "expected_evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "match": true,
+      "status": "DERIVED_ADDRESS_ONLY",
+      "signer": "v1.signer"
+    }
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false
+  },
+  "runtime_ok": true,
+  "local_sign_ok": true,
+  "observation_only": true
+}

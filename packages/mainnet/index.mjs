@@ -44,3 +44,4 @@ export {
 export { runMainnetObservation, loadMainnetMandateFromChain } from "./observe.mjs";
 export { fetchFourChainEvmBalances } from "./evmBalances.mjs";
 export { runFourChainQuoteMatrix } from "./multichainRouter.mjs";
+export { secureFetch, detectMobileBindAddress } from "./secureFetch.mjs";

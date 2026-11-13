@@ -8,6 +8,7 @@ import {
   OneClickService,
 } from "@defuse-protocol/one-click-sdk-typescript";
 import { MAINNET, assertNetworkIsolation } from "../networks/profiles.mjs";
+import { secureFetch } from "./secureFetch.mjs";
 
 const DEFAULT_BASE = MAINNET.intents.apiBase;
 
@@ -61,15 +62,11 @@ export async function fetchProductionTokens({
   token = process.env.NIO_1CLICK_JWT,
 } = {}) {
   assertNetworkIsolation(MAINNET, { allowMainnet: true });
-  let res;
-  let text;
-  try {
-    res = await fetch(`${baseUrl}/v0/tokens`, {
-      headers: authHeaders(token),
-    });
-    text = await res.text();
-  } catch (e) {
-    const msg = String(e?.cause?.message || e?.message || e);
+  const got = await secureFetch(`${baseUrl}/v0/tokens`, {
+    headers: authHeaders(token),
+  });
+  if (got.error) {
+    const msg = String(got.cause || got.error);
     return {
       ok: false,
       reason: /certificate|TLS|SSL|UNABLE_TO_VERIFY/i.test(msg)
@@ -77,21 +74,18 @@ export async function fetchProductionTokens({
         : "tokens_network_error",
       detail: msg.slice(0, 300),
       api: baseUrl,
+      bind: got.bind,
     };
   }
-  let body;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    body = { raw: text.slice(0, 500) };
-  }
-  if (!res.ok) {
+  const body = got.json ?? { raw: got.text.slice(0, 500) };
+  if (!got.ok) {
     return {
       ok: false,
-      status: res.status,
-      reason: res.status === 401 ? "jwt_required" : "tokens_http_error",
+      status: got.status,
+      reason: got.status === 401 ? "jwt_required" : "tokens_http_error",
       body,
       api: baseUrl,
+      bind: got.bind,
     };
   }
   const list = Array.isArray(body) ? body : body.tokens || body;
@@ -101,6 +95,8 @@ export async function fetchProductionTokens({
     count: Array.isArray(list) ? list.length : null,
     tokens: list,
     status_label: "VERIFIED_ON_MAINNET_READ",
+    bind: got.bind,
+    tls: "verified",
   };
 }
 
@@ -149,17 +145,13 @@ export async function productionDryQuote(request, opts = {}) {
     return { ok: false, reason: "funded_quote_blocked" };
   }
 
-  let res;
-  let text;
-  try {
-    res = await fetch(`${baseUrl}/v0/quote`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: JSON.stringify(body),
-    });
-    text = await res.text();
-  } catch (e) {
-    const msg = String(e?.cause?.message || e?.message || e);
+  const got = await secureFetch(`${baseUrl}/v0/quote`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+  if (got.error) {
+    const msg = String(got.cause || got.error);
     return {
       ok: false,
       reason: /certificate|TLS|SSL|UNABLE_TO_VERIFY/i.test(msg)
@@ -168,24 +160,21 @@ export async function productionDryQuote(request, opts = {}) {
       detail: msg.slice(0, 300),
       request: { ...body, dry: true },
       api: baseUrl,
+      bind: got.bind,
       status_label: "NOT_YET_PROVEN",
     };
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    parsed = { raw: text.slice(0, 800) };
-  }
+  const parsed = got.json ?? { raw: got.text.slice(0, 800) };
 
-  if (!res.ok) {
+  if (!got.ok) {
     return {
       ok: false,
-      http_status: res.status,
-      reason: res.status === 401 ? "jwt_required" : "quote_http_error",
+      http_status: got.status,
+      reason: got.status === 401 ? "jwt_required" : "quote_http_error",
       request: { ...body, dry: true },
       body: parsed,
       api: baseUrl,
+      bind: got.bind,
       status_label: "NOT_YET_PROVEN",
     };
   }
@@ -202,6 +191,9 @@ export async function productionDryQuote(request, opts = {}) {
     amount_in: quote.amountIn || body.amount,
     amount_out: quote.amountOut || quote.minAmountOut || null,
     deadline: quote.deadline || body.deadline,
+    quoted_at: new Date().toISOString(),
+    bind: got.bind,
+    tls: "verified",
     status_label: body.dry
       ? "DRY_QUOTE_OBTAINED"
       : "FUNDED_QUOTE_OBTAINED_NO_DEPOSIT_YET",
