@@ -11,7 +11,7 @@ import { requiredSigningPrimitive } from "./intents.mjs";
 
 export const J9_SCOPED_FUNDED_ROUTES = Object.freeze([
   "m1_eth_usdc_to_near_usdc",
-  "m2_base_usdc_to_eth_usdc",
+  "m2_base_usdc_to_near_usdc",
 ]);
 
 export const J9_DISCOVERY_ROUTES = Object.freeze([
@@ -28,6 +28,19 @@ export const J9_DISCOVERY_ROUTES = Object.freeze([
     funded_scope: "mission1",
   },
   {
+    id: "base_usdc_to_near_usdc",
+    source: "base",
+    dest: "near",
+    asset_in:
+      "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    asset_out: NEAR_NATIVE_USDC_ASSET,
+    decimals_in: 6,
+    decimals_out: 6,
+    recipient: MAINNET_IDENTITIES.owner,
+    refund: MAINNET_IDENTITIES.mpc_evm_address,
+    funded_scope: "mission2",
+  },
+  {
     id: "base_usdc_to_eth_usdc",
     source: "base",
     dest: "ethereum",
@@ -38,7 +51,8 @@ export const J9_DISCOVERY_ROUTES = Object.freeze([
     decimals_out: 6,
     recipient: MAINNET_IDENTITIES.mpc_evm_address,
     refund: MAINNET_IDENTITIES.mpc_evm_address,
-    funded_scope: "mission2",
+    funded_scope: "deferred",
+    note: "DEFERRED — ~0.30 USDC Eth withdraw fee vs max_trade 5 USDC",
   },
   {
     id: "arb_usdc_to_base_usdc",
@@ -76,19 +90,6 @@ export const J9_DISCOVERY_ROUTES = Object.freeze([
     decimals_in: 6,
     decimals_out: 6,
     recipient: MAINNET_IDENTITIES.mpc_evm_address,
-    refund: MAINNET_IDENTITIES.mpc_evm_address,
-    funded_scope: "discovery_only",
-  },
-  {
-    id: "base_usdc_to_near_usdc",
-    source: "base",
-    dest: "near",
-    asset_in:
-      "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
-    asset_out: NEAR_NATIVE_USDC_ASSET,
-    decimals_in: 6,
-    decimals_out: 6,
-    recipient: MAINNET_IDENTITIES.owner,
     refund: MAINNET_IDENTITIES.mpc_evm_address,
     funded_scope: "discovery_only",
   },

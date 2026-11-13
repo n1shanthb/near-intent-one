@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   M1_ETH_NEAR_USDC,
-  M2_BASE_ETH_USDC,
   assertNotJ8bRoute,
   assertRouteAssetIsolation,
   resolveCanaryRouteProfile,
@@ -51,9 +50,8 @@ describe("Mission1 route profiles", () => {
 
   it("resolves m1/m2 ids", () => {
     assert.equal(resolveCanaryRouteProfile("m1").id, M1_ETH_NEAR_USDC.id);
-    assert.equal(resolveCanaryRouteProfile("m2").id, M2_BASE_ETH_USDC.id);
-    assert.equal(M2_BASE_ETH_USDC.source_chain_id, 8453);
-    assert.equal(M2_BASE_ETH_USDC.destination_chain, "ethereum");
+    assert.equal(resolveCanaryRouteProfile("m2").destination_chain, "near");
+    assert.equal(resolveCanaryRouteProfile("m2").source_chain_id, 8453);
   });
 });
 

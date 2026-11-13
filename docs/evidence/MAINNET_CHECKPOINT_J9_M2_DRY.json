@@ -3,33 +3,34 @@
   "verdict": "NO-GO",
   "status": "AWAITING_FUNDING_OR_FIX",
   "mutations_invoked": false,
+  "deferred_base_to_eth": true,
   "route": {
-    "id": "m2_base_usdc_to_eth_usdc",
-    "label": "Base USDC → Ethereum USDC",
-    "amount": "500000",
-    "amount_label": "0.5 USDC",
-    "requested_amount": "1000000",
+    "id": "m2_base_usdc_to_near_usdc",
+    "label": "Base USDC → NEAR USDC",
+    "amount": "997398",
+    "amount_label": "0.997398 USDC",
+    "requested_max": "1000000",
     "source_chain_id": 8453,
-    "dest_chain_id": 1,
     "source_token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-    "dest_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
-    "asset_out": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-    "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destination_kind": "nep141",
+    "recipient": "nishanthb.near",
     "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
     "signer_mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
     "quote_slippage_bps": 50,
     "expected_actions": [
       "ERC-20 transfer USDC (Base) from MPC → 1Click deposit",
-      "1Click fill to Ethereum native USDC at MPC",
-      "Verify Ethereum USDC delta ≥ min_out",
+      "1Click fill to NEAR NEP-141 USDC at nishanthb.near",
+      "Verify NEAR ft_balance_of delta ≥ min_out",
       "NEAR reconcile_pending after verified settlement (owner Ledger if needed)"
     ],
     "journal_protections": [
       "exact-once broadcast via durable tx journal",
       "nonce bind before broadcast",
       "UNKNOWN RPC halt — no automatic second send",
-      "separate Mission2 approval — never reuse J8B auth"
+      "separate Mission2 approval — never reuse J8B auth",
+      "chain isolation: Base source ≠ Arb J8B"
     ]
   },
   "balances": {
@@ -37,15 +38,159 @@
     "base_usdc_ui": 0.997398,
     "base_eth_wei": "0",
     "base_eth": 0,
-    "eth_usdc_at_mpc_raw": "0",
-    "afford": {
+    "amount_search": {
       "ok": true,
-      "amount_raw": "500000",
-      "amount_usdc": 0.5,
+      "amount_raw": "997398",
+      "amount_usdc": 0.997398,
+      "slip_bps": 50,
+      "quote": {
+        "ok": true,
+        "dry": true,
+        "api": "https://1click.chaindefuser.com",
+        "request": {
+          "dry": true,
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 50,
+          "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "depositType": "ORIGIN_CHAIN",
+          "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+          "amount": "997398",
+          "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "refundType": "ORIGIN_CHAIN",
+          "recipient": "nishanthb.near",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2026-11-13T17:24:19.958Z"
+        },
+        "quote_request": {
+          "dry": true,
+          "depositMode": "SIMPLE",
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 50,
+          "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "depositType": "ORIGIN_CHAIN",
+          "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+          "amount": "997398",
+          "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "refundType": "ORIGIN_CHAIN",
+          "recipient": "nishanthb.near",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2026-11-13T17:24:19.958Z",
+          "confidentiality": "public",
+          "quoteWaitingTimeMs": 0,
+          "insured": false,
+          "appFees": [
+            {
+              "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+              "fee": 1
+            }
+          ]
+        },
+        "quote": {
+          "amountIn": "997398",
+          "amountInFormatted": "0.997398",
+          "amountInUsd": "0.996937202124",
+          "minAmountIn": "997398",
+          "amountOut": "992819",
+          "amountOutFormatted": "0.992819",
+          "amountOutUsd": "0.992360317622",
+          "minAmountOut": "987854",
+          "timeEstimate": 35,
+          "refundFee": "2400",
+          "withdrawFee": "4378"
+        },
+        "one_click_response": {
+          "quoteRequest": {
+            "dry": true,
+            "depositMode": "SIMPLE",
+            "swapType": "EXACT_INPUT",
+            "slippageTolerance": 50,
+            "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+            "depositType": "ORIGIN_CHAIN",
+            "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            "amount": "997398",
+            "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+            "refundType": "ORIGIN_CHAIN",
+            "recipient": "nishanthb.near",
+            "recipientType": "DESTINATION_CHAIN",
+            "deadline": "2026-11-13T17:24:19.958Z",
+            "confidentiality": "public",
+            "quoteWaitingTimeMs": 0,
+            "insured": false,
+            "appFees": [
+              {
+                "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+                "fee": 1
+              }
+            ]
+          },
+          "quote": {
+            "amountIn": "997398",
+            "amountInFormatted": "0.997398",
+            "amountInUsd": "0.996937202124",
+            "minAmountIn": "997398",
+            "amountOut": "992819",
+            "amountOutFormatted": "0.992819",
+            "amountOutUsd": "0.992360317622",
+            "minAmountOut": "987854",
+            "timeEstimate": 35,
+            "refundFee": "2400",
+            "withdrawFee": "4378"
+          },
+          "signature": "ed25519:4nJgwWFUxjGYcbZCkKxBYWifpCfdGxJCfcg6xcFsDst8QchAR3KjWJmgTg8XctaPFynNUQHdtFEii83gppShkE1W",
+          "timestamp": "2026-11-13T17:09:19.698Z",
+          "correlationId": "688abfb2-5f21-400e-80b5-b41051257f47"
+        },
+        "signature": "ed25519:4nJgwWFUxjGYcbZCkKxBYWifpCfdGxJCfcg6xcFsDst8QchAR3KjWJmgTg8XctaPFynNUQHdtFEii83gppShkE1W",
+        "timestamp": "2026-11-13T17:09:19.698Z",
+        "correlation_id": "688abfb2-5f21-400e-80b5-b41051257f47",
+        "one_click_verify": {
+          "ok": true,
+          "verified": true,
+          "reason": null,
+          "quote_hash": "2VdHjBaMSka1z2DAfMhMpmMNg8VJMBvSRRmGGYxaEuwF",
+          "escrow_in_signed_hash": false,
+          "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+          "manager_key_mode": "pinned_official"
+        },
+        "deposit_address": null,
+        "amount_in": "997398",
+        "amount_out": "992819",
+        "min_amount_out": "987854",
+        "deadline": "2026-11-13T17:24:19.958Z",
+        "quoted_at": "2026-11-13T17:09:21.129Z",
+        "bind": "192.168.1.4",
+        "tls": "verified",
+        "authenticated": false,
+        "status_label": "DRY_QUOTE_VERIFIED",
+        "note": "Dry quote — no deposit; signature verified against pinned 1Click manager key when present"
+      },
+      "policy": {
+        "label": "m2_base_usdc_to_near_usdc:997398@50",
+        "amount_in": "997398",
+        "min_amount_out": "987854",
+        "max_slippage_bps": 100,
+        "policy_floor": "987424",
+        "result": "PASS",
+        "altered_values": false
+      },
+      "attempts": [
+        {
+          "amount": "997398",
+          "slip_bps": 50,
+          "quote_ok": true,
+          "min_out": "987854",
+          "amount_out": "992819",
+          "refund_fee": "2400",
+          "withdraw_fee": "4378",
+          "policy": "PASS",
+          "floor": "987424",
+          "reason": null
+        }
+      ],
       "balance_raw": "997398",
       "shortfall_for_1usdc": "2602"
     },
-    "j8b_note": "J8B delivered 997398 Base USDC raw; this preflight re-reads live balance and does not assume sufficiency for 1 USDC"
+    "j8b_note": "J8B delivered 997398 Base USDC; this preflight re-reads live balance and caps amount ≤ balance"
   },
   "policy": {
     "paused": true,
@@ -57,6 +202,24 @@
     "asset_out_ok": true,
     "recipient_ok": true,
     "refund_ok": true
+  },
+  "near_destination": {
+    "recipient": "nishanthb.near",
+    "storage": {
+      "ok": false,
+      "registered": false,
+      "storage_balance": null,
+      "storage_bounds": {
+        "min": "1250000000000000000000",
+        "max": "1250000000000000000000"
+      },
+      "account_id": "nishanthb.near",
+      "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "note": "Owner must storage_deposit on the NEP-141 before receiving"
+    },
+    "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "shared_with_mission1": true,
+    "register_once": true
   },
   "base": {
     "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
@@ -70,16 +233,16 @@
     "gas_estimate": {
       "ok": true,
       "estimated": true,
-      "gas_limit": "54253",
-      "eth_estimate": "45211"
+      "gas_limit": "54510",
+      "eth_estimate": "45425"
     },
     "economics": {
       "gas_price_wei": "6000000",
-      "gas_limit": "54253",
-      "fee_wei": "325518000000",
-      "fee_eth": 3.25518e-7,
-      "fee_usd_approx": 0.0010416576,
-      "trade_usdc": 0.5,
+      "gas_limit": "54510",
+      "fee_wei": "327060000000",
+      "fee_eth": 3.2706e-7,
+      "fee_usd_approx": 0.001046592,
+      "trade_usdc": 0.997398,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
       "verdict": "OK"
@@ -88,32 +251,32 @@
   "quote": {
     "ok": true,
     "dry": true,
-    "amount_in": "500000",
-    "amount_out": "199898",
-    "min_amount_out": "198898",
+    "amount_in": "997398",
+    "amount_out": "992819",
+    "min_amount_out": "987854",
     "deposit_address": null,
     "refund_fee": "2400",
-    "withdraw_fee": "300000",
-    "time_estimate": 42,
+    "withdraw_fee": "4378",
+    "time_estimate": 35,
     "policy_fit": {
-      "label": "m2_base_usdc_to_eth_usdc",
-      "amount_in": "500000",
-      "min_amount_out": "198898",
+      "label": "m2_base_usdc_to_near_usdc:997398@50",
+      "amount_in": "997398",
+      "min_amount_out": "987854",
       "max_slippage_bps": 100,
-      "policy_floor": "495000",
-      "result": "BLOCKED",
+      "policy_floor": "987424",
+      "result": "PASS",
       "altered_values": false
     },
     "decimals": {
       "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
-      "asset_out": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
       "decimals_in": 6,
       "decimals_out": 6,
       "same_decimal_scale": true,
-      "amount_in": "500000",
-      "min_amount_out": "198898",
-      "policy_floor": "495000",
-      "policy_would_accept": false,
+      "amount_in": "997398",
+      "min_amount_out": "987854",
+      "policy_floor": "987424",
+      "policy_would_accept": true,
       "classification": "SAFE_SAME_DECIMALS",
       "can_safely_validate_value_slippage_exposure": true,
       "risks": [],
@@ -121,21 +284,20 @@
     }
   },
   "blockers": [
-    "mpc_base_native_eth_zero",
-    "policy_slippage_floor_rejects_min_out:min=198898:floor=495000",
-    "structural_withdraw_fee:300000_raw_usdc_vs_max_trade_5usdc_likely_unpassable"
+    "near_usdc_storage_unregistered:shared_with_mission1_register_once",
+    "mpc_base_native_eth_zero"
   ],
   "warnings": [
-    "using_reduced_canary_amount:500000_due_to_base_balance_997398"
+    "using_balance_capped_amount:997398_live_base_usdc=997398"
   ],
   "approval_boundary": {
     "stop": true,
     "requires_explicit_approval_for": [
-      "Any Base ETH / USDC top-up if shortfall remains",
-      "New Mission 2 operation approval (never reuse J8B)",
+      "Coordinated funding (Eth USDC+ETH, Base ETH gas, one NEAR USDC storage_deposit)",
+      "New Mission 2 operation approval (never reuse J8B or Mission 1)",
       "Funded quote + Ledger unpause window",
       "propose / request_signature / broadcast",
-      "reconcile_pending after Ethereum USDC delta verify"
+      "reconcile_pending after NEAR USDC delta verify"
     ]
   }
 }

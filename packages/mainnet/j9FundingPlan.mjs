@@ -148,7 +148,7 @@ export async function buildJ9FundingPlan({
       recipient: MPC,
       current_raw: baseUsdc.raw,
       current_ui: baseUsdc.ui,
-      for_canary: "Mission2 Base→Eth",
+      for_canary: "Mission2 Base→NEAR USDC",
       amount_needed_raw: m2Amount.toString(),
       amount_needed_ui: usdc(m2Amount),
       top_up_raw: baseUsdcTopUp.toString(),
@@ -167,12 +167,12 @@ export async function buildJ9FundingPlan({
       recipient: MPC,
       current_raw: baseNative.wei,
       current_ui: baseNative.ether,
-      for_canary: "Mission2 gas",
+      for_canary: "Mission2 Base gas",
       amount_needed_raw: baseGasTarget.toString(),
       amount_needed_ui: Number(baseGasTarget) / 1e18,
       top_up_raw: baseGasTopUp.toString(),
       top_up_ui: Number(baseGasTopUp) / 1e18,
-      buffer_note: `5× live Base fee est (${baseFee.fee_eth} ETH) with 0.0001 ETH floor`,
+      buffer_note: `5× live Base fee est (${baseFee.fee_eth} ETH ≈ $${baseFee.fee_usd_approx?.toFixed?.(4)}) with 0.0001 ETH floor`,
       estimated_network_cost_usd: baseFee.fee_usd_approx,
       source_of_funds: "owner EOA → MPC Base",
       reusable: baseGasHave > 0n,
@@ -183,16 +183,18 @@ export async function buildJ9FundingPlan({
       recipient: OWNER,
       current_raw: storage.registered ? "registered" : "unregistered",
       current_ui: storage.registered ? 1 : 0,
-      for_canary: "Mission1 NEAR USDC receive",
+      for_canary: "Mission1 + Mission2 NEAR USDC receive (ONCE)",
       amount_needed_raw: storageNeedYocto.toString(),
       amount_needed_ui: Number(storageNeedYocto) / 1e24,
       top_up_raw: storageNeedYocto.toString(),
       top_up_ui: Number(storageNeedYocto) / 1e24,
-      buffer_note: "exact storage_balance_bounds.min for NEAR native USDC NEP-141",
+      buffer_note:
+        "Single storage_deposit for NEAR native USDC NEP-141 — covers both missions",
       token_contract: NEAR_NATIVE_USDC_CONTRACT,
       source_of_funds: `${OWNER} signs storage_deposit (Ledger) — uses account NEAR balance`,
       reusable: false,
       storage_registered: Boolean(storage.registered),
+      register_once: true,
     },
     {
       chain: "arbitrum",
@@ -226,59 +228,20 @@ export async function buildJ9FundingPlan({
   if (ethGasTopUp > 0n) blockers.push("need_ethereum_eth_gas");
   if (baseGasTopUp > 0n) blockers.push("need_base_eth_gas");
   if (baseUsdcTopUp > 0n) blockers.push("need_base_usdc_topup");
-  if (!storage.registered) blockers.push("need_near_usdc_storage_deposit");
+  if (!storage.registered) blockers.push("need_near_usdc_storage_deposit_once");
 
-  /**
-   * Live 1Click Base→Eth quotes embed ~0.30 USDC withdrawFee. Policy floor is
-   * 99% of amount_in (max_slippage_bps=100) while max_trade_value=5 USDC.
-   * amount_out ≈ amount_in - 300000 never clears the floor at ≤5 USDC.
-   * Do NOT recommend topping Base USDC for Mission 2 until mandate/route changes.
-   */
-  const mission2Structural = {
-    status: "NO-GO_STRUCTURAL",
-    reason:
-      "base_to_eth_withdraw_fee_~0.30_usdc_vs_policy_floor_and_max_trade_5_usdc",
-    evidence:
-      "Live quotes 1–5 USDC all POLICY_BLOCKED (amount_out≈in-0.30 USDC; floor=0.99*in)",
-    do_not_top_up_base_usdc_for_m2: true,
-    alternatives_discovery_only: [
-      "base_usdc_to_near_usdc (QUOTE_OK / PASS in matrix)",
-      "eth_usdc_to_base_usdc (QUOTE_OK / PASS — reverse direction)",
-      "Owner mandate change (raise max_trade_value substantially) — separate approval",
-    ],
-    reuse_base_usdc: {
-      raw: baseUsdc.raw,
-      note: "Keep J8B leftover on Base; do not force Mission2 with uneconomic top-up",
-    },
+  const mission2DeferredEth = {
+    status: "DEFERRED",
+    reason: "base_to_eth_withdraw_fee_structural — owner retargeted Mission2 to Base→NEAR",
+    do_not_fund_for_base_eth_route: true,
   };
-  blockers.push("mission2_base_to_eth_structurally_policy_blocked");
-  // Drop Base gas funding ask while M2 is deferred
-  const bi = blockers.indexOf("need_base_eth_gas");
-  if (bi >= 0) blockers.splice(bi, 1);
 
-  const baseUsdcRow = rows.find((r) => r.chain === "base" && r.asset === "USDC");
-  if (baseUsdcRow) {
-    baseUsdcRow.top_up_raw = "0";
-    baseUsdcRow.top_up_ui = 0;
-    baseUsdcRow.amount_needed_raw = "0";
-    baseUsdcRow.amount_needed_ui = 0;
-    baseUsdcRow.buffer_note =
-      "NO top-up — Mission2 Base→Eth structurally fails policy at ≤5 USDC due to ~0.30 USDC withdraw fee";
-    baseUsdcRow.source_of_funds = "n/a — leave existing Base USDC idle until route/mandate change";
-  }
-  const baseEthRow = rows.find((r) => r.chain === "base" && r.asset === "ETH");
-  if (baseEthRow) {
-    baseEthRow.top_up_raw = "0";
-    baseEthRow.top_up_ui = 0;
-    baseEthRow.amount_needed_raw = "0";
-    baseEthRow.amount_needed_ui = 0;
-    baseEthRow.buffer_note = "Deferred with Mission2 — no Base gas needed until M2 unblocked";
-    baseEthRow.source_of_funds = "n/a";
-  }
-  totals.base_usdc_top_up = 0;
-  totals.base_gas_top_up_eth = 0;
-  totals.m2_strategy = "defer_mission2_structural_policy_block";
-  totals.m2_proposed_amount_usdc = 0;
+  const fundingOrder = [
+    "1) NEAR USDC storage_deposit on nishanthb.near (once, Ledger) — unlocks M1+M2 receive",
+    "2) Ethereum MPC: 1 USDC + 0.0005 ETH gas buffer",
+    "3) Base MPC: ETH gas buffer only (reuse live Base USDC if policy-compliant amount exists)",
+    "4) Separate Mission1 then Mission2 execution approvals after funding verified",
+  ];
 
   return {
     ok: true,
@@ -287,6 +250,7 @@ export async function buildJ9FundingPlan({
     mpc: MPC,
     owner: OWNER,
     eth_usd_hint: ethUsdHint,
+    mission2_active_route: "m2_base_usdc_to_near_usdc",
     live_gas: {
       ethereum: ethGas,
       base: baseGas,
@@ -296,7 +260,8 @@ export async function buildJ9FundingPlan({
     rows,
     totals,
     blockers,
-    mission2_structural: mission2Structural,
+    funding_order: fundingOrder,
+    mission2_deferred_eth: mission2DeferredEth,
     hard_stop:
       "No funding transfers, storage_deposit, Ledger, unpause, propose, sign, or broadcast until owner approves this consolidated plan",
   };

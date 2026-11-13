@@ -5,23 +5,24 @@
   "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
   "owner": "nishanthb.near",
   "eth_usd_hint": 3200,
+  "mission2_active_route": "m2_base_usdc_to_near_usdc",
   "live_gas": {
     "ethereum": {
       "ok": true,
-      "gas_price_wei": "432436012",
-      "gas_price_gwei": 0.432436012
+      "gas_price_wei": "248380960",
+      "gas_price_gwei": 0.24838096
     },
     "base": {
       "ok": true,
-      "gas_price_wei": "6005476",
-      "gas_price_gwei": 0.006005476
+      "gas_price_wei": "6000000",
+      "gas_price_gwei": 0.006
     },
     "eth_fee_est": {
-      "gas_price_wei": "432436012",
+      "gas_price_wei": "248380960",
       "gas_limit": "100000",
-      "fee_wei": "43243601200000",
-      "fee_eth": 0.0000432436012,
-      "fee_usd_approx": 0.13837952384,
+      "fee_wei": "24838096000000",
+      "fee_eth": 0.000024838096,
+      "fee_usd_approx": 0.07948190720000001,
       "trade_usdc": 1,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
@@ -29,11 +30,11 @@
       "note": null
     },
     "base_fee_est": {
-      "gas_price_wei": "6005476",
+      "gas_price_wei": "6000000",
       "gas_limit": "100000",
-      "fee_wei": "600547600000",
-      "fee_eth": 6.005476e-7,
-      "fee_usd_approx": 0.00192175232,
+      "fee_wei": "600000000000",
+      "fee_eth": 6e-7,
+      "fee_usd_approx": 0.0019199999999999998,
       "trade_usdc": 1,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
@@ -67,8 +68,8 @@
       "amount_needed_ui": 0.0005,
       "top_up_raw": "500000000000000",
       "top_up_ui": 0.0005,
-      "buffer_note": "3× live fee est (0.0000432436012 ETH ≈ $0.14) with 0.0005 ETH floor",
-      "estimated_network_cost_usd": 0.13837952384,
+      "buffer_note": "3× live fee est (0.000024838096 ETH ≈ $0.08) with 0.0005 ETH floor",
+      "estimated_network_cost_usd": 0.07948190720000001,
       "source_of_funds": "owner EOA → MPC Ethereum",
       "reusable": false
     },
@@ -78,14 +79,14 @@
       "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "current_raw": "997398",
       "current_ui": 0.997398,
-      "for_canary": "Mission2 Base→Eth",
-      "amount_needed_raw": "0",
-      "amount_needed_ui": 0,
+      "for_canary": "Mission2 Base→NEAR USDC",
+      "amount_needed_raw": "997398",
+      "amount_needed_ui": 0.997398,
       "top_up_raw": "0",
       "top_up_ui": 0,
-      "buffer_note": "NO top-up — Mission2 Base→Eth structurally fails policy at ≤5 USDC due to ~0.30 USDC withdraw fee",
+      "buffer_note": "policy-compliant dry amount 997398 ≤ live balance; no USDC top-up",
       "j8b_leftover_rechecked": true,
-      "source_of_funds": "n/a — leave existing Base USDC idle until route/mandate change",
+      "source_of_funds": "reuse MPC Base USDC (J8B leftover, live-verified)",
       "reusable": true
     },
     {
@@ -94,14 +95,14 @@
       "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "current_raw": "0",
       "current_ui": 0,
-      "for_canary": "Mission2 gas",
-      "amount_needed_raw": "0",
-      "amount_needed_ui": 0,
-      "top_up_raw": "0",
-      "top_up_ui": 0,
-      "buffer_note": "Deferred with Mission2 — no Base gas needed until M2 unblocked",
-      "estimated_network_cost_usd": 0.00192175232,
-      "source_of_funds": "n/a",
+      "for_canary": "Mission2 Base gas",
+      "amount_needed_raw": "100000000000000",
+      "amount_needed_ui": 0.0001,
+      "top_up_raw": "100000000000000",
+      "top_up_ui": 0.0001,
+      "buffer_note": "5× live Base fee est (6e-7 ETH ≈ $0.0019) with 0.0001 ETH floor",
+      "estimated_network_cost_usd": 0.0019199999999999998,
+      "source_of_funds": "owner EOA → MPC Base",
       "reusable": false
     },
     {
@@ -110,16 +111,17 @@
       "recipient": "nishanthb.near",
       "current_raw": "unregistered",
       "current_ui": 0,
-      "for_canary": "Mission1 NEAR USDC receive",
+      "for_canary": "Mission1 + Mission2 NEAR USDC receive (ONCE)",
       "amount_needed_raw": "1250000000000000000000",
       "amount_needed_ui": 0.00125,
       "top_up_raw": "1250000000000000000000",
       "top_up_ui": 0.00125,
-      "buffer_note": "exact storage_balance_bounds.min for NEAR native USDC NEP-141",
+      "buffer_note": "Single storage_deposit for NEAR native USDC NEP-141 — covers both missions",
       "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
       "source_of_funds": "nishanthb.near signs storage_deposit (Ledger) — uses account NEAR balance",
       "reusable": false,
-      "storage_registered": false
+      "storage_registered": false,
+      "register_once": true
     },
     {
       "chain": "arbitrum",
@@ -141,31 +143,27 @@
     "eth_gas_top_up_eth": 0.0005,
     "eth_gas_top_up_usd_approx": 1.6,
     "base_usdc_top_up": 0,
-    "base_gas_top_up_eth": 0,
+    "base_gas_top_up_eth": 0.0001,
     "near_storage_near": 0.00125,
-    "m2_proposed_amount_usdc": 0,
-    "m2_strategy": "defer_mission2_structural_policy_block"
+    "m2_proposed_amount_usdc": 0.997398,
+    "m2_strategy": "reuse_base_usdc_997398_policy_pass_awaiting_gas_storage"
   },
   "blockers": [
     "need_ethereum_usdc",
     "need_ethereum_eth_gas",
-    "need_near_usdc_storage_deposit",
-    "mission2_base_to_eth_structurally_policy_blocked"
+    "need_base_eth_gas",
+    "need_near_usdc_storage_deposit_once"
   ],
-  "mission2_structural": {
-    "status": "NO-GO_STRUCTURAL",
-    "reason": "base_to_eth_withdraw_fee_~0.30_usdc_vs_policy_floor_and_max_trade_5_usdc",
-    "evidence": "Live quotes 1–5 USDC all POLICY_BLOCKED (amount_out≈in-0.30 USDC; floor=0.99*in)",
-    "do_not_top_up_base_usdc_for_m2": true,
-    "alternatives_discovery_only": [
-      "base_usdc_to_near_usdc (QUOTE_OK / PASS in matrix)",
-      "eth_usdc_to_base_usdc (QUOTE_OK / PASS — reverse direction)",
-      "Owner mandate change (raise max_trade_value substantially) — separate approval"
-    ],
-    "reuse_base_usdc": {
-      "raw": "997398",
-      "note": "Keep J8B leftover on Base; do not force Mission2 with uneconomic top-up"
-    }
+  "funding_order": [
+    "1) NEAR USDC storage_deposit on nishanthb.near (once, Ledger) — unlocks M1+M2 receive",
+    "2) Ethereum MPC: 1 USDC + 0.0005 ETH gas buffer",
+    "3) Base MPC: ETH gas buffer only (reuse live Base USDC if policy-compliant amount exists)",
+    "4) Separate Mission1 then Mission2 execution approvals after funding verified"
+  ],
+  "mission2_deferred_eth": {
+    "status": "DEFERRED",
+    "reason": "base_to_eth_withdraw_fee_structural — owner retargeted Mission2 to Base→NEAR",
+    "do_not_fund_for_base_eth_route": true
   },
   "hard_stop": "No funding transfers, storage_deposit, Ledger, unpause, propose, sign, or broadcast until owner approves this consolidated plan"
 }

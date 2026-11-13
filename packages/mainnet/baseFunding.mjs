@@ -103,23 +103,34 @@ export function chooseAffordableUsdcAmount({
   balanceRaw,
   requestedMaxRaw = 1_000_000n,
   candidates = [1_000_000n, 500_000n, 250_000n],
+  includeExactBalance = true,
 }) {
   const have = BigInt(balanceRaw || 0);
   const max = BigInt(requestedMaxRaw);
-  const sorted = [...candidates]
+  const pool = new Set(
+    [...candidates]
+      .map((c) => BigInt(c))
+      .filter((c) => c <= max && c > 0n)
+      .map((c) => c.toString())
+  );
+  // Prefer spending available balance when below 1 USDC (e.g. J8B leftover 997398).
+  if (includeExactBalance && have > 0n && have <= max) {
+    pool.add(have.toString());
+  }
+  if (have >= max) pool.add(max.toString());
+  const sorted = [...pool]
     .map((c) => BigInt(c))
-    .filter((c) => c <= max)
+    .filter((c) => c <= have)
     .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   for (const c of sorted) {
-    if (have >= c) {
-      return {
-        ok: true,
-        amount_raw: c.toString(),
-        amount_usdc: Number(c) / 1e6,
-        balance_raw: have.toString(),
-        shortfall_for_1usdc: have < 1_000_000n ? (1_000_000n - have).toString() : "0",
-      };
-    }
+    return {
+      ok: true,
+      amount_raw: c.toString(),
+      amount_usdc: Number(c) / 1e6,
+      balance_raw: have.toString(),
+      shortfall_for_1usdc: have < 1_000_000n ? (1_000_000n - have).toString() : "0",
+      used_exact_balance: c === have && have < max,
+    };
   }
   return {
     ok: false,

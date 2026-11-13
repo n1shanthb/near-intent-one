@@ -14,7 +14,10 @@ export const NEAR_NATIVE_USDC_ASSET = `nep141:${NEAR_NATIVE_USDC_CONTRACT}`;
 export const ROUTE_IDS = Object.freeze({
   J8B_ARB_BASE: "j8b_arb_usdc_to_base_usdc",
   M1_ETH_NEAR_USDC: "m1_eth_usdc_to_near_usdc",
-  M2_BASE_ETH_USDC: "m2_base_usdc_to_eth_usdc",
+  /** Active Mission 2 scope (owner-approved dry-preflight). */
+  M2_BASE_NEAR_USDC: "m2_base_usdc_to_near_usdc",
+  /** Deferred — ~0.30 USDC Eth withdraw fee vs 5 USDC max trade. */
+  M2_BASE_ETH_USDC: "m2_base_usdc_to_eth_usdc_deferred",
 });
 
 /**
@@ -85,10 +88,51 @@ export const M1_ETH_NEAR_USDC = buildRouteProfile({
   }),
 });
 
-/** Mission 2 stub — Base → Ethereum USDC (not executed until Mission 1 done). */
+/** Mission 2 — Base native USDC → NEAR NEP-141 USDC (active dry-preflight scope). */
+export const M2_BASE_NEAR_USDC = buildRouteProfile({
+  id: ROUTE_IDS.M2_BASE_NEAR_USDC,
+  label: "Base USDC → NEAR USDC",
+  source_chain: "base",
+  source_chain_id: 8453,
+  source_eip155: "eip155:8453",
+  source_rpc: MAINNET_EVM_RPCS.base,
+  source_token: MAINNET_USDC.base.toLowerCase(),
+  asset_in:
+    "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+  destination_chain: "near",
+  destination_kind: "nep141",
+  destination_contract: NEAR_NATIVE_USDC_CONTRACT,
+  asset_out: NEAR_NATIVE_USDC_ASSET,
+  not_assets: Object.freeze([
+    "nep141:wrap.near",
+    "native:near",
+    ASSETS.eth_usdc.asset_id,
+  ]),
+  recipient: MAINNET_IDENTITIES.owner,
+  recipient_type: "DESTINATION_CHAIN",
+  refund_to: MAINNET_IDENTITIES.mpc_evm_address.toLowerCase(),
+  refund_type: "ORIGIN_CHAIN",
+  signer_mpc: MAINNET_IDENTITIES.mpc_evm_address.toLowerCase(),
+  amount: "1000000",
+  amount_label: "≤1 USDC (capped by live Base balance)",
+  decimals_in: 6,
+  decimals_out: 6,
+  quote_slippage_bps: 50,
+  policy_max_slippage_bps: 100,
+  gas_limit_ceiling: String(GAS_ASSUMPTIONS.gas_limit),
+  max_gas_price_wei: String(GAS_ASSUMPTIONS.base.max_gas_price_wei),
+  explorer_tx: (hash) => `https://basescan.org/tx/${hash}`,
+  settlement: Object.freeze({
+    source: "evm_erc20_transfer",
+    destination: "near_nep141_ft_delta",
+  }),
+});
+
+/** Deferred Mission 2 alternate — Base → Ethereum (structural policy NO-GO). */
 export const M2_BASE_ETH_USDC = buildRouteProfile({
   id: ROUTE_IDS.M2_BASE_ETH_USDC,
-  label: "Base USDC → Ethereum USDC",
+  label: "Base USDC → Ethereum USDC (DEFERRED)",
+  status: "DEFERRED",
   source_chain: "base",
   source_chain_id: 8453,
   source_eip155: "eip155:8453",
@@ -125,7 +169,19 @@ export function resolveCanaryRouteProfile(id) {
   if (key === ROUTE_IDS.M1_ETH_NEAR_USDC || key === "m1" || key === "eth-near") {
     return M1_ETH_NEAR_USDC;
   }
-  if (key === ROUTE_IDS.M2_BASE_ETH_USDC || key === "m2" || key === "base-eth") {
+  if (
+    key === ROUTE_IDS.M2_BASE_NEAR_USDC ||
+    key === "m2" ||
+    key === "base-near" ||
+    key === "m2-near"
+  ) {
+    return M2_BASE_NEAR_USDC;
+  }
+  if (
+    key === ROUTE_IDS.M2_BASE_ETH_USDC ||
+    key === "base-eth" ||
+    key === "m2-eth-deferred"
+  ) {
     return M2_BASE_ETH_USDC;
   }
   throw new Error(`unknown_canary_route:${id}`);
