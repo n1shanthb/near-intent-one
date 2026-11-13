@@ -122,6 +122,12 @@ export function redactSecrets(obj) {
       lk === "signed" ||
       lk.includes("signed_tx") ||
       lk.includes("signedraw") ||
+      lk.includes("signature_json") ||
+      lk === "rawhex" ||
+      lk === "raw_hex" ||
+      lk === "big_r" ||
+      lk === "affine_point" ||
+      lk === "scalar" ||
       lk.includes("seed")
     ) {
       out[k] = "[REDACTED]";

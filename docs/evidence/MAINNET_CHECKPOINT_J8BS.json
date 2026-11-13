@@ -1,0 +1,23 @@
+{
+  "checkpoint": "J8B-S",
+  "hard_stop_held": true,
+  "operation_id": "j8b-canary-1794572720062-8db4f42a",
+  "near_propose_parent_tx": "HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad",
+  "near_sign_parent_tx": "27VQYinCZFddL6aXzyajktex6dbEJsjjVdUVD5KjsPVp",
+  "near_sign_receipt": "CKNyt3L68pvt9hSYWPQew5QNSk6ntgZe3ZVH3fGfjTvg",
+  "live_inspect_signed_recovery": {
+    "mutations_invoked": false,
+    "verdict": "SAFE_TO_CREATE_SIGNED_TX_RECOVERY_AUTH",
+    "recovered_signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "digest_hex": "b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed",
+    "local_tx_hash": "a4d159fec8eca4e7bed01c6ed3b25e65ded7519dce47f9fd422fb6e9a55c9664",
+    "candidate_count": 2,
+    "unique_count": 1,
+    "arb_mpc_nonce": 0,
+    "nonce_available_for_broadcast": true,
+    "raw_signature_returned": false,
+    "create_signed_recovery_auth_invoked": false
+  },
+  "tests_pass": 94,
+  "verdict": "PASS"
+}

@@ -37,6 +37,10 @@ import {
   createRecoveryAuthorization,
   runRecoveryRehearsal,
 } from "../../packages/mainnet/canaryRecovery.mjs";
+import {
+  inspectSignedRecovery,
+  createSignedTxRecoveryAuthorization,
+} from "../../packages/mainnet/canarySignedRecovery.mjs";
 import { redactSecrets } from "../../packages/mainnet/agentCredentials.mjs";
 
 function arg(name, def = null) {
@@ -72,6 +76,8 @@ async function main() {
   inspect --op <id> [--near-tx <hash>]
   recovery-rehearsal --op <id> [--near-tx <hash>]
   create-recovery-auth --op <id> [--near-tx <hash>] [--confirm-recovery]
+  inspect-signed-recovery --op <id> --near-tx <signingParentTx> [--propose-tx <hash>]
+  create-signed-recovery-auth --op <id> --near-tx <signingParentTx> [--propose-tx <hash>] [--confirm-signed-recovery]
   show-abort --op <id>
 `);
     return;
@@ -109,6 +115,33 @@ async function main() {
       operationId: op,
       nearProposeTx: arg("near-tx"),
       operatorConfirmed: flag("confirm-recovery"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "inspect-signed-recovery") {
+    if (!op) throw new Error("--op required");
+    const nearTx = arg("near-tx");
+    if (!nearTx) throw new Error("--near-tx (signing parent) required");
+    const r = await inspectSignedRecovery({
+      operationId: op,
+      nearSignTx: nearTx,
+      nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "create-signed-recovery-auth") {
+    if (!op) throw new Error("--op required");
+    const nearTx = arg("near-tx");
+    if (!nearTx) throw new Error("--near-tx (signing parent) required");
+    const r = await createSignedTxRecoveryAuthorization({
+      operationId: op,
+      nearSignTx: nearTx,
+      nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
+      operatorConfirmed: flag("confirm-signed-recovery"),
     });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     return;

@@ -203,7 +203,13 @@ export async function createMainnetCanaryAdapters(opts = {}) {
     }) {
       const extracted = extractMpcSigFromNearTx(nearTxFull);
       if (!extracted.found) {
-        return { ok: false, reason: "MPC_SIG_NOT_FOUND" };
+        return {
+          ok: false,
+          reason: extracted.reason || "MPC_SIG_NOT_FOUND",
+          candidate_count: extracted.candidate_count,
+          unique_count: extracted.unique_count,
+          malformed_count: extracted.malformed_count,
+        };
       }
       const data = erc20TransferData(depositAddress, amount);
       const digestBytes = eip155UnsignedDigest({

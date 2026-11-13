@@ -65,6 +65,10 @@ const ALLOWED_TRANSITIONS = Object.freeze({
 });
 
 export const RECOVERY_KIND = "one_shot_mainnet_canary_recovery_v1";
+/** Separate auth for already-Signed ops — never permits propose/request_signature. */
+export const SIGNED_TX_RECOVERY_KIND =
+  "one_shot_mainnet_canary_signed_recovery_v1";
+export const DEFAULT_SIGNED_RECOVERY_TTL_MS = 15 * 60 * 1000;
 
 export function canaryStoreDir(env = process.env) {
   return (
@@ -114,6 +118,10 @@ export function recoveryApprovalPath(operationId, dir) {
   return join(dir, `recovery-${operationId}.json`);
 }
 
+export function signedRecoveryApprovalPath(operationId, dir) {
+  return join(dir, `signed-recovery-${operationId}.json`);
+}
+
 function hmacKey(env = process.env) {
   // Local operator machine secret — never env-alone unlock; file-backed preferred.
   const fromEnv = env.NIO_CANARY_HMAC_SECRET;
@@ -158,6 +166,38 @@ function canonicalPayload(p) {
       near_propose_tx: p.near_propose_tx || null,
       forbids_propose: true,
       digest_hex: p.digest_hex ? String(p.digest_hex).toLowerCase() : null,
+      quote_deadline_ms:
+        p.quote_deadline_ms != null ? Number(p.quote_deadline_ms) : null,
+      min_amount_out: p.min_amount_out != null ? String(p.min_amount_out) : null,
+      recipient: p.recipient ? String(p.recipient).toLowerCase() : null,
+      refund_to: p.refund_to ? String(p.refund_to).toLowerCase() : null,
+      base_usdc_before:
+        p.base_usdc_before != null ? String(p.base_usdc_before) : null,
+      locked_nonce: p.locked_nonce != null ? Number(p.locked_nonce) : null,
+      locked_gas_price:
+        p.locked_gas_price != null ? String(p.locked_gas_price) : null,
+      locked_gas_limit:
+        p.locked_gas_limit != null ? String(p.locked_gas_limit) : null,
+    });
+  }
+  if (p.kind === SIGNED_TX_RECOVERY_KIND) {
+    return JSON.stringify({
+      ...base,
+      kind: SIGNED_TX_RECOVERY_KIND,
+      signed_recovery_payload_version: 1,
+      recovery_of_fingerprint: p.recovery_of_fingerprint || null,
+      prior_recovery_fingerprint: p.prior_recovery_fingerprint || null,
+      near_propose_tx: p.near_propose_tx || null,
+      near_sign_tx: p.near_sign_tx || null,
+      forbids_propose: true,
+      forbids_request_signature: true,
+      digest_hex: p.digest_hex ? String(p.digest_hex).toLowerCase() : null,
+      local_tx_hash: p.local_tx_hash
+        ? String(p.local_tx_hash).toLowerCase()
+        : null,
+      recovered_signer: p.recovered_signer
+        ? String(p.recovered_signer).toLowerCase()
+        : null,
       quote_deadline_ms:
         p.quote_deadline_ms != null ? Number(p.quote_deadline_ms) : null,
       min_amount_out: p.min_amount_out != null ? String(p.min_amount_out) : null,
@@ -285,9 +325,25 @@ export function loadRecoveryAuthorization(
   return { ok: true, record, path, is_recovery: true };
 }
 
+export function loadSignedTxRecoveryAuthorization(
+  operationId,
+  { env = process.env, storeDir = null } = {}
+) {
+  const dir = storeDir || canaryStoreDir(env);
+  const path = signedRecoveryApprovalPath(operationId, dir);
+  if (!existsSync(path)) {
+    return { ok: false, reason: "signed_recovery_auth_not_found" };
+  }
+  const record = JSON.parse(readFileSync(path, "utf8"));
+  if (record?.payload?.kind !== SIGNED_TX_RECOVERY_KIND) {
+    return { ok: false, reason: "not_signed_recovery_authorization" };
+  }
+  return { ok: true, record, path, is_signed_recovery: true, is_recovery: true };
+}
+
 /**
- * Validate either active original approval OR unused recovery authorization.
- * Prefer recovery when preferRecovery=true or original is used.
+ * Validate active original, unused recovery, or unused signed-tx recovery auth.
+ * Prefer signed-tx recovery when present; else recovery when original is used.
  */
 export function validateExecutableApproval(
   operationId,
@@ -299,9 +355,27 @@ export function validateExecutableApproval(
     expected = {},
     preferRecovery = false,
     allowRecovery = true,
+    allowSignedRecovery = true,
   } = {}
 ) {
   const original = loadCanaryApproval(operationId, { env, storeDir });
+  const signed =
+    allowRecovery && allowSignedRecovery
+      ? loadSignedTxRecoveryAuthorization(operationId, { env, storeDir })
+      : { ok: false };
+  if (signed.ok) {
+    return validateApprovalRecord(signed.record, {
+      operationId,
+      env,
+      nowMs,
+      requireQuoteBound,
+      expected,
+      path: signed.path,
+      is_recovery: true,
+      is_signed_recovery: true,
+    });
+  }
+
   const recovery = allowRecovery
     ? loadRecoveryAuthorization(operationId, { env, storeDir })
     : { ok: false };
@@ -320,6 +394,7 @@ export function validateExecutableApproval(
       expected,
       path: recovery.path,
       is_recovery: true,
+      is_signed_recovery: false,
     });
   }
   if (!original.ok) return original;
@@ -331,12 +406,22 @@ export function validateExecutableApproval(
     expected,
     path: original.path,
     is_recovery: false,
+    is_signed_recovery: false,
   });
 }
 
 function validateApprovalRecord(
   record,
-  { operationId, env, nowMs, requireQuoteBound, expected, path, is_recovery }
+  {
+    operationId,
+    env,
+    nowMs,
+    requireQuoteBound,
+    expected,
+    path,
+    is_recovery,
+    is_signed_recovery = false,
+  }
 ) {
   if (!verifyApprovalMac(record, env)) {
     return { ok: false, reason: "approval_mac_invalid" };
@@ -386,20 +471,40 @@ function validateApprovalRecord(
   if (requireQuoteBound && (!p.quote_hash || !p.deposit_address)) {
     return { ok: false, reason: "approval_quote_not_bound" };
   }
-  if (is_recovery && p.kind !== RECOVERY_KIND) {
-    return { ok: false, reason: "recovery_kind_required" };
-  }
-  if (is_recovery && p.forbids_propose !== true) {
-    return { ok: false, reason: "recovery_must_forbid_propose" };
+  if (is_signed_recovery) {
+    if (p.kind !== SIGNED_TX_RECOVERY_KIND) {
+      return { ok: false, reason: "signed_recovery_kind_required" };
+    }
+    if (p.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_must_forbid_propose" };
+    }
+    if (p.forbids_request_signature !== true) {
+      return { ok: false, reason: "signed_recovery_must_forbid_request_signature" };
+    }
+    if (!p.near_sign_tx || !p.digest_hex || !p.local_tx_hash) {
+      return { ok: false, reason: "signed_recovery_bindings_incomplete" };
+    }
+  } else if (is_recovery) {
+    if (p.kind !== RECOVERY_KIND) {
+      return { ok: false, reason: "recovery_kind_required" };
+    }
+    if (p.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_must_forbid_propose" };
+    }
   }
   return {
     ok: true,
-    mode: is_recovery ? "one_shot_canary_recovery" : "one_shot_canary",
+    mode: is_signed_recovery
+      ? "one_shot_canary_signed_recovery"
+      : is_recovery
+        ? "one_shot_canary_recovery"
+        : "one_shot_canary",
     operation_id: operationId,
     payload: p,
     record,
     path,
-    is_recovery: Boolean(is_recovery),
+    is_recovery: Boolean(is_recovery || is_signed_recovery),
+    is_signed_recovery: Boolean(is_signed_recovery),
   };
 }
 
@@ -459,18 +564,25 @@ export function validateCanaryApproval(
 }
 
 /**
- * Once a recovery auth file exists, ALL further lifecycle writes go there.
- * Never mutates the original consumed approval.
+ * Prefer signed-tx recovery, then propose-recovery, then original.
+ * Never mutates the original consumed approval or prior FAILED recovery.
  */
 export function resolveWritableApproval(
   operationId,
   { env = process.env, storeDir = null } = {}
 ) {
-  const original = loadCanaryApproval(operationId, { env, storeDir });
+  const signed = loadSignedTxRecoveryAuthorization(operationId, {
+    env,
+    storeDir,
+  });
+  if (signed.ok) {
+    return { ...signed, is_recovery: true, is_signed_recovery: true };
+  }
   const recovery = loadRecoveryAuthorization(operationId, { env, storeDir });
   if (recovery.ok) {
-    return { ...recovery, is_recovery: true };
+    return { ...recovery, is_recovery: true, is_signed_recovery: false };
   }
+  const original = loadCanaryApproval(operationId, { env, storeDir });
   if (original.ok) return { ...original, is_recovery: false };
   return { ok: false, reason: "approval_not_found" };
 }

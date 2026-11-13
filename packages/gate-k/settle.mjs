@@ -23,21 +23,107 @@ import {
   journalIdForExec,
 } from "../execution/durableBroadcast.mjs";
 
+function canonicalizeMpcSigJson(sig) {
+  if (!sig || typeof sig !== "object") return null;
+  const affine =
+    sig.big_r?.affine_point != null
+      ? String(sig.big_r.affine_point).toLowerCase()
+      : null;
+  const scalar =
+    sig.s?.scalar != null
+      ? String(sig.s.scalar).toLowerCase()
+      : sig.s != null && typeof sig.s === "string"
+        ? String(sig.s).toLowerCase()
+        : null;
+  if (!affine || !scalar || sig.recovery_id == null) return null;
+  return JSON.stringify({
+    scheme: sig.scheme != null ? String(sig.scheme) : "Secp256k1",
+    big_r: affine,
+    s: scalar,
+    recovery_id: Number(sig.recovery_id),
+  });
+}
+
+function tryParseMpcSuccessValue(sv) {
+  if (sv == null || sv === "") return { kind: "empty" };
+  let decoded;
+  try {
+    decoded = Buffer.from(String(sv), "base64").toString("utf8");
+  } catch {
+    return { kind: "not_b64" };
+  }
+  const looksMpc =
+    decoded.includes("Secp256k1") ||
+    decoded.includes("big_r") ||
+    decoded.includes("affine_point");
+  if (!looksMpc) return { kind: "non_mpc" };
+  try {
+    const j = JSON.parse(decoded);
+    const canon = canonicalizeMpcSigJson(j);
+    if (!canon) return { kind: "malformed" };
+    return { kind: "mpc", signature: j, canonical: canon };
+  } catch {
+    return { kind: "malformed" };
+  }
+}
+
+/**
+ * Extract MPC secp256k1 signature JSON from a NEAR EXPERIMENTAL_tx_status result.
+ * Supports both unwrapped `{ receipts_outcome }` and wrapped `{ result: { receipts_outcome } }`.
+ * Duplicate identical candidates → ok. Distinct/conflicting → fail closed (not first-match).
+ */
 export function extractMpcSigFromNearTx(fullTx) {
-  const out = { found: false, signature_json: null };
-  for (const r of fullTx?.result?.receipts_outcome || []) {
-    const sv = r?.outcome?.status?.SuccessValue;
-    if (!sv) continue;
-    try {
-      const decoded = Buffer.from(sv, "base64").toString("utf8");
-      if (decoded.includes("Secp256k1") || decoded.includes("big_r")) {
-        out.found = true;
-        out.signature_json = JSON.parse(decoded);
-      }
-    } catch {
-      /* */
+  const out = {
+    found: false,
+    signature_json: null,
+    reason: null,
+    candidate_count: 0,
+    unique_count: 0,
+    malformed_count: 0,
+  };
+  if (!fullTx) {
+    out.reason = "MPC_SIG_TX_MISSING";
+    return out;
+  }
+
+  const receipts = [
+    ...(Array.isArray(fullTx.receipts_outcome) ? fullTx.receipts_outcome : []),
+    ...(Array.isArray(fullTx.result?.receipts_outcome)
+      ? fullTx.result.receipts_outcome
+      : []),
+  ];
+
+  const unique = new Map();
+  for (const r of receipts) {
+    const parsed = tryParseMpcSuccessValue(r?.outcome?.status?.SuccessValue);
+    if (parsed.kind === "malformed") {
+      out.malformed_count += 1;
+      continue;
+    }
+    if (parsed.kind !== "mpc") continue;
+    out.candidate_count += 1;
+    if (!unique.has(parsed.canonical)) {
+      unique.set(parsed.canonical, parsed.signature);
     }
   }
+  out.unique_count = unique.size;
+
+  if (out.malformed_count > 0 && out.candidate_count === 0) {
+    out.reason = "MPC_SIG_MALFORMED";
+    return out;
+  }
+  if (out.candidate_count === 0) {
+    out.reason = "MPC_SIG_NOT_FOUND";
+    return out;
+  }
+  if (unique.size > 1) {
+    out.reason = "MPC_SIG_CONFLICTING";
+    return out;
+  }
+
+  out.found = true;
+  out.signature_json = unique.values().next().value;
+  out.reason = null;
   return out;
 }
 

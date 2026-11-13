@@ -36,6 +36,7 @@ import {
   loadRecoveryAuthorization,
   verifyApprovalMac,
   RECOVERY_KIND,
+  SIGNED_TX_RECOVERY_KIND,
   QUOTE_DEADLINE_MIN_REMAINING_MS,
   CANARY_STATES,
   CANARY_AMOUNT,
@@ -796,6 +797,17 @@ export async function canaryStepRequestSignature({
     allowRecovery: true,
   });
   if (!v.ok) return { ok: false, reason: v.reason };
+  if (
+    v.is_signed_recovery ||
+    v.payload?.kind === SIGNED_TX_RECOVERY_KIND ||
+    v.payload?.forbids_request_signature === true
+  ) {
+    return {
+      ok: false,
+      reason: "request_signature_forbidden_on_signed_recovery",
+      note: "On-chain signature already exists — use signed-recovery persist path, never request_signature again",
+    };
+  }
   const need = requireOperatorConfirmation(v.record, "sign");
   if (!need.ok) return { ok: false, reason: need.reason };
   if (getLifecycleState(v.record) !== CANARY_STATES.PROPOSED) {
