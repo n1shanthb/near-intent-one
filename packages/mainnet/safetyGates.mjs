@@ -14,6 +14,7 @@ import {
   loadCanaryApproval,
   RECOVERY_KIND,
   SIGNED_TX_RECOVERY_KIND,
+  BROADCAST_REAUTH_KIND,
 } from "./canaryOneShot.mjs";
 
 export function mainnetExecutionGates(env = process.env) {
@@ -69,24 +70,59 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
 
   // Recovery unlock is scoped to the SAME existing operation only.
   if (v.is_recovery) {
+    const isBroadcastReauth =
+      v.is_broadcast_reauth === true ||
+      v.payload?.kind === BROADCAST_REAUTH_KIND;
     const isSignedRecovery =
-      v.is_signed_recovery === true ||
-      v.payload?.kind === SIGNED_TX_RECOVERY_KIND;
+      !isBroadcastReauth &&
+      (v.is_signed_recovery === true ||
+        v.payload?.kind === SIGNED_TX_RECOVERY_KIND);
     const isProposeRecovery = v.payload?.kind === RECOVERY_KIND;
-    if (!isSignedRecovery && !isProposeRecovery) {
+    if (!isSignedRecovery && !isProposeRecovery && !isBroadcastReauth) {
       return { ok: false, reason: "recovery_payload_invalid" };
     }
     if (v.payload?.forbids_propose !== true) {
       return { ok: false, reason: "recovery_must_forbid_propose" };
     }
-    if (isSignedRecovery && v.payload?.forbids_request_signature !== true) {
+    if (
+      (isSignedRecovery || isBroadcastReauth) &&
+      v.payload?.forbids_request_signature !== true
+    ) {
       return {
         ok: false,
-        reason: "signed_recovery_must_forbid_request_signature",
+        reason: isBroadcastReauth
+          ? "broadcast_reauth_must_forbid_request_signature"
+          : "signed_recovery_must_forbid_request_signature",
       };
     }
-    if (isSignedRecovery && (!v.payload?.near_sign_tx || !v.payload?.local_tx_hash)) {
-      return { ok: false, reason: "signed_recovery_bindings_incomplete" };
+    if (
+      isBroadcastReauth &&
+      (v.payload?.forbids_resign !== true ||
+        v.payload?.forbids_tx_mutation !== true)
+    ) {
+      return {
+        ok: false,
+        reason: "broadcast_reauth_must_forbid_resign_and_mutation",
+      };
+    }
+    if (
+      (isSignedRecovery || isBroadcastReauth) &&
+      (!v.payload?.near_sign_tx || !v.payload?.local_tx_hash)
+    ) {
+      return {
+        ok: false,
+        reason: isBroadcastReauth
+          ? "broadcast_reauth_bindings_incomplete"
+          : "signed_recovery_bindings_incomplete",
+      };
+    }
+    if (
+      isBroadcastReauth &&
+      opts.expected?.local_tx_hash &&
+      String(v.payload.local_tx_hash).toLowerCase() !==
+        String(opts.expected.local_tx_hash).toLowerCase()
+    ) {
+      return { ok: false, reason: "broadcast_reauth_local_tx_hash_mismatch" };
     }
     const original = loadCanaryApproval(opId, {
       env,
@@ -121,18 +157,21 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     }
     return {
       ok: true,
-      mode: isSignedRecovery
-        ? "one_shot_canary_signed_recovery"
-        : "one_shot_canary_recovery",
+      mode: isBroadcastReauth
+        ? "one_shot_canary_broadcast_reauth"
+        : isSignedRecovery
+          ? "one_shot_canary_signed_recovery"
+          : "one_shot_canary_recovery",
       operation_id: opId,
       payload: v.payload,
       record: v.record,
-      allows_sign: !isSignedRecovery,
+      allows_sign: !isSignedRecovery && !isBroadcastReauth,
       allows_broadcast: true,
       autonomous_execution_enabled: false,
       freshly_validated: true,
       is_recovery: true,
       is_signed_recovery: Boolean(isSignedRecovery),
+      is_broadcast_reauth: Boolean(isBroadcastReauth),
       scoped_operation_only: true,
     };
   }

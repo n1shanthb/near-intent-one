@@ -37,6 +37,7 @@ import {
   verifyApprovalMac,
   RECOVERY_KIND,
   SIGNED_TX_RECOVERY_KIND,
+  BROADCAST_REAUTH_KIND,
   QUOTE_DEADLINE_MIN_REMAINING_MS,
   CANARY_STATES,
   CANARY_AMOUNT,
@@ -799,13 +800,15 @@ export async function canaryStepRequestSignature({
   if (!v.ok) return { ok: false, reason: v.reason };
   if (
     v.is_signed_recovery ||
+    v.is_broadcast_reauth ||
     v.payload?.kind === SIGNED_TX_RECOVERY_KIND ||
+    v.payload?.kind === BROADCAST_REAUTH_KIND ||
     v.payload?.forbids_request_signature === true
   ) {
     return {
       ok: false,
       reason: "request_signature_forbidden_on_signed_recovery",
-      note: "On-chain signature already exists — use signed-recovery persist path, never request_signature again",
+      note: "On-chain signature already exists — use broadcast-reauth / signed-recovery path, never request_signature again",
     };
   }
   const need = requireOperatorConfirmation(v.record, "sign");
@@ -1028,6 +1031,7 @@ export async function canaryStepBroadcast({
         digest_hex: v.record.locked_digest_hex,
         quote_hash: v.payload.quote_hash,
         deposit_address: v.payload.deposit_address,
+        local_tx_hash: v.record.locked_local_tx_hash || v.payload.local_tx_hash,
       },
     },
     env
@@ -1039,11 +1043,28 @@ export async function canaryStepBroadcast({
   });
   if (!deadline.ok) return deadline;
 
+  if (
+    v.is_broadcast_reauth ||
+    v.payload?.kind === BROADCAST_REAUTH_KIND
+  ) {
+    if (
+      v.payload.forbids_resign !== true ||
+      v.payload.forbids_tx_mutation !== true ||
+      v.payload.forbids_request_signature !== true
+    ) {
+      return {
+        ok: false,
+        reason: "broadcast_reauth_must_forbid_resign_and_mutation",
+      };
+    }
+  }
+
   if (!invoke) {
     return {
       ok: true,
       dry: true,
       quote_deadline: deadline,
+      is_broadcast_reauth: Boolean(v.is_broadcast_reauth),
       note: "Pass invoke:true to broadcast identical journal bytes once after raw-tx validation",
     };
   }
@@ -1097,6 +1118,71 @@ export async function canaryStepBroadcast({
       may_resign: false,
       note: "Altered bytes or auth mismatch — never re-sign automatically",
     };
+  }
+
+  // Broadcast-reauth: halt on pending nonce / existing known EVM tx before send.
+  if (v.is_broadcast_reauth || v.payload?.kind === BROADCAST_REAUTH_KIND) {
+    const { checkArbExistingTx } = await import("./canaryBroadcastReauth.mjs");
+    const ethCall = (method, params) => a.eth(method, params);
+    const latestJ = await ethCall("eth_getTransactionCount", [
+      MAINNET_IDENTITIES.mpc_evm_address,
+      "latest",
+    ]);
+    const pendingJ = await ethCall("eth_getTransactionCount", [
+      MAINNET_IDENTITIES.mpc_evm_address,
+      "pending",
+    ]);
+    const latest =
+      latestJ?.result != null
+        ? Number.parseInt(String(latestJ.result), 16)
+        : null;
+    const pendingCount =
+      pendingJ?.result != null
+        ? Number.parseInt(String(pendingJ.result), 16)
+        : latest;
+    if (
+      latest == null ||
+      Number.isNaN(latest) ||
+      pendingCount == null ||
+      Number.isNaN(pendingCount)
+    ) {
+      return {
+        ok: false,
+        reason: "arb_nonce_rpc_ambiguous",
+        may_resign: false,
+        note: "Reconcile on-chain; never automatic second send",
+      };
+    }
+    if (pendingCount > latest) {
+      return {
+        ok: false,
+        reason: "arb_pending_nonce_in_flight",
+        may_resign: false,
+        mpc_nonce: latest,
+        mpc_nonce_pending: pendingCount,
+      };
+    }
+    if (latest !== Number(v.record.locked_nonce)) {
+      return {
+        ok: false,
+        reason: "arb_nonce_not_available_for_broadcast",
+        may_resign: false,
+        mpc_nonce: latest,
+        expected_nonce: v.record.locked_nonce,
+      };
+    }
+    const existing = await checkArbExistingTx({
+      evmTxHash: deps.evmTxHash || null,
+      eth: ethCall,
+    });
+    if (!existing.ok || existing.halt_broadcast) {
+      return {
+        ok: false,
+        reason: existing.reason || "arb_existing_tx_blocks_broadcast",
+        may_resign: false,
+        arb_existing_tx: existing,
+      };
+    }
   }
 
   const broadcast = await broadcastWithJournal({
@@ -1200,11 +1286,37 @@ export async function canaryStepSettle({
   if (!verifyApprovalMac(rec, env)) {
     return { ok: false, reason: "approval_mac_invalid" };
   }
-  if (loaded.is_recovery || loaded.is_signed_recovery) {
+  if (
+    loaded.is_recovery ||
+    loaded.is_signed_recovery ||
+    loaded.is_broadcast_reauth
+  ) {
     const p = rec.payload || {};
+    const isBroadcastReauth =
+      loaded.is_broadcast_reauth || p.kind === BROADCAST_REAUTH_KIND;
     const isSigned =
-      loaded.is_signed_recovery || p.kind === SIGNED_TX_RECOVERY_KIND;
-    if (isSigned) {
+      !isBroadcastReauth &&
+      (loaded.is_signed_recovery || p.kind === SIGNED_TX_RECOVERY_KIND);
+    if (isBroadcastReauth) {
+      if (p.kind !== BROADCAST_REAUTH_KIND) {
+        return { ok: false, reason: "broadcast_reauth_kind_required" };
+      }
+      if (p.forbids_request_signature !== true) {
+        return {
+          ok: false,
+          reason: "broadcast_reauth_must_forbid_request_signature",
+        };
+      }
+      if (p.forbids_resign !== true || p.forbids_tx_mutation !== true) {
+        return {
+          ok: false,
+          reason: "broadcast_reauth_must_forbid_resign_and_mutation",
+        };
+      }
+      if (!p.local_tx_hash || !rec.locked_local_tx_hash) {
+        return { ok: false, reason: "broadcast_reauth_bindings_incomplete" };
+      }
+    } else if (isSigned) {
       if (p.kind !== SIGNED_TX_RECOVERY_KIND) {
         return { ok: false, reason: "signed_recovery_kind_required" };
       }

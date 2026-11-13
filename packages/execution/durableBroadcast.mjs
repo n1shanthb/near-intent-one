@@ -101,6 +101,19 @@ export async function broadcastWithJournal({
       };
     }
 
+    // Ambiguous prior send — never automatic second send; operator must reconcile on-chain.
+    if (cur.state === TX_STATE.UNKNOWN) {
+      return {
+        ok: false,
+        reason: "journal_unknown_requires_reconcile",
+        may_resign: false,
+        may_rebroadcast_identical: false,
+        local_tx_hash: cur.local_tx_hash,
+        status: TX_STATE.UNKNOWN,
+        note: "Read-only on-chain reconciliation required; never automatic second send",
+      };
+    }
+
     if (cur.state === TX_STATE.REVOKED_AFTER_SIGN) {
       return {
         ok: false,

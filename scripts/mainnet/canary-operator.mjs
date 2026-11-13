@@ -42,6 +42,10 @@ import {
   createSignedTxRecoveryAuthorization,
   persistSignedRawCanary,
 } from "../../packages/mainnet/canarySignedRecovery.mjs";
+import {
+  inspectBroadcastReauth,
+  createBroadcastReauthAuthorization,
+} from "../../packages/mainnet/canaryBroadcastReauth.mjs";
 import { redactSecrets } from "../../packages/mainnet/agentCredentials.mjs";
 
 function arg(name, def = null) {
@@ -80,6 +84,8 @@ async function main() {
   inspect-signed-recovery --op <id> --near-tx <signingParentTx> [--propose-tx <hash>]
   create-signed-recovery-auth --op <id> --near-tx <signingParentTx> [--propose-tx <hash>] [--confirm-signed-recovery]
   persist-signed-raw --op <id> [--near-tx <signingParentTx>] [--propose-tx <hash>] [--confirm-persist] [--invoke]
+  inspect-broadcast-reauth --op <id> [--near-tx <signingParentTx>] [--propose-tx <hash>]
+  create-broadcast-reauth --op <id> [--near-tx <signingParentTx>] [--propose-tx <hash>] [--confirm-broadcast-reauth]
   show-abort --op <id>
 `);
     return;
@@ -157,6 +163,29 @@ async function main() {
       nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
       operatorConfirmed: flag("confirm-persist"),
       invoke,
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "inspect-broadcast-reauth") {
+    if (!op) throw new Error("--op required");
+    const r = await inspectBroadcastReauth({
+      operationId: op,
+      nearSignTx: arg("near-tx"),
+      nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
+  if (cmd === "create-broadcast-reauth") {
+    if (!op) throw new Error("--op required");
+    const r = await createBroadcastReauthAuthorization({
+      operationId: op,
+      nearSignTx: arg("near-tx"),
+      nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
+      operatorConfirmed: flag("confirm-broadcast-reauth"),
     });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     return;

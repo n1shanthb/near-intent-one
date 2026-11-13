@@ -69,6 +69,10 @@ export const RECOVERY_KIND = "one_shot_mainnet_canary_recovery_v1";
 export const SIGNED_TX_RECOVERY_KIND =
   "one_shot_mainnet_canary_signed_recovery_v1";
 export const DEFAULT_SIGNED_RECOVERY_TTL_MS = 15 * 60 * 1000;
+/** Short-lived broadcast-only reauth — never extends signed-recovery TTL. */
+export const BROADCAST_REAUTH_KIND =
+  "one_shot_mainnet_canary_broadcast_reauth_v1";
+export const DEFAULT_BROADCAST_REAUTH_TTL_MS = 10 * 60 * 1000;
 
 export function canaryStoreDir(env = process.env) {
   return (
@@ -120,6 +124,10 @@ export function recoveryApprovalPath(operationId, dir) {
 
 export function signedRecoveryApprovalPath(operationId, dir) {
   return join(dir, `signed-recovery-${operationId}.json`);
+}
+
+export function broadcastReauthApprovalPath(operationId, dir) {
+  return join(dir, `broadcast-reauth-${operationId}.json`);
 }
 
 function hmacKey(env = process.env) {
@@ -191,6 +199,42 @@ function canonicalPayload(p) {
       near_sign_tx: p.near_sign_tx || null,
       forbids_propose: true,
       forbids_request_signature: true,
+      digest_hex: p.digest_hex ? String(p.digest_hex).toLowerCase() : null,
+      local_tx_hash: p.local_tx_hash
+        ? String(p.local_tx_hash).toLowerCase()
+        : null,
+      recovered_signer: p.recovered_signer
+        ? String(p.recovered_signer).toLowerCase()
+        : null,
+      quote_deadline_ms:
+        p.quote_deadline_ms != null ? Number(p.quote_deadline_ms) : null,
+      min_amount_out: p.min_amount_out != null ? String(p.min_amount_out) : null,
+      recipient: p.recipient ? String(p.recipient).toLowerCase() : null,
+      refund_to: p.refund_to ? String(p.refund_to).toLowerCase() : null,
+      base_usdc_before:
+        p.base_usdc_before != null ? String(p.base_usdc_before) : null,
+      locked_nonce: p.locked_nonce != null ? Number(p.locked_nonce) : null,
+      locked_gas_price:
+        p.locked_gas_price != null ? String(p.locked_gas_price) : null,
+      locked_gas_limit:
+        p.locked_gas_limit != null ? String(p.locked_gas_limit) : null,
+    });
+  }
+  if (p.kind === BROADCAST_REAUTH_KIND) {
+    return JSON.stringify({
+      ...base,
+      kind: BROADCAST_REAUTH_KIND,
+      broadcast_reauth_payload_version: 1,
+      recovery_of_fingerprint: p.recovery_of_fingerprint || null,
+      prior_recovery_fingerprint: p.prior_recovery_fingerprint || null,
+      prior_signed_recovery_fingerprint:
+        p.prior_signed_recovery_fingerprint || null,
+      near_propose_tx: p.near_propose_tx || null,
+      near_sign_tx: p.near_sign_tx || null,
+      forbids_propose: true,
+      forbids_request_signature: true,
+      forbids_resign: true,
+      forbids_tx_mutation: true,
       digest_hex: p.digest_hex ? String(p.digest_hex).toLowerCase() : null,
       local_tx_hash: p.local_tx_hash
         ? String(p.local_tx_hash).toLowerCase()
@@ -341,9 +385,33 @@ export function loadSignedTxRecoveryAuthorization(
   return { ok: true, record, path, is_signed_recovery: true, is_recovery: true };
 }
 
+export function loadBroadcastReauthAuthorization(
+  operationId,
+  { env = process.env, storeDir = null } = {}
+) {
+  const dir = storeDir || canaryStoreDir(env);
+  const path = broadcastReauthApprovalPath(operationId, dir);
+  if (!existsSync(path)) {
+    return { ok: false, reason: "broadcast_reauth_auth_not_found" };
+  }
+  const record = JSON.parse(readFileSync(path, "utf8"));
+  if (record?.payload?.kind !== BROADCAST_REAUTH_KIND) {
+    return { ok: false, reason: "not_broadcast_reauth_authorization" };
+  }
+  return {
+    ok: true,
+    record,
+    path,
+    is_broadcast_reauth: true,
+    is_signed_recovery: false,
+    is_recovery: true,
+  };
+}
+
 /**
- * Validate active original, unused recovery, or unused signed-tx recovery auth.
- * Prefer signed-tx recovery when present; else recovery when original is used.
+ * Validate executable auth. Prefer broadcast-reauth, then signed-recovery,
+ * then propose-recovery, then original. Never falls through an existing
+ * broadcast-reauth failure to an older auth.
  */
 export function validateExecutableApproval(
   operationId,
@@ -356,9 +424,28 @@ export function validateExecutableApproval(
     preferRecovery = false,
     allowRecovery = true,
     allowSignedRecovery = true,
+    allowBroadcastReauth = true,
   } = {}
 ) {
   const original = loadCanaryApproval(operationId, { env, storeDir });
+  const broadcastReauth =
+    allowRecovery && allowBroadcastReauth
+      ? loadBroadcastReauthAuthorization(operationId, { env, storeDir })
+      : { ok: false };
+  if (broadcastReauth.ok) {
+    return validateApprovalRecord(broadcastReauth.record, {
+      operationId,
+      env,
+      nowMs,
+      requireQuoteBound,
+      expected,
+      path: broadcastReauth.path,
+      is_recovery: true,
+      is_signed_recovery: false,
+      is_broadcast_reauth: true,
+    });
+  }
+
   const signed =
     allowRecovery && allowSignedRecovery
       ? loadSignedTxRecoveryAuthorization(operationId, { env, storeDir })
@@ -373,6 +460,7 @@ export function validateExecutableApproval(
       path: signed.path,
       is_recovery: true,
       is_signed_recovery: true,
+      is_broadcast_reauth: false,
     });
   }
 
@@ -395,6 +483,7 @@ export function validateExecutableApproval(
       path: recovery.path,
       is_recovery: true,
       is_signed_recovery: false,
+      is_broadcast_reauth: false,
     });
   }
   if (!original.ok) return original;
@@ -407,6 +496,7 @@ export function validateExecutableApproval(
     path: original.path,
     is_recovery: false,
     is_signed_recovery: false,
+    is_broadcast_reauth: false,
   });
 }
 
@@ -421,6 +511,7 @@ function validateApprovalRecord(
     path,
     is_recovery,
     is_signed_recovery = false,
+    is_broadcast_reauth = false,
   }
 ) {
   if (!verifyApprovalMac(record, env)) {
@@ -471,7 +562,30 @@ function validateApprovalRecord(
   if (requireQuoteBound && (!p.quote_hash || !p.deposit_address)) {
     return { ok: false, reason: "approval_quote_not_bound" };
   }
-  if (is_signed_recovery) {
+  if (is_broadcast_reauth) {
+    if (p.kind !== BROADCAST_REAUTH_KIND) {
+      return { ok: false, reason: "broadcast_reauth_kind_required" };
+    }
+    if (p.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_must_forbid_propose" };
+    }
+    if (p.forbids_request_signature !== true) {
+      return { ok: false, reason: "broadcast_reauth_must_forbid_request_signature" };
+    }
+    if (p.forbids_resign !== true || p.forbids_tx_mutation !== true) {
+      return { ok: false, reason: "broadcast_reauth_must_forbid_resign_and_mutation" };
+    }
+    if (!p.near_sign_tx || !p.digest_hex || !p.local_tx_hash) {
+      return { ok: false, reason: "broadcast_reauth_bindings_incomplete" };
+    }
+    if (
+      expected.local_tx_hash &&
+      String(p.local_tx_hash).toLowerCase() !==
+        String(expected.local_tx_hash).toLowerCase()
+    ) {
+      return { ok: false, reason: "broadcast_reauth_local_tx_hash_mismatch" };
+    }
+  } else if (is_signed_recovery) {
     if (p.kind !== SIGNED_TX_RECOVERY_KIND) {
       return { ok: false, reason: "signed_recovery_kind_required" };
     }
@@ -494,17 +608,20 @@ function validateApprovalRecord(
   }
   return {
     ok: true,
-    mode: is_signed_recovery
-      ? "one_shot_canary_signed_recovery"
-      : is_recovery
-        ? "one_shot_canary_recovery"
-        : "one_shot_canary",
+    mode: is_broadcast_reauth
+      ? "one_shot_canary_broadcast_reauth"
+      : is_signed_recovery
+        ? "one_shot_canary_signed_recovery"
+        : is_recovery
+          ? "one_shot_canary_recovery"
+          : "one_shot_canary",
     operation_id: operationId,
     payload: p,
     record,
     path,
-    is_recovery: Boolean(is_recovery || is_signed_recovery),
+    is_recovery: Boolean(is_recovery || is_signed_recovery || is_broadcast_reauth),
     is_signed_recovery: Boolean(is_signed_recovery),
+    is_broadcast_reauth: Boolean(is_broadcast_reauth),
   };
 }
 
@@ -564,23 +681,45 @@ export function validateCanaryApproval(
 }
 
 /**
- * Prefer signed-tx recovery, then propose-recovery, then original.
+ * Prefer broadcast-reauth, then signed-tx recovery, then propose-recovery, then original.
  * Never mutates the original consumed approval or prior FAILED recovery.
  */
 export function resolveWritableApproval(
   operationId,
   { env = process.env, storeDir = null } = {}
 ) {
+  const broadcastReauth = loadBroadcastReauthAuthorization(operationId, {
+    env,
+    storeDir,
+  });
+  if (broadcastReauth.ok) {
+    return {
+      ...broadcastReauth,
+      is_recovery: true,
+      is_broadcast_reauth: true,
+      is_signed_recovery: false,
+    };
+  }
   const signed = loadSignedTxRecoveryAuthorization(operationId, {
     env,
     storeDir,
   });
   if (signed.ok) {
-    return { ...signed, is_recovery: true, is_signed_recovery: true };
+    return {
+      ...signed,
+      is_recovery: true,
+      is_signed_recovery: true,
+      is_broadcast_reauth: false,
+    };
   }
   const recovery = loadRecoveryAuthorization(operationId, { env, storeDir });
   if (recovery.ok) {
-    return { ...recovery, is_recovery: true, is_signed_recovery: false };
+    return {
+      ...recovery,
+      is_recovery: true,
+      is_signed_recovery: false,
+      is_broadcast_reauth: false,
+    };
   }
   const original = loadCanaryApproval(operationId, { env, storeDir });
   if (original.ok) return { ...original, is_recovery: false };
