@@ -1,0 +1,61 @@
+{
+  "paperGate": {
+    "ok": true,
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false,
+      "observe_only": true,
+      "unlock_attempted_ignored": false,
+      "auth_gates_raw": {
+        "network_is_mainnet": false,
+        "mainnet_mode": false,
+        "allow_sign": false,
+        "allow_broadcast": false,
+        "canary_approved": false,
+        "public_demo_safe": true
+      },
+      "note": "J3 default hard-false; canary one-shot requires fresh disk validation"
+    }
+  },
+  "limits": {
+    "max_trade_usdc": 1,
+    "daily_notional_usdc": 5,
+    "daily_loss_usdc": 1,
+    "min_net_edge_bps": 5,
+    "max_slippage_bps": 50,
+    "quote_max_age_ms": 60000,
+    "kill_switch": false,
+    "funded_execution": false
+  },
+  "shadows": [
+    {
+      "route": "m1_eth_usdc_to_near_usdc",
+      "decision": "PAPER_SKIP",
+      "reasons": [
+        "edge_below_min"
+      ],
+      "edge_bps": -3563.634336,
+      "net_usdc": -0.3563634336,
+      "policy_fit": "PASS"
+    },
+    {
+      "route": "m2_base_usdc_to_eth_usdc",
+      "decision": "PAPER_SKIP",
+      "reasons": [
+        "policy_floor_fail",
+        "edge_below_min"
+      ],
+      "edge_bps": -12022.873152,
+      "net_usdc": -0.6011436576,
+      "policy_fit": "BLOCKED"
+    }
+  ],
+  "daily": {
+    "day": "2026-11-13",
+    "notional_usdc": 0,
+    "realized_pnl_usdc": 0,
+    "trades": 0,
+    "rejects": 2
+  }
+}

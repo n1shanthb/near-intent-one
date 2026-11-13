@@ -1,0 +1,355 @@
+{
+  "ok": true,
+  "mutations_invoked": false,
+  "amount": "1000000",
+  "slip_bps": 50,
+  "scoped_funded_only": [
+    "m1_eth_usdc_to_near_usdc",
+    "m2_base_usdc_to_eth_usdc"
+  ],
+  "rows": [
+    {
+      "id": "eth_usdc_to_near_usdc",
+      "funded_scope": "mission1",
+      "note": null,
+      "source": "ethereum",
+      "dest": "near",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "995395",
+      "min_out": "990418",
+      "refund_fee": "300000",
+      "withdraw_fee": "4403",
+      "policy_fit": "PASS",
+      "feasibility": "QUOTE_OK",
+      "gaps": [
+        "requires_eth_l1_gas_funding"
+      ],
+      "in_j9_funded_scope": true
+    },
+    {
+      "id": "base_usdc_to_eth_usdc",
+      "funded_scope": "mission2",
+      "note": null,
+      "source": "base",
+      "dest": "ethereum",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "699798",
+      "min_out": "696299",
+      "refund_fee": "2400",
+      "withdraw_fee": "300000",
+      "policy_fit": "BLOCKED",
+      "feasibility": "POLICY_BLOCKED",
+      "gaps": [
+        "policy_floor:BLOCKED"
+      ],
+      "in_j9_funded_scope": true
+    },
+    {
+      "id": "arb_usdc_to_base_usdc",
+      "funded_scope": "done_j8b",
+      "note": "J8B completed — do not reopen",
+      "source": "arbitrum",
+      "dest": "base",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "997398",
+      "min_out": "992411",
+      "refund_fee": "5300",
+      "withdraw_fee": "2400",
+      "policy_fit": "PASS",
+      "feasibility": "QUOTE_OK",
+      "gaps": [],
+      "in_j9_funded_scope": false
+    },
+    {
+      "id": "arb_usdc_to_eth_usdc",
+      "funded_scope": "discovery_only",
+      "note": null,
+      "source": "arbitrum",
+      "dest": "ethereum",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "699798",
+      "min_out": "696299",
+      "refund_fee": "5300",
+      "withdraw_fee": "300000",
+      "policy_fit": "BLOCKED",
+      "feasibility": "POLICY_BLOCKED",
+      "gaps": [
+        "policy_floor:BLOCKED"
+      ],
+      "in_j9_funded_scope": false
+    },
+    {
+      "id": "eth_usdc_to_base_usdc",
+      "funded_scope": "discovery_only",
+      "note": null,
+      "source": "ethereum",
+      "dest": "base",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "997398",
+      "min_out": "992411",
+      "refund_fee": "300000",
+      "withdraw_fee": "2400",
+      "policy_fit": "PASS",
+      "feasibility": "QUOTE_OK",
+      "gaps": [
+        "requires_eth_l1_gas_funding"
+      ],
+      "in_j9_funded_scope": false
+    },
+    {
+      "id": "base_usdc_to_near_usdc",
+      "funded_scope": "discovery_only",
+      "note": null,
+      "source": "base",
+      "dest": "near",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "995395",
+      "min_out": "990418",
+      "refund_fee": "2400",
+      "withdraw_fee": "4403",
+      "policy_fit": "PASS",
+      "feasibility": "QUOTE_OK",
+      "gaps": [],
+      "in_j9_funded_scope": false
+    },
+    {
+      "id": "eth_usdc_to_wrap_near",
+      "funded_scope": "discovery_only",
+      "note": "CROSS_DECIMAL — policy slippage unsafe",
+      "source": "ethereum",
+      "dest": "near",
+      "signing_primitive": {
+        "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+        "custody_model": "policy_mpc_evm",
+        "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+        "may_use": true,
+        "policy_path": "quoted_evm_transfer"
+      },
+      "decimals": "UNSAFE_LOOSE_SLIPPAGE",
+      "quote_ok": true,
+      "amount_out": "283499574679373684210525",
+      "min_out": "282082076805976815789472",
+      "refund_fee": "300000",
+      "withdraw_fee": "0",
+      "policy_fit": "PASS",
+      "feasibility": "QUOTE_OK",
+      "gaps": [
+        "decimals:UNSAFE_LOOSE_SLIPPAGE",
+        "requires_eth_l1_gas_funding"
+      ],
+      "in_j9_funded_scope": false
+    },
+    {
+      "id": "near_usdc_to_eth_usdc",
+      "funded_scope": "discovery_only",
+      "note": "NEAR-origin signing path not in J8B EVM canary executor",
+      "source": "near",
+      "dest": "ethereum",
+      "signing_primitive": {
+        "primitive": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+        "custody_model": "policy_near_account",
+        "note": "NEP-141 deposit is NOT authorized by EVM Chain Signatures MPC path",
+        "may_use": false,
+        "policy_path": "near_ft_separate_from_quoted_evm"
+      },
+      "decimals": "SAFE_SAME_DECIMALS",
+      "quote_ok": true,
+      "amount_out": "699798",
+      "min_out": "696299",
+      "refund_fee": "4403",
+      "withdraw_fee": "300000",
+      "policy_fit": "BLOCKED",
+      "feasibility": "POLICY_BLOCKED",
+      "gaps": [
+        "near_origin_evm_canary_executor_unsupported",
+        "policy_floor:BLOCKED"
+      ],
+      "in_j9_funded_scope": false
+    }
+  ],
+  "summary": {
+    "quote_ok": 8,
+    "policy_pass": 5,
+    "engineering_gaps": [],
+    "discovery_only": [
+      {
+        "id": "arb_usdc_to_eth_usdc",
+        "funded_scope": "discovery_only",
+        "note": null,
+        "source": "arbitrum",
+        "dest": "ethereum",
+        "signing_primitive": {
+          "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+          "custody_model": "policy_mpc_evm",
+          "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+          "may_use": true,
+          "policy_path": "quoted_evm_transfer"
+        },
+        "decimals": "SAFE_SAME_DECIMALS",
+        "quote_ok": true,
+        "amount_out": "699798",
+        "min_out": "696299",
+        "refund_fee": "5300",
+        "withdraw_fee": "300000",
+        "policy_fit": "BLOCKED",
+        "feasibility": "POLICY_BLOCKED",
+        "gaps": [
+          "policy_floor:BLOCKED"
+        ],
+        "in_j9_funded_scope": false
+      },
+      {
+        "id": "eth_usdc_to_base_usdc",
+        "funded_scope": "discovery_only",
+        "note": null,
+        "source": "ethereum",
+        "dest": "base",
+        "signing_primitive": {
+          "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+          "custody_model": "policy_mpc_evm",
+          "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+          "may_use": true,
+          "policy_path": "quoted_evm_transfer"
+        },
+        "decimals": "SAFE_SAME_DECIMALS",
+        "quote_ok": true,
+        "amount_out": "997398",
+        "min_out": "992411",
+        "refund_fee": "300000",
+        "withdraw_fee": "2400",
+        "policy_fit": "PASS",
+        "feasibility": "QUOTE_OK",
+        "gaps": [
+          "requires_eth_l1_gas_funding"
+        ],
+        "in_j9_funded_scope": false
+      },
+      {
+        "id": "base_usdc_to_near_usdc",
+        "funded_scope": "discovery_only",
+        "note": null,
+        "source": "base",
+        "dest": "near",
+        "signing_primitive": {
+          "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+          "custody_model": "policy_mpc_evm",
+          "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+          "may_use": true,
+          "policy_path": "quoted_evm_transfer"
+        },
+        "decimals": "SAFE_SAME_DECIMALS",
+        "quote_ok": true,
+        "amount_out": "995395",
+        "min_out": "990418",
+        "refund_fee": "2400",
+        "withdraw_fee": "4403",
+        "policy_fit": "PASS",
+        "feasibility": "QUOTE_OK",
+        "gaps": [],
+        "in_j9_funded_scope": false
+      },
+      {
+        "id": "eth_usdc_to_wrap_near",
+        "funded_scope": "discovery_only",
+        "note": "CROSS_DECIMAL — policy slippage unsafe",
+        "source": "ethereum",
+        "dest": "near",
+        "signing_primitive": {
+          "primitive": "EVM_ERC20_TRANSFER_TO_DEPOSIT",
+          "custody_model": "policy_mpc_evm",
+          "note": "Use propose_quoted_evm_transfer only — transfer(deposit, amount); no arbitrary calldata",
+          "may_use": true,
+          "policy_path": "quoted_evm_transfer"
+        },
+        "decimals": "UNSAFE_LOOSE_SLIPPAGE",
+        "quote_ok": true,
+        "amount_out": "283499574679373684210525",
+        "min_out": "282082076805976815789472",
+        "refund_fee": "300000",
+        "withdraw_fee": "0",
+        "policy_fit": "PASS",
+        "feasibility": "QUOTE_OK",
+        "gaps": [
+          "decimals:UNSAFE_LOOSE_SLIPPAGE",
+          "requires_eth_l1_gas_funding"
+        ],
+        "in_j9_funded_scope": false
+      },
+      {
+        "id": "near_usdc_to_eth_usdc",
+        "funded_scope": "discovery_only",
+        "note": "NEAR-origin signing path not in J8B EVM canary executor",
+        "source": "near",
+        "dest": "ethereum",
+        "signing_primitive": {
+          "primitive": "NEAR_NATIVE_FT_TRANSFER_OR_STORAGE",
+          "custody_model": "policy_near_account",
+          "note": "NEP-141 deposit is NOT authorized by EVM Chain Signatures MPC path",
+          "may_use": false,
+          "policy_path": "near_ft_separate_from_quoted_evm"
+        },
+        "decimals": "SAFE_SAME_DECIMALS",
+        "quote_ok": true,
+        "amount_out": "699798",
+        "min_out": "696299",
+        "refund_fee": "4403",
+        "withdraw_fee": "300000",
+        "policy_fit": "BLOCKED",
+        "feasibility": "POLICY_BLOCKED",
+        "gaps": [
+          "near_origin_evm_canary_executor_unsupported",
+          "policy_floor:BLOCKED"
+        ],
+        "in_j9_funded_scope": false
+      }
+    ]
+  }
+}

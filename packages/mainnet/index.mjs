@@ -58,11 +58,26 @@ export {
   assertRouteAssetIsolation,
 } from "./canaryRouteProfiles.mjs";
 export { runMission1EthNearPreflight } from "./mission1EthNear.mjs";
+export { runMission2BaseEthPreflight } from "./mission2BaseEth.mjs";
+export { runJ9RouteMatrix } from "./j9RouteMatrix.mjs";
+export { buildJ9FundingPlan } from "./j9FundingPlan.mjs";
+export {
+  createPaperState,
+  evaluatePaperSignal,
+  shadowQuoteRoute,
+  assertPaperFundedDisabled,
+  PAPER_DEFAULT_LIMITS,
+} from "./paperTrading.mjs";
 export {
   fetchEthereumGasPrice,
   estimateEthereumErc20TransferGas,
   evaluateEthereumGasEconomics,
 } from "./ethereumFunding.mjs";
+export {
+  fetchBaseGasPrice,
+  chooseAffordableUsdcAmount,
+  evaluateBaseGasEconomics,
+} from "./baseFunding.mjs";
 export {
   loadAgentOpsCredentials,
   resolveOpsKeyPath,

@@ -1,0 +1,141 @@
+{
+  "ok": false,
+  "verdict": "NO-GO",
+  "status": "AWAITING_FUNDING_OR_FIX",
+  "mutations_invoked": false,
+  "route": {
+    "id": "m2_base_usdc_to_eth_usdc",
+    "label": "Base USDC → Ethereum USDC",
+    "amount": "500000",
+    "amount_label": "0.5 USDC",
+    "requested_amount": "1000000",
+    "source_chain_id": 8453,
+    "dest_chain_id": 1,
+    "source_token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "dest_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "asset_out": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "signer_mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "quote_slippage_bps": 50,
+    "expected_actions": [
+      "ERC-20 transfer USDC (Base) from MPC → 1Click deposit",
+      "1Click fill to Ethereum native USDC at MPC",
+      "Verify Ethereum USDC delta ≥ min_out",
+      "NEAR reconcile_pending after verified settlement (owner Ledger if needed)"
+    ],
+    "journal_protections": [
+      "exact-once broadcast via durable tx journal",
+      "nonce bind before broadcast",
+      "UNKNOWN RPC halt — no automatic second send",
+      "separate Mission2 approval — never reuse J8B auth"
+    ]
+  },
+  "balances": {
+    "base_usdc_raw": "997398",
+    "base_usdc_ui": 0.997398,
+    "base_eth_wei": "0",
+    "base_eth": 0,
+    "eth_usdc_at_mpc_raw": "0",
+    "afford": {
+      "ok": true,
+      "amount_raw": "500000",
+      "amount_usdc": 0.5,
+      "balance_raw": "997398",
+      "shortfall_for_1usdc": "2602"
+    },
+    "j8b_note": "J8B delivered 997398 Base USDC raw; this preflight re-reads live balance and does not assume sufficiency for 1 USDC"
+  },
+  "policy": {
+    "paused": true,
+    "mandate_epoch": 2,
+    "max_trade_value": "5000000",
+    "max_slippage_bps": 100,
+    "chain_8453_ok": true,
+    "asset_in_ok": true,
+    "asset_out_ok": true,
+    "recipient_ok": true,
+    "refund_ok": true
+  },
+  "base": {
+    "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "nonce_latest": 0,
+    "nonce_pending": 0,
+    "gas_price": {
+      "ok": true,
+      "gas_price_wei": "6000000",
+      "gas_price_gwei": 0.006
+    },
+    "gas_estimate": {
+      "ok": true,
+      "estimated": true,
+      "gas_limit": "54253",
+      "eth_estimate": "45211"
+    },
+    "economics": {
+      "gas_price_wei": "6000000",
+      "gas_limit": "54253",
+      "fee_wei": "325518000000",
+      "fee_eth": 3.25518e-7,
+      "fee_usd_approx": 0.0010416576,
+      "trade_usdc": 0.5,
+      "within_gas_price_ceiling": true,
+      "within_max_gas_budget": true,
+      "verdict": "OK"
+    }
+  },
+  "quote": {
+    "ok": true,
+    "dry": true,
+    "amount_in": "500000",
+    "amount_out": "199898",
+    "min_amount_out": "198898",
+    "deposit_address": null,
+    "refund_fee": "2400",
+    "withdraw_fee": "300000",
+    "time_estimate": 42,
+    "policy_fit": {
+      "label": "m2_base_usdc_to_eth_usdc",
+      "amount_in": "500000",
+      "min_amount_out": "198898",
+      "max_slippage_bps": 100,
+      "policy_floor": "495000",
+      "result": "BLOCKED",
+      "altered_values": false
+    },
+    "decimals": {
+      "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "asset_out": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "decimals_in": 6,
+      "decimals_out": 6,
+      "same_decimal_scale": true,
+      "amount_in": "500000",
+      "min_amount_out": "198898",
+      "policy_floor": "495000",
+      "policy_would_accept": false,
+      "classification": "SAFE_SAME_DECIMALS",
+      "can_safely_validate_value_slippage_exposure": true,
+      "risks": [],
+      "recommendation": "route_ok_for_raw_policy_checks"
+    }
+  },
+  "blockers": [
+    "mpc_base_native_eth_zero",
+    "policy_slippage_floor_rejects_min_out:min=198898:floor=495000",
+    "structural_withdraw_fee:300000_raw_usdc_vs_max_trade_5usdc_likely_unpassable"
+  ],
+  "warnings": [
+    "using_reduced_canary_amount:500000_due_to_base_balance_997398"
+  ],
+  "approval_boundary": {
+    "stop": true,
+    "requires_explicit_approval_for": [
+      "Any Base ETH / USDC top-up if shortfall remains",
+      "New Mission 2 operation approval (never reuse J8B)",
+      "Funded quote + Ledger unpause window",
+      "propose / request_signature / broadcast",
+      "reconcile_pending after Ethereum USDC delta verify"
+    ]
+  }
+}
