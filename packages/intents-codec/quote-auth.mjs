@@ -60,6 +60,11 @@ export function attestationId(messageBytes) {
  * Independent attestor: validates Tidepool quote against agent request BEFORE signing.
  * Refuses arbitrary destinations that are not the quote's depositAddress.
  */
+/**
+ * Trusted app-config modes (never taken from quoteResponse fields):
+ * - productionMode / mainnetFundedPath: pinned official 1Click key, no unverified escape
+ * - allowTestFixtureMode: local unit tests only (env NIO_ALLOW_TEST_FIXTURE=1 OR explicit true)
+ */
 export function attestTidepoolQuote({
   quoteResponse,
   agentRequest,
@@ -70,14 +75,25 @@ export function attestTidepoolQuote({
   secretKey64,
   tidepoolManagerPubKey = null,
   /**
-   * J5 default: refuse to attest unless official 1Click signature verifies.
-   * Legacy Gate F may pass allowUnverifiedOneClick=true explicitly (not for mainnet funded).
+   * Legacy Gate F/testnet only. Forbidden whenever productionMode/mainnetFundedPath.
    */
   allowUnverifiedOneClick = false,
   maxAgeMs,
   nowMs,
   /** Production mainnet funded path — forces pinned official key + bans unverified escape */
   mainnetFundedPath = false,
+  /** Alias — same as mainnetFundedPath when true */
+  productionMode = false,
+  /**
+   * Trusted config only: allow test manager-key overrides for synthetic fixtures.
+   * NEVER derived from quoteResponse._fixture (untrusted).
+   */
+  allowTestFixtureMode = false,
+  /** Live policy limits for economic checks (mainnet production). */
+  policyLimits = null,
+  allowedDestinations = null,
+  allowedAssets = null,
+  allowedChains = null,
 }) {
   const checks = [];
   const fail = (reason) => {
@@ -89,12 +105,23 @@ export function attestTidepoolQuote({
     process.env.NIO_NETWORK === "mainnet" ||
     process.env.NEAR_NETWORK === "mainnet";
   const fundedShape = quoteResponse?.quoteRequest?.dry === false;
-  const isLocalFixture = quoteResponse?._fixture === true;
-  const enforceMainnetFunded =
-    !isLocalFixture &&
-    (mainnetFundedPath === true || (envMainnet && fundedShape));
-  if (enforceMainnetFunded && allowUnverifiedOneClick) {
-    return fail("allowUnverifiedOneClick_forbidden_on_mainnet_funded_path");
+  // Trusted config only — ignore any quoteResponse._fixture flag (attacker-controlled).
+  const testFixtureTrusted =
+    allowTestFixtureMode === true ||
+    process.env.NIO_ALLOW_TEST_FIXTURE === "1";
+  const production =
+    productionMode === true ||
+    mainnetFundedPath === true ||
+    (envMainnet && fundedShape && !testFixtureTrusted);
+
+  if (production && allowUnverifiedOneClick) {
+    return fail("allowUnverifiedOneClick_forbidden_on_production_path");
+  }
+  if (production && tidepoolManagerPubKey) {
+    return fail("alternate_manager_key_forbidden_on_production_path");
+  }
+  if (production && !fundedShape) {
+    return fail("production_requires_non_dry_signed_quote");
   }
 
   if (!quoteResponse?.quote?.depositAddress) {
@@ -136,13 +163,13 @@ export function attestTidepoolQuote({
   });
 
   // Official 1Click signature MUST verify before we generate our attestation.
-  // Mainnet funded: pinned official manager key only (no test override).
+  // Production: pinned official manager key only (no test override).
   const oneClick = verifySignedOneClickQuote(quoteResponse, {
     agentRequest,
-    managerPublicKey: enforceMainnetFunded
+    managerPublicKey: production
       ? undefined
       : tidepoolManagerPubKey || undefined,
-    requirePinnedOfficialKey: enforceMainnetFunded,
+    requirePinnedOfficialKey: production,
     maxAgeMs,
     nowMs,
     forbidLlmDeposit: true,
@@ -157,25 +184,81 @@ export function attestTidepoolQuote({
     escrow_in_signed_hash: oneClick.escrow_in_signed_hash === true,
     manager_key_mode: oneClick.manager_key_mode || null,
   });
-  if (!oneClick.ok && !allowUnverifiedOneClick) {
+  if (!oneClick.ok && !(allowUnverifiedOneClick && !production)) {
     return fail(`one_click_verify_failed:${oneClick.reason}`);
   }
-  if (!oneClick.ok && allowUnverifiedOneClick) {
+  if (!oneClick.ok && allowUnverifiedOneClick && !production) {
     checks.push({
       ok: true,
       check: "allow_unverified_legacy_escape",
-      note: "explicit allowUnverifiedOneClick — LEGACY TESTNET ONLY; forbidden on mainnet funded",
+      note: "explicit allowUnverifiedOneClick — LEGACY TESTNET ONLY; forbidden on production",
     });
   }
   // Escrow authenticity: attestor signature alone is NOT proof of 1Click escrow origin
   // unless the official signed subset covers depositAddress (non-dry + SDK >=0.1.26).
-  if (fundedShape && oneClick.ok && !oneClick.escrow_in_signed_hash) {
+  if ((fundedShape || production) && oneClick.ok && !oneClick.escrow_in_signed_hash) {
     return fail("escrow_not_in_official_signed_hash");
   }
 
   const qh = oneClick.quote_hash || oneClickQuoteHash(quoteResponse);
   const deadlineIso = q.deadline || agentRequest.deadline;
+  if (!deadlineIso || !Number.isFinite(Date.parse(deadlineIso))) {
+    return fail("missing_or_invalid_quote_deadline");
+  }
   const quoteDeadlineNs = String(BigInt(Date.parse(deadlineIso)) * 1_000_000n);
+  const nowNs = BigInt(nowMs ?? Date.now()) * 1_000_000n;
+  if (BigInt(quoteDeadlineNs) <= nowNs) {
+    return fail("quote_deadline_expired");
+  }
+
+  // Custody / chain / asset allowlists when provided (mainnet production)
+  const recipient = String(qr.recipient || agentRequest.recipient || "").toLowerCase();
+  const refundTo = String(qr.refundTo || agentRequest.refundTo || "").toLowerCase();
+  if (Array.isArray(allowedDestinations) && allowedDestinations.length) {
+    const allow = new Set(allowedDestinations.map((d) => String(d).toLowerCase()));
+    if (!allow.has(recipient)) return fail("recipient_not_in_allowed_destinations");
+    if (!allow.has(refundTo)) return fail("refund_to_not_in_allowed_destinations");
+  }
+  if (Array.isArray(allowedAssets) && allowedAssets.length) {
+    const allowA = new Set(allowedAssets.map(String));
+    if (!allowA.has(agentRequest.originAsset)) return fail("asset_in_not_allowed");
+    if (!allowA.has(agentRequest.destinationAsset)) return fail("asset_out_not_allowed");
+  }
+  if (Array.isArray(allowedChains) && allowedChains.length) {
+    const cid = String(chainId);
+    const eip = `eip155:${cid}`;
+    const okChain = allowedChains.some(
+      (c) => String(c) === cid || String(c) === eip || String(c) === `eip155:${cid}`
+    );
+    if (!okChain) return fail("chain_id_not_allowed");
+  }
+
+  // Economic checks vs live policy limits (fail closed when limits supplied)
+  if (policyLimits) {
+    const amountIn = BigInt(q.amountIn);
+    const maxTrade = BigInt(policyLimits.max_trade_value ?? policyLimits.maxTradeValue ?? 0);
+    if (maxTrade > 0n && amountIn > maxTrade) return fail("exceeds_max_trade_value");
+    const slipBps = Number(
+      policyLimits.max_slippage_bps ?? policyLimits.maxSlippageBps ?? 100
+    );
+    const floor = (amountIn * (10000n - BigInt(slipBps))) / 10000n;
+    const minOut = BigInt(q.minAmountOut);
+    if (!(minOut >= floor || minOut >= amountIn)) {
+      return fail(`min_out_below_policy_floor:${minOut}<${floor}`);
+    }
+    const gasCost = BigInt(maxGasPrice) * BigInt(gasLimit);
+    const gasBudget = BigInt(
+      policyLimits.max_gas_budget ?? policyLimits.maxGasBudget ?? 0
+    );
+    if (gasBudget > 0n && gasCost > gasBudget) return fail("exceeds_max_gas_budget");
+    checks.push({
+      ok: true,
+      check: "policy_economics",
+      floor: String(floor),
+      min_out: String(minOut),
+      gas_cost: String(gasCost),
+    });
+  }
 
   const attestation = {
     deposit_address: q.depositAddress.toLowerCase(),

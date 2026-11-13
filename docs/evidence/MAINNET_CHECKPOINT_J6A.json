@@ -1,0 +1,165 @@
+{
+  "checkpoint": "J6A",
+  "at": "2026-11-13T08:34:41.615Z",
+  "node": "v22.13.0",
+  "safety": {
+    "ledger_signed": false,
+    "mainnet_mutations": false,
+    "evm_funding": false,
+    "escrow_deposit": false,
+    "unpause": false,
+    "autonomous": false,
+    "broadcast": false,
+    "secrets_in_evidence": false
+  },
+  "attestor": {
+    "public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+    "secret_path": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-attestor\\attestor.ed25519.json"
+  },
+  "policy": {
+    "paused": true,
+    "autonomous_trading": false,
+    "mandate_epoch": 2,
+    "max_trade_value": "5000000",
+    "max_slippage_bps": 100,
+    "max_gas_budget": "2500000000000000",
+    "token_scope": "allowlist"
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false
+  },
+  "is_trusted_quote_signer_before": false,
+  "fresh_nondry_quote": {
+    "ok": true,
+    "reason": null,
+    "detail": null,
+    "dry": false,
+    "verify": {
+      "ok": true,
+      "verified": true,
+      "reason": null,
+      "quote_hash": "2rbfkAkKNgidNegHSYpmEFRDDAEULrZVYZYHQRko8z9o",
+      "escrow_in_signed_hash": true,
+      "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+      "manager_key_mode": "pinned_official"
+    },
+    "amount_in": "1000000",
+    "amount_out": "997398",
+    "min_amount_out": "994904",
+    "deposit_address": "0x722606420aDD2a4810a38dc8aaDD1EB89dF71470",
+    "correlation_id": "d4a78b28-9f14-45c2-8e9a-1ebacf1eaeb2",
+    "timestamp": "2026-11-13T08:34:44.786Z",
+    "quote_hash": "2rbfkAkKNgidNegHSYpmEFRDDAEULrZVYZYHQRko8z9o",
+    "floor_eval": {
+      "label": "j6a_fresh_nondry",
+      "amount_in": "1000000",
+      "min_amount_out": "994904",
+      "max_slippage_bps": 100,
+      "policy_floor": "990000",
+      "result": "PASS",
+      "altered_values": false
+    },
+    "values_altered": false,
+    "reused_j5_2_quote": false
+  },
+  "attestation": {
+    "result": "PASS",
+    "detail": {
+      "ok": true,
+      "reason": null,
+      "checks": [
+        {
+          "ok": true,
+          "check": "originAsset",
+          "value": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        },
+        {
+          "ok": true,
+          "check": "destinationAsset",
+          "value": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+        },
+        {
+          "ok": true,
+          "check": "amount",
+          "value": "1000000"
+        },
+        {
+          "ok": true,
+          "check": "depositType",
+          "value": "ORIGIN_CHAIN"
+        },
+        {
+          "ok": true,
+          "check": "recipient",
+          "value": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        },
+        {
+          "ok": true,
+          "check": "refundTo",
+          "value": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        },
+        {
+          "ok": true,
+          "check": "deposit_from_quote_only",
+          "depositAddress": "0x722606420aDD2a4810a38dc8aaDD1EB89dF71470"
+        },
+        {
+          "ok": true,
+          "check": "one_click_signature_verify",
+          "verified": true,
+          "reason": null,
+          "quote_hash": "2rbfkAkKNgidNegHSYpmEFRDDAEULrZVYZYHQRko8z9o",
+          "escrow_in_signed_hash": true,
+          "manager_key_mode": "pinned_official"
+        },
+        {
+          "ok": true,
+          "check": "policy_economics",
+          "floor": "990000",
+          "min_out": "994904",
+          "gas_cost": "25000000000000"
+        }
+      ],
+      "attestation": {
+        "deposit_address": "0x722606420add2a4810a38dc8aadd1eb89df71470",
+        "amount_in": "1000000",
+        "asset_in": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "asset_out": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "min_amount_out": "994904",
+        "quote_deadline_ns": "1794818985393000000",
+        "token_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "chain_id": "42161",
+        "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "correlation_id": "d4a78b28-9f14-45c2-8e9a-1ebacf1eaeb2",
+        "quote_hash": "2rbfkAkKNgidNegHSYpmEFRDDAEULrZVYZYHQRko8z9o",
+        "max_gas_price": "100000000",
+        "gas_limit": "250000"
+      },
+      "attestation_id": "eb9bee08693867ef1fbad12cff188461ad5d747ca15e399c6f8b24d5f57ceb12",
+      "publicKey": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+      "trust_model": "one_click_verified_then_trusted_attestor",
+      "signature_present": true,
+      "signature_prefix": "ed25519:2iSwMnCVJc89…",
+      "message_prefix": "QUOTE_AUTH_V2\ndeposit=0x722606420add2a4810a38dc8aadd1eb89df71470\namount_in=10000…"
+    },
+    "local_signature_verify": true,
+    "rust_message_format_ok": true,
+    "negative_expired_blocked": true,
+    "negative_mutated_deposit_blocked": true
+  },
+  "ledger_preview": {
+    "signer": "nishanthb.near",
+    "receiver": "policy.nishanthb.near",
+    "hd_path": "m/44'/397'/0'/0'/1'",
+    "method": "set_trusted_quote_signer",
+    "args_file": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-attestor\\set_trusted_quote_signer.args.json",
+    "register_command": "# DO NOT RUN until J6B approved\n$near = \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\"\n$HD = \"m/44'/397'/0'/0'/1'\"\n$ARGS = \"C:\\Users\\Nishanth\\.nio-secure\\mainnet-attestor\\set_trusted_quote_signer.args.json\"\n\n& $near contract call-function as-transaction policy.nishanthb.near set_trusted_quote_signer file-args $ARGS `\n  prepaid-gas '100.0 Tgas' `\n  attached-deposit '0 NEAR' `\n  sign-as nishanthb.near `\n  network-config mainnet `\n  sign-with-ledger --seed-phrase-hd-path $HD `\n  usb\n",
+    "remove_command": "# EMERGENCY remove — only if needed\n$near = \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\"\n$HD = \"m/44'/397'/0'/0'/1'\"\n$ARGS = \"C:\\Users\\Nishanth\\.nio-secure\\mainnet-attestor\\remove_trusted_quote_signer.args.json\"\n\n& $near contract call-function as-transaction policy.nishanthb.near remove_trusted_quote_signer file-args $ARGS `\n  prepaid-gas '100.0 Tgas' `\n  attached-deposit '0 NEAR' `\n  sign-as nishanthb.near `\n  network-config mainnet `\n  sign-with-ledger --seed-phrase-hd-path $HD `\n  usb\n",
+    "view_command": "& \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\" contract call-function as-read-only policy.nishanthb.near is_trusted_quote_signer json-args \"{\\\"public_key\\\":\\\"ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9\\\"}\" network-config mainnet now",
+    "executed": false
+  },
+  "readiness_j6b": "READY_FOR_J6B_LEDGER_REGISTRATION_APPROVAL"
+}

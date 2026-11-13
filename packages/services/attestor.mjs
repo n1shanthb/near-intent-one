@@ -42,12 +42,24 @@ export function createAttestorService({ seedPath, logger = console }) {
       return { ok: true, role: "attestor", publicKey: attestor.publicKey };
     },
     attest(args) {
-      // Mainnet funded: allowUnverifiedOneClick is prohibited inside attestTidepoolQuote.
+      // Production mainnet: never honor untrusted response flags; force productionMode.
+      const production =
+        Boolean(args.productionMode) || Boolean(args.mainnetFundedPath);
       const result = attestTidepoolQuote({
         ...args,
         secretKey64: attestor.secretKey64,
-        allowUnverifiedOneClick: Boolean(args.allowUnverifiedOneClick),
-        mainnetFundedPath: Boolean(args.mainnetFundedPath),
+        productionMode: production,
+        mainnetFundedPath: production,
+        // Strip any caller attempt to enable escapes on production
+        allowUnverifiedOneClick: production
+          ? false
+          : Boolean(args.allowUnverifiedOneClick),
+        allowTestFixtureMode: production
+          ? false
+          : Boolean(args.allowTestFixtureMode),
+        tidepoolManagerPubKey: production
+          ? null
+          : args.tidepoolManagerPubKey || null,
       });
       // Strip nothing secret from response — attestation has no seed
       return {

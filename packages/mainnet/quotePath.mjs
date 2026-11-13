@@ -311,6 +311,8 @@ export function runLocalQuoteAuthorizationPath({
     gasLimit: String(gasLimit),
     secretKey64: Buffer.from(attestorSecretKey),
     tidepoolManagerPubKey: signed.manager_public_key,
+    // Trusted test config only — never quoteResponse._fixture
+    allowTestFixtureMode: true,
   });
 
   if (!attested.ok) {
