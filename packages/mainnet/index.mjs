@@ -45,8 +45,24 @@ export { buildLedgerRunbook } from "./canaryLedgerRunbook.mjs";
 export {
   monitorOneClickByDeposit,
   verifySourceUsdcTransfer,
+  verifyEvmUsdcDelta,
+  verifyBaseUsdcDelta,
+  verifyNearNep141Delta,
+  checkNearFtStorageRegistered,
   settlementRecoverySteps,
 } from "./canarySettlement.mjs";
+export {
+  M1_ETH_NEAR_USDC,
+  M2_BASE_ETH_USDC,
+  resolveCanaryRouteProfile,
+  assertRouteAssetIsolation,
+} from "./canaryRouteProfiles.mjs";
+export { runMission1EthNearPreflight } from "./mission1EthNear.mjs";
+export {
+  fetchEthereumGasPrice,
+  estimateEthereumErc20TransferGas,
+  evaluateEthereumGasEconomics,
+} from "./ethereumFunding.mjs";
 export {
   loadAgentOpsCredentials,
   resolveOpsKeyPath,
