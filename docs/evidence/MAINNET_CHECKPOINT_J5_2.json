@@ -1,0 +1,1223 @@
+{
+  "checkpoint": "J5.2",
+  "at": "2026-11-13T08:17:55.154Z",
+  "node": "v22.13.0",
+  "sdk": "0.1.26",
+  "safety": {
+    "ledger": false,
+    "mainnet_mutations": false,
+    "evm_funding": false,
+    "escrow_deposits": false,
+    "attestor_registration": false,
+    "unpause": false,
+    "autonomous": false,
+    "broadcast": false,
+    "tls_bypass": false,
+    "values_altered": false,
+    "max_trade_value_raw": "5000000",
+    "policy_slippage_bps": 100
+  },
+  "scan_summary": {
+    "scanned": 60,
+    "pass_count": 25,
+    "blocked_count": 35,
+    "hypothesis": "If slippageTolerance >= policy max_slippage_bps, routing fees often push minAmountOut below floor",
+    "diagnosis": {
+      "reason_histogram": [
+        [
+          "min_out_below_policy_floor",
+          34
+        ],
+        [
+          "hypothesis_slip_tolerance_consumes_full_policy_budget",
+          14
+        ],
+        [
+          "quote_network_error",
+          1
+        ]
+      ],
+      "assessment": "structural_or_fee: minAmountOut below 100bps floor — try lower slippageTolerance or accept larger retention loss; do not weaken policy"
+    }
+  },
+  "best_dry": {
+    "status": "PASS",
+    "reasons": [],
+    "route_id": "base_usdc_to_arb_usdc",
+    "source_chain": "base",
+    "destination_chain": "arbitrum",
+    "prefer_low_gas": true,
+    "amount_usdc": 5,
+    "amount_in_raw": "5000000",
+    "amount_out_raw": "4993695",
+    "min_amount_out_raw": "4981210",
+    "slippage_tolerance_bps": 25,
+    "policy_slippage_bps": 100,
+    "policy_floor": "4950000",
+    "floor_eval": {
+      "label": "base_usdc_to_arb_usdc",
+      "amount_in": "5000000",
+      "min_amount_out": "4981210",
+      "max_slippage_bps": 100,
+      "policy_floor": "4950000",
+      "result": "PASS",
+      "altered_values": false
+    },
+    "amount_in_usd": 4.997765,
+    "amount_out_usd": 4.991462818335,
+    "routing_fee_usd_estimate": 0.006302181665000184,
+    "retention_usd": 0.9987389999999999,
+    "gas": {
+      "gas_limit": "250000",
+      "max_gas_price_wei": "100000000",
+      "max_gas_price_label": "0.1 gwei",
+      "estimated_gas_cost_wei": "25000000000000",
+      "within_max_gas_budget": true,
+      "max_gas_budget_wei": "2500000000000000",
+      "source_gas_affordability": "L2_LOW_GAS_PREFERRED"
+    },
+    "custody": {
+      "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+    },
+    "signature_verified": true,
+    "quote_hash": "6p3zedEcZ3REhCuvWUQLerU5az6wxeny1KvP9MAge2ds",
+    "correlation_id": "857195c6-7bca-41c9-a8d5-f6d8a623dc02",
+    "timestamp": "2026-11-13T08:15:00.638Z",
+    "dry": true,
+    "values_altered": false,
+    "asset_in_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "asset_out_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "token_contract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "chain_id": 8453,
+    "quote_status_label": "DRY_QUOTE_VERIFIED",
+    "one_click_response": {
+      "quoteRequest": {
+        "dry": true,
+        "depositMode": "SIMPLE",
+        "swapType": "EXACT_INPUT",
+        "slippageTolerance": 25,
+        "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "depositType": "ORIGIN_CHAIN",
+        "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "amount": "5000000",
+        "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "refundType": "ORIGIN_CHAIN",
+        "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "recipientType": "DESTINATION_CHAIN",
+        "deadline": "2026-11-13T08:29:59.682Z",
+        "confidentiality": "public",
+        "quoteWaitingTimeMs": 0,
+        "insured": false,
+        "appFees": [
+          {
+            "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+            "fee": 1
+          }
+        ]
+      },
+      "quote": {
+        "amountIn": "5000000",
+        "amountInFormatted": "5.0",
+        "amountInUsd": "4.997765000000",
+        "minAmountIn": "5000000",
+        "amountOut": "4993695",
+        "amountOutFormatted": "4.993695",
+        "amountOutUsd": "4.991462818335",
+        "minAmountOut": "4981210",
+        "timeEstimate": 34,
+        "refundFee": "2400",
+        "withdrawFee": "5300"
+      },
+      "timestamp": "2026-11-13T08:15:00.638Z",
+      "correlationId": "857195c6-7bca-41c9-a8d5-f6d8a623dc02",
+      "signature_present": true,
+      "signature_prefix": "ed25519:jxtz29tNT1zoq92q…"
+    },
+    "quote_result_ok": true
+  },
+  "nondry": {
+    "ok": true,
+    "deposit_sent": false,
+    "classified": {
+      "status": "PASS",
+      "reasons": [],
+      "route_id": "arb_usdc_to_base_usdc",
+      "source_chain": "arbitrum",
+      "destination_chain": "base",
+      "prefer_low_gas": true,
+      "amount_usdc": 1,
+      "amount_in_raw": "1000000",
+      "amount_out_raw": "997398",
+      "min_amount_out_raw": "994904",
+      "slippage_tolerance_bps": 25,
+      "policy_slippage_bps": 100,
+      "policy_floor": "990000",
+      "floor_eval": {
+        "label": "arb_usdc_to_base_usdc",
+        "amount_in": "1000000",
+        "min_amount_out": "994904",
+        "max_slippage_bps": 100,
+        "policy_floor": "990000",
+        "result": "PASS",
+        "altered_values": false
+      },
+      "amount_in_usd": 0.999552,
+      "amount_out_usd": 0.996951165696,
+      "routing_fee_usd_estimate": 0.0026008343040000437,
+      "retention_usd": 0.997398,
+      "gas": {
+        "gas_limit": "250000",
+        "max_gas_price_wei": "100000000",
+        "max_gas_price_label": "0.1 gwei",
+        "estimated_gas_cost_wei": "25000000000000",
+        "within_max_gas_budget": true,
+        "max_gas_budget_wei": "2500000000000000",
+        "source_gas_affordability": "L2_LOW_GAS_PREFERRED"
+      },
+      "custody": {
+        "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      },
+      "signature_verified": true,
+      "quote_hash": "5QjaE8jZ27A6N4HMoygsZ5JSvMayesT6uzFCaD1nfmYB",
+      "correlation_id": "71dbc4c2-9b0f-428f-a8ed-b1ece017cc30",
+      "timestamp": "2026-11-13T08:17:53.279Z",
+      "dry": false,
+      "values_altered": false,
+      "asset_in_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "asset_out_id": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "token_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "chain_id": 42161,
+      "deposit_address": "0x37e38F078430e4E51c6Da63457beC7AE86Ca612e",
+      "escrow_in_signed_hash": true,
+      "quote_deadline": "2026-11-16T08:32:53.765Z",
+      "one_click_response": {
+        "quoteRequest": {
+          "dry": false,
+          "depositMode": "SIMPLE",
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 25,
+          "originAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+          "depositType": "ORIGIN_CHAIN",
+          "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "amount": "1000000",
+          "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "refundType": "ORIGIN_CHAIN",
+          "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2026-11-13T08:32:53.765Z",
+          "confidentiality": "public",
+          "quoteWaitingTimeMs": 0,
+          "insured": false,
+          "appFees": [
+            {
+              "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+              "fee": 1,
+              "limitOrderId": null
+            }
+          ]
+        },
+        "quote": {
+          "amountIn": "1000000",
+          "amountInFormatted": "1.0",
+          "amountInUsd": "0.999552000000",
+          "minAmountIn": "1000000",
+          "amountOut": "997398",
+          "amountOutFormatted": "0.997398",
+          "amountOutUsd": "0.996951165696",
+          "minAmountOut": "994904",
+          "timeEstimate": 27,
+          "refundFee": "5300",
+          "withdrawFee": "2400",
+          "deadline": "2026-11-16T08:32:53.765Z",
+          "timeWhenInactive": "2026-11-16T08:32:53.765Z",
+          "depositAddress": "0x37e38F078430e4E51c6Da63457beC7AE86Ca612e"
+        },
+        "timestamp": "2026-11-13T08:17:53.279Z",
+        "correlationId": "71dbc4c2-9b0f-428f-a8ed-b1ece017cc30",
+        "signature_present": true,
+        "signature_prefix": "ed25519:xS8SKyf2jD6xH5Zi…"
+      }
+    }
+  },
+  "dry_rows": [
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "992011",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "991514",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:989525<990000"
+      ],
+      "min_out": "989525",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:984553<990000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "984553",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1989310",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1988313",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1984324",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "quote_network_error"
+      ]
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4981210",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4978713",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4968726",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4943758<4950000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "4943758",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 1,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "994904",
+      "floor": "990000",
+      "out_usd": 0.996952163094,
+      "fee_usd": 0.0026008369059999925,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 1,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "994405",
+      "floor": "990000",
+      "out_usd": 0.996952163094,
+      "fee_usd": 0.0026008369059999925,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 1,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "992411",
+      "floor": "990000",
+      "out_usd": 0.996952163094,
+      "fee_usd": 0.0026008369059999925,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 1,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:987424<990000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "987424",
+      "floor": "990000",
+      "out_usd": 0.996952163094,
+      "fee_usd": 0.0026008369059999925,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 2,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1992372",
+      "floor": "1980000",
+      "out_usd": 1.996473177398,
+      "fee_usd": 0.00263282260200004,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 2,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1991373",
+      "floor": "1980000",
+      "out_usd": 1.996473177398,
+      "fee_usd": 0.00263282260200004,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 2,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1987379",
+      "floor": "1980000",
+      "out_usd": 1.996473177398,
+      "fee_usd": 0.00263282260200004,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 2,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1977392<1980000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "1977392",
+      "floor": "1980000",
+      "out_usd": 1.996473177398,
+      "fee_usd": 0.00263282260200004,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 5,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4984780",
+      "floor": "4950000",
+      "out_usd": 4.995040218522,
+      "fee_usd": 0.00272478147800026,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 5,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4982286",
+      "floor": "4950000",
+      "out_usd": 4.995044216734,
+      "fee_usd": 0.0027207832660005593,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 5,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4972291",
+      "floor": "4950000",
+      "out_usd": 4.995044216734,
+      "fee_usd": 0.0027207832660005593,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_base_usdc",
+      "amount_usdc": 5,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4947307<4950000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "4947307",
+      "floor": "4950000",
+      "out_usd": 4.99504621584,
+      "fee_usd": 0.002718784159999821,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:698048<990000"
+      ],
+      "min_out": "698048",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:697698<990000"
+      ],
+      "min_out": "697698",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:696299<990000"
+      ],
+      "min_out": "696299",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:692800<990000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "692800",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1695347<1980000"
+      ],
+      "min_out": "1695347",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1694497<1980000"
+      ],
+      "min_out": "1694497",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1691098<1980000"
+      ],
+      "min_out": "1691098",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1682600<1980000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "1682600",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4687453<4950000"
+      ],
+      "min_out": "4687453",
+      "floor": "4950000",
+      "out_usd": 4.697101456706,
+      "fee_usd": 0.30066354329400014,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4684893<4950000"
+      ],
+      "min_out": "4684893",
+      "floor": "4950000",
+      "out_usd": 4.69688955147,
+      "fee_usd": 0.30087544853000026,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4675696<4950000"
+      ],
+      "min_out": "4675696",
+      "floor": "4950000",
+      "out_usd": 4.697091461176,
+      "fee_usd": 0.3006735388240003,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "base_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4652200<4950000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "4652200",
+      "floor": "4950000",
+      "out_usd": 4.697091461176,
+      "fee_usd": 0.3006735388240003,
+      "sig": true,
+      "source": "base"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:698048<990000"
+      ],
+      "min_out": "698048",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:697698<990000"
+      ],
+      "min_out": "697698",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:696299<990000"
+      ],
+      "min_out": "696299",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 1,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:692800<990000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "692800",
+      "floor": "990000",
+      "out_usd": 0.699485190294,
+      "fee_usd": 0.300067809706,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1695347<1980000"
+      ],
+      "min_out": "1695347",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1694497<1980000"
+      ],
+      "min_out": "1694497",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1691098<1980000"
+      ],
+      "min_out": "1691098",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 2,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1682600<1980000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "1682600",
+      "floor": "1980000",
+      "out_usd": 1.698836280588,
+      "fee_usd": 0.3002697194120001,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 25,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4687920<4950000"
+      ],
+      "min_out": "4687920",
+      "floor": "4950000",
+      "out_usd": 4.69756924751,
+      "fee_usd": 0.3001957524900005,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 30,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4685570<4950000"
+      ],
+      "min_out": "4685570",
+      "floor": "4950000",
+      "out_usd": 4.69756924751,
+      "fee_usd": 0.3001957524900005,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4676171<4950000"
+      ],
+      "min_out": "4676171",
+      "floor": "4950000",
+      "out_usd": 4.69756924751,
+      "fee_usd": 0.3001957524900005,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "arb_usdc_to_eth_usdc",
+      "amount_usdc": 5,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4652000<4950000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "4652000",
+      "floor": "4950000",
+      "out_usd": 4.69688955147,
+      "fee_usd": 0.30087544853000026,
+      "sig": true,
+      "source": "arbitrum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "992011",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "991514",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 50,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:989525<990000"
+      ],
+      "min_out": "989525",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 1,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:984553<990000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "984553",
+      "floor": "990000",
+      "out_usd": 0.994053459394,
+      "fee_usd": 0.005499540605999997,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1989310",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1988313",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "1984324",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 2,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:1974353<1980000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "1974353",
+      "floor": "1980000",
+      "out_usd": 1.993404549688,
+      "fee_usd": 0.005701450312000089,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 25,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4981210",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 30,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4978713",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 50,
+      "status": "PASS",
+      "reasons": [],
+      "min_out": "4968721",
+      "floor": "4950000",
+      "out_usd": 4.99145782057,
+      "fee_usd": 0.006307179430000254,
+      "sig": true,
+      "source": "ethereum"
+    },
+    {
+      "route_id": "eth_usdc_to_arb_usdc",
+      "amount_usdc": 5,
+      "slip": 100,
+      "status": "BLOCKED",
+      "reasons": [
+        "min_out_below_policy_floor:4943758<4950000",
+        "hypothesis_slip_tolerance_consumes_full_policy_budget"
+      ],
+      "min_out": "4943758",
+      "floor": "4950000",
+      "out_usd": 4.991462818335,
+      "fee_usd": 0.006302181665000184,
+      "sig": true,
+      "source": "ethereum"
+    }
+  ],
+  "j6_attestor_plan": {
+    "title": "J6 — Attestor registration plan (REQUIRES SEPARATE APPROVAL)",
+    "do_not_execute_now": true,
+    "steps": [
+      "Generate isolated ed25519 attestor key offline (never commit seed)",
+      "Owner Ledger: call set_trusted_quote_signer(ed25519:<pk>) on policy.nishanthb.near",
+      "Verify is_trusted_quote_signer returns true",
+      "Keep policy paused=true until J7 funding + explicit unpause approval",
+      "Do not broadcast, deposit, or unpause in J6"
+    ],
+    "on_chain_method": "set_trusted_quote_signer",
+    "attestor": {
+      "role": "trusted_quote_attestor",
+      "algorithm": "ed25519",
+      "message_domain": "QUOTE_AUTH_V2",
+      "on_chain_methods": {
+        "set": "set_trusted_quote_signer",
+        "remove": "remove_trusted_quote_signer",
+        "query": "is_trusted_quote_signer"
+      },
+      "prerequisites": [
+        "Official 1Click verifyQuoteSignature PASS on the authentic OneClickQuoteResponse",
+        "Pinned official manager key only on mainnet funded paths (no test key override)",
+        "Non-dry: depositAddress must be in SDK signed subset (requires SDK >=0.1.26)",
+        "Bind quoteRequest to agent request fields",
+        "deposit_address taken only from quote.depositAddress (never LLM)",
+        "allowUnverifiedOneClick forbidden on mainnet funded paths"
+      ],
+      "key_custody": {
+        "generate": "nacl.sign.keyPair() offline / HSM — never in git, frontend, or logs",
+        "storage": "encrypted secret store or hardware; packages/services/attestor.mjs seed path gitignored",
+        "public_material_only_on_chain": "ed25519:<base58> via policy set_trusted_quote_signer (owner Ledger)",
+        "isolation": "Attestor key ≠ owner Ledger ≠ agent ops key ≠ MPC derivation seed"
+      },
+      "rotation": {
+        "steps": [
+          "Generate new ed25519 keypair offline",
+          "Owner Ledger: set_trusted_quote_signer(new_pk) while old still valid (overlap window)",
+          "Cut over attestor service to new seed",
+          "Owner Ledger: remove_trusted_quote_signer(old_pk)",
+          "Bump mandate_epoch only if compromise suspected (invalidates pending)"
+        ]
+      },
+      "revocation": {
+        "compromise": [
+          "remove_trusted_quote_signer(compromised_pk) immediately",
+          "optional revoke_signing / pause",
+          "rotate to fresh key before any new propose_quoted_evm_transfer"
+        ],
+        "note": "Attestation IDs are single-use on-chain — replay of old attestation is rejected"
+      },
+      "mainnet_status": {
+        "registered": false,
+        "do_not_register_until": [
+          "Live non-dry quote verifies with pinned manager key AND depositAddress in signed hash",
+          "Live min_amount_out passes deployed policy floor (max_slippage_bps) without value inflation",
+          "USDC→USDC same-decimal route selected for first tiny trade",
+          "Policy unpause + funded_trading gate + broadcast gate explicit owner approval",
+          "MPC EVM funded with gas + tiny USDC"
+        ]
+      },
+      "generated_at": "2026-11-13T08:16:27.102Z",
+      "register_on_mainnet_now": false
+    }
+  },
+  "j7_funding_plan": {
+    "title": "J7 — Minimum gas/USDC funding plan (REQUIRES SEPARATE APPROVAL)",
+    "do_not_execute_now": true,
+    "mpc_evm": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "source_chain": "arbitrum",
+    "suggested_usdc_raw": "1000000",
+    "suggested_usdc_ui": 1,
+    "matched_route": "arb_usdc_to_base_usdc",
+    "slippage_tolerance_bps": 25,
+    "gas": {
+      "gas_limit": "250000",
+      "max_gas_price_wei": "100000000",
+      "max_gas_price_label": "0.1 gwei",
+      "estimated_gas_cost_wei": "25000000000000",
+      "within_max_gas_budget": true,
+      "max_gas_budget_wei": "2500000000000000",
+      "source_gas_affordability": "L2_LOW_GAS_PREFERRED"
+    },
+    "notes": [
+      "Fund ONLY MPC EVM on Arbitrum with 1 USDC + tiny ETH for ERC-20 gas",
+      "Do not send funds to 1Click escrow until after J6 attestor + explicit execute approval",
+      "Keep autonomous=false and broadcast gate off",
+      "Re-fetch a fresh non-dry quote at execute time — do not reuse expired escrow"
+    ]
+  },
+  "next_operator_action": "Review J6 attestor-registration plan and approve separately before any Ledger set_trusted_quote_signer call",
+  "recommended_first_tiny": {
+    "status": "PASS",
+    "route_id": "arb_usdc_to_base_usdc",
+    "source_chain": "arbitrum",
+    "destination_chain": "base",
+    "amount_usdc": 1,
+    "amount_in_raw": "1000000",
+    "min_amount_out_raw": "994904",
+    "policy_floor": "990000",
+    "slippage_tolerance_bps": 25,
+    "retention_usd": 0.996952163094,
+    "prefer_low_gas": true,
+    "amount_out_usd": 0.996952163094,
+    "routing_fee_usd_estimate": 0.0026008369059999925,
+    "signature_verified": true,
+    "custody": {
+      "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+    },
+    "reasons": [],
+    "one_click_response": null,
+    "note": "selected from prior dry matrix; nondry re-verified fresh"
+  },
+  "nondry_matched_to": {
+    "route_id": "arb_usdc_to_base_usdc",
+    "amount_usdc": 1,
+    "slip": 25
+  }
+}
