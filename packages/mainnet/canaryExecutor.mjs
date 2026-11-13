@@ -33,6 +33,8 @@ import {
   resolveCanaryJournalSecret,
   validateExecutableApproval,
   loadRecoveryAuthorization,
+  verifyApprovalMac,
+  RECOVERY_KIND,
   QUOTE_DEADLINE_MIN_REMAINING_MS,
   CANARY_STATES,
   CANARY_AMOUNT,
@@ -1170,25 +1172,58 @@ export async function canaryStepSettle({
   deps = {},
 } = {}) {
   const { resolveWritableApproval } = await import("./canaryOneShot.mjs");
-  // Prefer unused recovery record; original FAILED/used stays immutable.
+  // Prefer recovery record; original FAILED/used stays immutable.
   const loaded = resolveWritableApproval(operationId, { env, storeDir });
   if (!loaded.ok) return loaded;
   const rec = loaded.record;
   if (getLifecycleState(rec) !== CANARY_STATES.SETTLEMENT_PENDING) {
     return { ok: false, reason: `bad_state:${getLifecycleState(rec)}` };
   }
-  // Soft MAC check (used originals are not required here — recovery path)
+
+  // Fail closed on MAC / recovery binding — never bypass via SETTLEMENT_PENDING alone.
+  if (!verifyApprovalMac(rec, env)) {
+    return { ok: false, reason: "approval_mac_invalid" };
+  }
   if (loaded.is_recovery) {
+    const p = rec.payload || {};
+    if (p.kind !== RECOVERY_KIND) {
+      return { ok: false, reason: "recovery_kind_required" };
+    }
+    if (p.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_must_forbid_propose" };
+    }
+    if (String(p.operation_id) !== String(operationId)) {
+      return { ok: false, reason: "operation_id_mismatch" };
+    }
+    if (Date.parse(p.expires_at) <= Date.now()) {
+      return { ok: false, reason: "approval_expired" };
+    }
+    if (rec.used) {
+      // Legitimate post-broadcast resume only: consumed recovery that already
+      // bound an EVM broadcast hash. Forged SETTLEMENT_PENDING without broadcast fails.
+      if (!rec.locked_broadcast_hash) {
+        return { ok: false, reason: "approval_already_used" };
+      }
+    } else {
+      const v = validateExecutableApproval(operationId, {
+        env,
+        storeDir,
+        requireQuoteBound: true,
+        allowRecovery: true,
+      });
+      if (!v.ok) return { ok: false, reason: v.reason };
+    }
+  } else {
     const v = validateExecutableApproval(operationId, {
       env,
       storeDir,
       requireQuoteBound: true,
-      allowRecovery: true,
+      allowRecovery: false,
     });
-    // After broadcast, approval may still be unused until settle consumes
-    if (!v.ok && v.reason !== "approval_already_used") {
-      // Allow reading SETTLEMENT_PENDING even if partially progressed
-      if (getLifecycleState(rec) !== CANARY_STATES.SETTLEMENT_PENDING) {
+    if (!v.ok) {
+      if (v.reason === "approval_already_used" && rec.locked_broadcast_hash) {
+        // Post-broadcast consumed original — MAC already verified above.
+      } else {
         return { ok: false, reason: v.reason };
       }
     }

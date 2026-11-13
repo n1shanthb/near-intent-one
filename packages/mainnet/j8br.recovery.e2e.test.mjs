@@ -507,24 +507,384 @@ describe("J8B-R recovery quote economics + e2e lifecycle", () => {
 
   it("verifyNearProposeReceipt requires real logs not hash alone", () => {
     assert.equal(
-      verifyNearProposeReceipt(null, { operationId: "x" }).ok,
+      verifyNearProposeReceipt(null, { operationId: "x", expectedDigest: "aa" })
+        .ok,
       false
     );
     const ok = verifyNearProposeReceipt(
       {
+        transaction: {
+          signer_id: MAINNET_IDENTITIES.agent,
+          receiver_id: MAINNET_IDENTITIES.policy,
+        },
         transaction_outcome: {
           outcome: {
             status: { SuccessValue: "" },
-            logs: [
-              'EVENT_JSON:{"event":"quoted_evm_reserved","operation_id":"op1","digest":"aa"}',
-            ],
+            logs: [],
           },
         },
-        receipts_outcome: [],
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [
+                'EVENT_JSON:{"event":"quoted_evm_reserved","operation_id":"op1","digest":"aa"}',
+              ],
+            },
+          },
+        ],
       },
       { operationId: "op1", expectedDigest: "aa" }
     );
     assert.equal(ok.ok, true);
     assert.equal(ok.independently_verified, true);
+  });
+});
+
+describe("J8B-R fail-closed receipt + settle negatives", () => {
+  const DIGEST =
+    "b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed";
+
+  function reservedTx({
+    operationId = "op1",
+    digest = "aa",
+    success = true,
+    includeEvent = true,
+    malformed = false,
+    conflicting = false,
+    wrongOp = null,
+    wrongDigest = null,
+    signer = MAINNET_IDENTITIES.agent,
+    receiver = MAINNET_IDENTITIES.policy,
+  } = {}) {
+    const logs = [];
+    if (includeEvent) {
+      if (malformed) {
+        logs.push('EVENT_JSON:{"event":"quoted_evm_reserved"}');
+      } else {
+        logs.push(
+          `EVENT_JSON:${JSON.stringify({
+            event: "quoted_evm_reserved",
+            operation_id: wrongOp || operationId,
+            digest: wrongDigest || digest,
+          })}`
+        );
+      }
+    }
+    if (conflicting) {
+      logs.push(
+        `EVENT_JSON:${JSON.stringify({
+          event: "quoted_evm_reserved",
+          operation_id: operationId,
+          digest: "ff".repeat(32),
+        })}`
+      );
+    }
+    return {
+      transaction: { signer_id: signer, receiver_id: receiver },
+      transaction_outcome: {
+        outcome: {
+          status: success ? { SuccessValue: "" } : { Failure: {} },
+          logs: [],
+        },
+      },
+      receipts_outcome: [{ outcome: { logs } }],
+    };
+  }
+
+  it("rejects missing reservation event even when tx succeeded", () => {
+    const r = verifyNearProposeReceipt(
+      reservedTx({ includeEvent: false }),
+      { operationId: "op1", expectedDigest: "aa" }
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "quoted_evm_reserved_not_found_in_receipt");
+  });
+
+  it("rejects wrong operation_id or digest in reservation event", () => {
+    const wrongOp = verifyNearProposeReceipt(
+      reservedTx({ wrongOp: "other-op" }),
+      { operationId: "op1", expectedDigest: "aa" }
+    );
+    assert.equal(wrongOp.ok, false);
+    assert.equal(wrongOp.reason, "near_receipt_operation_id_mismatch");
+
+    const wrongDig = verifyNearProposeReceipt(
+      reservedTx({ wrongDigest: "bb" }),
+      { operationId: "op1", expectedDigest: "aa" }
+    );
+    assert.equal(wrongDig.ok, false);
+    assert.equal(wrongDig.reason, "near_receipt_digest_mismatch");
+  });
+
+  it("rejects generic successful transaction without EVENT_JSON reservation", () => {
+    const r = verifyNearProposeReceipt(
+      {
+        transaction: {
+          signer_id: MAINNET_IDENTITIES.agent,
+          receiver_id: MAINNET_IDENTITIES.policy,
+        },
+        transaction_outcome: {
+          outcome: {
+            status: { SuccessValue: "" },
+            logs: ["ok"],
+          },
+        },
+        receipts_outcome: [
+          { outcome: { logs: ["quoted_evm_reserved mentioned in text only"] } },
+        ],
+      },
+      { operationId: "op1", expectedDigest: "aa" }
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "quoted_evm_reserved_not_found_in_receipt");
+  });
+
+  it("rejects malformed and conflicting reservation events", () => {
+    const mal = verifyNearProposeReceipt(reservedTx({ malformed: true }), {
+      operationId: "op1",
+      expectedDigest: "aa",
+    });
+    assert.equal(mal.ok, false);
+    assert.equal(mal.reason, "quoted_evm_reserved_malformed");
+
+    const conf = verifyNearProposeReceipt(reservedTx({ conflicting: true }), {
+      operationId: "op1",
+      expectedDigest: "aa",
+    });
+    assert.equal(conf.ok, false);
+    assert.equal(conf.reason, "quoted_evm_reserved_conflicting_events");
+  });
+
+  it("rejects corrupted recovery MAC even in SETTLEMENT_PENDING", async () => {
+    const op = "op-mac-corrupt-settle";
+    const priv = secp256k1.utils.randomPrivateKey();
+    await seedFailedOriginal(op, { digest: DIGEST, priv });
+    const created = await createRecoveryAuthorization({
+      operationId: op,
+      nearProposeTx: NEAR_TX,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      operatorConfirmed: true,
+      deps: {
+        pending: {
+          epoch: 2,
+          amount_in: { "": CANARY_AMOUNT },
+          destination: ESCROW,
+          payload_commitment: DIGEST,
+          signing_state: "Reserved",
+          settlement_state: "None",
+        },
+        nearReceiptVerify: { ok: true, independently_verified: true },
+        adapters: {
+          getPaused: async () => true,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            epoch: 2,
+            amount_in: { "": CANARY_AMOUNT },
+            destination: ESCROW,
+            payload_commitment: DIGEST,
+            signing_state: "Reserved",
+            settlement_state: "None",
+          }),
+          listPending: async () => [],
+        },
+      },
+    });
+    assert.equal(created.ok, true);
+
+    for (const s of [
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+    ]) {
+      advanceLifecycle(op, s, { storeDir: STORE, env: ENV });
+    }
+    const rec = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    rec.record.mac = "deadbeef".repeat(8);
+    writeFileSync(rec.path, JSON.stringify(rec.record, null, 2));
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.reason, "approval_mac_invalid");
+  });
+
+  it("rejects forged SETTLEMENT_PENDING used recovery without broadcast binding", async () => {
+    const op = "op-forged-settle-pending";
+    const priv = secp256k1.utils.randomPrivateKey();
+    await seedFailedOriginal(op, { digest: DIGEST, priv });
+    const created = await createRecoveryAuthorization({
+      operationId: op,
+      nearProposeTx: NEAR_TX,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      operatorConfirmed: true,
+      deps: {
+        pending: {
+          epoch: 2,
+          amount_in: { "": CANARY_AMOUNT },
+          destination: ESCROW,
+          payload_commitment: DIGEST,
+          signing_state: "Reserved",
+          settlement_state: "None",
+        },
+        nearReceiptVerify: { ok: true, independently_verified: true },
+        adapters: {
+          getPaused: async () => true,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            epoch: 2,
+            amount_in: { "": CANARY_AMOUNT },
+            destination: ESCROW,
+            payload_commitment: DIGEST,
+            signing_state: "Reserved",
+            settlement_state: "None",
+          }),
+          listPending: async () => [],
+        },
+      },
+    });
+    assert.equal(created.ok, true);
+
+    for (const s of [
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+    ]) {
+      advanceLifecycle(op, s, { storeDir: STORE, env: ENV });
+    }
+    const rec = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    // Forge: mark used without a broadcast hash while claiming SETTLEMENT_PENDING
+    rec.record.used = true;
+    rec.record.consume_reason = "forged";
+    delete rec.record.locked_broadcast_hash;
+    writeFileSync(rec.path, JSON.stringify(rec.record, null, 2));
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.reason, "approval_already_used");
+  });
+
+  it("allows legitimate used recovery settle when broadcast hash is bound", async () => {
+    const op = "op-legit-post-bcast-settle";
+    const priv = secp256k1.utils.randomPrivateKey();
+    await seedFailedOriginal(op, { digest: DIGEST, priv });
+    const created = await createRecoveryAuthorization({
+      operationId: op,
+      nearProposeTx: NEAR_TX,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      operatorConfirmed: true,
+      deps: {
+        pending: {
+          epoch: 2,
+          amount_in: { "": CANARY_AMOUNT },
+          destination: ESCROW,
+          payload_commitment: DIGEST,
+          signing_state: "Reserved",
+          settlement_state: "None",
+        },
+        nearReceiptVerify: { ok: true, independently_verified: true },
+        adapters: {
+          getPaused: async () => true,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            epoch: 2,
+            amount_in: { "": CANARY_AMOUNT },
+            destination: ESCROW,
+            payload_commitment: DIGEST,
+            signing_state: "Reserved",
+            settlement_state: "None",
+          }),
+          listPending: async () => [],
+        },
+      },
+    });
+    assert.equal(created.ok, true);
+
+    for (const s of [
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+    ]) {
+      advanceLifecycle(op, s, {
+        storeDir: STORE,
+        env: ENV,
+        outcome:
+          s === CANARY_STATES.BROADCASTED
+            ? { broadcast_hash: "0x" + "ab".repeat(32) }
+            : {},
+      });
+    }
+    const { bindBroadcastHash, consumeCanaryApproval } = await import(
+      "./canaryOneShot.mjs"
+    );
+    bindBroadcastHash(op, "0x" + "ab".repeat(32), {
+      storeDir: STORE,
+      env: ENV,
+    });
+    const consumed = consumeCanaryApproval(op, {
+      storeDir: STORE,
+      env: ENV,
+      reason: "simulated_post_broadcast",
+    });
+    assert.equal(consumed.ok, true);
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, true);
+    assert.equal(settle.stage, CANARY_STATES.SETTLED);
   });
 });

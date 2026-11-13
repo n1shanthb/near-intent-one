@@ -1,55 +1,48 @@
 # Checkpoint J8B-R — Recover successful on-chain proposal after false local failure
 
-**HARD STOP held:** no Ledger, unpause, propose, request_signature, broadcast, funding, or on-chain reconcile.
-**Recovery auth not created yet** — code path fixed first; create-recovery-auth is a separate operator step.
+**HARD STOP held:** no Ledger, unpause, propose, request_signature, broadcast, funding, on-chain reconcile, or create-recovery-auth.
 
 ## Incident
 
 | Field | Value |
 |-------|--------|
 | Operation | `j8b-canary-1794572720062-8db4f42a` |
-| NEAR propose tx | `HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P` |
+| Parent NEAR tx | `HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad` |
+| Receipt | `HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P` |
+| Exact digest | `b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed` |
 | Local (wrong) | `FAILED` / `used=true` / `consume_reason=payload_commitment_mismatch` |
-| On-chain (authoritative) | `signing_state=Reserved`, `settlement_state=None`, digest match, amount=1000000, paused=true |
+| On-chain | `signing_state=Reserved`, `settlement_state=None`, paused=true |
 
-Root cause: immediate `get_pending` null after successful `quoted_evm_reserved` was treated as digest mismatch and the approval was consumed.
+## Final fail-closed hardening
 
-## J8B-R FINAL integration fixes
+1. `verifyNearProposeReceipt` requires tx success + agent→policy signer/receiver + parsed `EVENT_JSON` `quoted_evm_reserved` with exact `operation_id` and digest from this tx's outcomes. Success alone / hash alone / text mention is NO-GO.
+2. `canaryStepSettle` fails closed on recovery MAC / binding failures. `SETTLEMENT_PENDING` alone does not bypass. Used recovery allowed only with bound `locked_broadcast_hash`.
 
-1. **Recovery broadcast authorization** — `durableBroadcast` / `resolveCanaryUnlock` / funded gate accept `allowRecovery` only for the same Reserved op + fingerprint + exact digest; does not unlock general mainnet broadcast.
-2. **Quote economics** — recovery auth copies/binds deadline, minOut `994904`, quote hash, escrow, dest/refund, Base baseline, digest/nonce/gas; both auth TTL and 1Click deadline remain enforced.
-3. **Settle / reconcile** — resume via `resolveWritableApproval` recovery record; original FAILED/used unchanged; lifecycle PROPOSED→…→RECONCILED with real receipt / 1Click SUCCESS / Base Δ≥minOut; owner/reconciler checks retained.
-4. **Evidence integrity** — HMAC binds recovery kind, original fingerprint, proposal tx hash, `forbids_propose=true`; inspect requires independently verified NEAR receipt (not hash-as-proof); pre-`request_signature` rechecks Reserved / commitment / epoch / unpaused.
-
-## Live zero-mutation rehearsal (this host)
+## Live zero-mutation rehearsal (parent tx)
 
 ```
 verdict: SAFE_TO_RESUME_ORIGINAL_OPERATION
-checks: all match (Reserved, digest, epoch=2, amount, deposit, paused, no broadcast, no MPC)
-recovery_auth_exists: false
 mutations_invoked: false
+near_receipt.independently_verified: true
+signer_id: agent.nishanthb.near
+receiver_id: policy.nishanthb.near
+has_quoted_evm_reserved: true
+recovery_auth_exists: false
 ```
 
-## Operator resume (after LIVE_RECOVERY_PATH_READY; still requires separate approvals)
+## Operator resume (separate approvals; never re-propose)
 
 ```powershell
-node scripts/mainnet/canary-operator.mjs inspect --op j8b-canary-1794572720062-8db4f42a --near-tx HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P
-node scripts/mainnet/canary-operator.mjs recovery-rehearsal --op j8b-canary-1794572720062-8db4f42a --near-tx HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P
-# Only if inspect verdict SAFE:
-node scripts/mainnet/canary-operator.mjs create-recovery-auth --op j8b-canary-1794572720062-8db4f42a --near-tx HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P --confirm-recovery
-# Keep policy paused until a separately approved unpause window, then:
-# confirm --phase sign → sign [--invoke] → …  NEVER propose again
-# Abort alternative (DO NOT run unless aborting):
-node scripts/mainnet/canary-operator.mjs show-abort --op j8b-canary-1794572720062-8db4f42a
+node scripts/mainnet/canary-operator.mjs inspect --op j8b-canary-1794572720062-8db4f42a --near-tx HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad
+node scripts/mainnet/canary-operator.mjs recovery-rehearsal --op j8b-canary-1794572720062-8db4f42a --near-tx HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad
+# Only if SAFE:
+node scripts/mainnet/canary-operator.mjs create-recovery-auth --op j8b-canary-1794572720062-8db4f42a --near-tx HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad --confirm-recovery
 ```
 
 ## Tests
 
-```
-node --test packages/mainnet/j8b0.canary.test.mjs packages/mainnet/j8b1.hardening.test.mjs packages/mainnet/j8br.recovery.test.mjs packages/mainnet/j8br.recovery.e2e.test.mjs packages/mainnet/agentBackend.test.mjs
-→ 69/69 pass
-```
+`76/76` pass — j8b0 + j8b1 + j8br + j8br.e2e + agentBackend
 
 ## Verdict
 
-**LIVE_RECOVERY_PATH_READY** — resume the existing Reserved operation only via recovery auth after create-recovery-auth; never re-propose; keep paused until a separately approved live resume window.
+**PASS** — fail-closed recovery path ready; resume existing Reserved op only after separate create-recovery-auth.

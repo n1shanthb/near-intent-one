@@ -1,8 +1,9 @@
 {
-  "checkpoint": "J8B-R",
+  "checkpoint": "J8B-R-FINAL-FAIL-CLOSED",
   "hard_stop_held": true,
   "operation_id": "j8b-canary-1794572720062-8db4f42a",
-  "near_propose_tx": "HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P",
+  "near_propose_parent_tx": "HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad",
+  "near_propose_receipt": "HKvxVGMZ9VwsEmDzmDmLdPsJ9og2G5Cx7HVLgDZGm45P",
   "live_rehearsal": {
     "mutations_invoked": false,
     "verdict": "SAFE_TO_RESUME_ORIGINAL_OPERATION",
@@ -13,9 +14,13 @@
     "amount_in": "1000000",
     "deposit": "0xcaa3dc3d6d2bb72ade403c614949e66d5ed37f1e",
     "epoch": 2,
+    "near_receipt_independently_verified": true,
+    "signer_id": "agent.nishanthb.near",
+    "receiver_id": "policy.nishanthb.near",
+    "has_quoted_evm_reserved": true,
     "recovery_auth_exists": false,
-    "safe_to_create_recovery_auth": true
+    "create_recovery_auth_invoked": false
   },
-  "tests_pass": 54,
-  "verdict": "SAFE_TO_RESUME_ORIGINAL_OPERATION"
+  "tests_pass": 76,
+  "verdict": "PASS"
 }

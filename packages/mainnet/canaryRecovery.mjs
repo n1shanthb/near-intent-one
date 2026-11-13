@@ -70,16 +70,49 @@ export async function createViewOnlyPolicyAdapters(opts = {}) {
 
 /**
  * Independently verify the original NEAR propose receipt.
- * A supplied hash alone is NOT proof.
+ * A supplied hash / generic successful tx alone is NOT proof of reservation.
+ * Requires a parsed quoted_evm_reserved EVENT_JSON from this tx's outcomes
+ * with exact operation_id + digest, plus signer/receiver checks.
  */
 export function verifyNearProposeReceipt(nearTxFull, {
   operationId,
   expectedDigest = null,
+  expectedSigner = MAINNET_IDENTITIES.agent,
+  expectedReceiver = MAINNET_IDENTITIES.policy,
 } = {}) {
   if (!nearTxFull) {
     return { ok: false, reason: "near_tx_receipt_missing" };
   }
-  const outcomes = [
+  if (!operationId) {
+    return { ok: false, reason: "operation_id_required" };
+  }
+  if (!expectedDigest) {
+    return { ok: false, reason: "expected_digest_required" };
+  }
+
+  const tx = nearTxFull?.transaction || nearTxFull?.result?.transaction || null;
+  const signer = tx?.signer_id || null;
+  const receiver = tx?.receiver_id || null;
+  if (!signer) {
+    return { ok: false, reason: "near_tx_signer_missing" };
+  }
+  if (!receiver) {
+    return { ok: false, reason: "near_tx_receiver_missing" };
+  }
+  if (
+    expectedSigner &&
+    String(signer) !== String(expectedSigner)
+  ) {
+    return { ok: false, reason: "near_tx_signer_mismatch", got: signer };
+  }
+  if (
+    expectedReceiver &&
+    String(receiver) !== String(expectedReceiver)
+  ) {
+    return { ok: false, reason: "near_tx_receiver_mismatch", got: receiver };
+  }
+
+  const receiptsOutcome = [
     ...(nearTxFull?.receipts_outcome || []),
     ...(nearTxFull?.result?.receipts_outcome || []),
   ];
@@ -93,71 +126,80 @@ export function verifyNearProposeReceipt(nearTxFull, {
     status?.SuccessValue != null ||
     status?.SuccessReceiptId != null ||
     (typeof status === "string" && /success/i.test(status));
-  if (!success && outcomes.length === 0) {
+  if (!success) {
     return { ok: false, reason: "near_tx_not_successful", status };
   }
 
-  let logs = [];
-  for (const r of outcomes) {
-    logs = logs.concat(r?.outcome?.logs || []);
-  }
-  if (txOutcome?.outcome?.logs) logs = logs.concat(txOutcome.outcome.logs);
+  // Only logs belonging to this transaction's execution outcomes.
+  const outcomeNodes = [];
+  if (txOutcome) outcomeNodes.push(txOutcome);
+  for (const r of receiptsOutcome) outcomeNodes.push(r);
 
-  const joined = logs.join("\n");
-  const hasReserved =
-    /quoted_evm_reserved/i.test(joined) ||
-    logs.some((l) => {
+  const reservedEvents = [];
+  let malformedReserved = false;
+  for (const node of outcomeNodes) {
+    const logs = node?.outcome?.logs || [];
+    for (const l of logs) {
+      const s = String(l);
+      if (!s.startsWith("EVENT_JSON:")) continue;
+      let j;
       try {
-        const j = JSON.parse(String(l).replace(/^EVENT_JSON:/, ""));
-        return j?.event === "quoted_evm_reserved";
+        j = JSON.parse(s.slice("EVENT_JSON:".length));
       } catch {
-        return false;
+        continue;
       }
-    });
-  if (!hasReserved && !success) {
+      if (j?.event !== "quoted_evm_reserved") continue;
+      const eventOp = j.operation_id ?? null;
+      const eventDigest = j.digest ?? null;
+      if (!eventOp || !eventDigest) {
+        malformedReserved = true;
+        continue;
+      }
+      reservedEvents.push({
+        operation_id: String(eventOp),
+        digest: String(eventDigest).toLowerCase(),
+      });
+    }
+  }
+
+  if (malformedReserved && reservedEvents.length === 0) {
+    return { ok: false, reason: "quoted_evm_reserved_malformed" };
+  }
+  if (reservedEvents.length === 0) {
     return { ok: false, reason: "quoted_evm_reserved_not_found_in_receipt" };
   }
 
-  let eventOp = null;
-  let eventDigest = null;
-  for (const l of logs) {
-    try {
-      const raw = String(l).startsWith("EVENT_JSON:")
-        ? String(l).slice("EVENT_JSON:".length)
-        : String(l);
-      const j = JSON.parse(raw);
-      if (j?.event === "quoted_evm_reserved") {
-        eventOp = j.operation_id || null;
-        eventDigest = j.digest || null;
-      }
-    } catch {
-      /* */
-    }
+  const ops = new Set(reservedEvents.map((e) => e.operation_id));
+  const digests = new Set(reservedEvents.map((e) => e.digest));
+  if (ops.size !== 1 || digests.size !== 1) {
+    return { ok: false, reason: "quoted_evm_reserved_conflicting_events" };
   }
-  if (operationId && eventOp && String(eventOp) !== String(operationId)) {
+
+  const eventOp = reservedEvents[0].operation_id;
+  const eventDigest = reservedEvents[0].digest;
+  if (String(eventOp) !== String(operationId)) {
     return {
       ok: false,
       reason: "near_receipt_operation_id_mismatch",
       got: eventOp,
     };
   }
-  if (
-    expectedDigest &&
-    eventDigest &&
-    String(eventDigest).toLowerCase() !== String(expectedDigest).toLowerCase()
-  ) {
+  if (eventDigest !== String(expectedDigest).toLowerCase()) {
     return {
       ok: false,
       reason: "near_receipt_digest_mismatch",
       got: eventDigest,
     };
   }
+
   return {
     ok: true,
     independently_verified: true,
-    operation_id: eventOp || operationId || null,
-    digest: eventDigest || expectedDigest || null,
-    has_quoted_evm_reserved: hasReserved || success,
+    operation_id: eventOp,
+    digest: eventDigest,
+    has_quoted_evm_reserved: true,
+    signer_id: signer,
+    receiver_id: receiver,
   };
 }
 
