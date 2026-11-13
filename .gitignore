@@ -6,6 +6,8 @@ target/
 **/target/
 .near-credentials/
 **/.near-credentials/
+.nio-secure/
+**/.nio-secure/
 .gate-i-data/
 **/.gate-i-data/
 .env

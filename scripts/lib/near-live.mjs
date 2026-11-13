@@ -84,15 +84,28 @@ export function loadCred(credsDir, accountId) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-export async function connectWithAccounts(rpc, credsDir, accountIds) {
+/**
+ * @param {string} rpc
+ * @param {string} credsDir
+ * @param {string[]} accountIds
+ * @param {{ networkId?: string }} [opts] — defaults to testnet; mainnet agent
+ *   backend must use packages/mainnet/agentRuntime.mjs instead of this helper.
+ */
+export async function connectWithAccounts(rpc, credsDir, accountIds, opts = {}) {
+  const networkId = opts.networkId || NETWORK;
+  if (networkId === "mainnet") {
+    throw new Error(
+      "connectWithAccounts_mainnet_forbidden: use packages/mainnet/agentRuntime.mjs"
+    );
+  }
   const keyStore = new keyStores.InMemoryKeyStore();
   for (const id of accountIds) {
     assertNotDemo(id);
     const c = loadCred(credsDir, id);
-    await keyStore.setKey(NETWORK, id, KeyPair.fromString(c.private_key));
+    await keyStore.setKey(networkId, id, KeyPair.fromString(c.private_key));
   }
   const near = await connect({
-    networkId: NETWORK,
+    networkId,
     nodeUrl: rpc,
     deps: { keyStore },
   });

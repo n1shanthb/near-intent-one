@@ -32,7 +32,7 @@
     "test:personal": "node --test packages/services/ownerAuth.test.mjs packages/services/ownerAuth.security.test.mjs packages/services/nep413.test.mjs packages/services/portfolioProvision.test.mjs packages/services/withdrawLifecycle.test.mjs packages/services/settlementWorker.test.mjs packages/gate-k/lifecycle.test.mjs packages/gate-k/gate-k.test.mjs",
     "test:api-auth": "node --test packages/services/apiAuth.test.mjs",
     "test:tx-journal": "node --test packages/execution/txJournal.test.mjs",
-    "test:mainnet": "node --test packages/mainnet/mainnet.test.mjs",
+    "test:mainnet": "node --test packages/mainnet/mainnet.test.mjs packages/mainnet/agentBackend.test.mjs",
     "test:mandate": "node --test packages/mandate/mandate.test.mjs",
     "mainnet:readiness": "node scripts/mainnet/readiness.mjs",
     "mainnet:dry-quote": "node scripts/mainnet/dry-quote.mjs",

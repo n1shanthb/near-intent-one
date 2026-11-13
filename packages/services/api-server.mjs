@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 /**
- * Gate I3 — deployable Gate I HTTP API (testnet).
+ * Gate I3 — deployable Gate I HTTP API (testnet ONLY).
  * Secrets stay server-side. No software bypass for nio-c-* Ledger demos.
  * Owner signing keys / attestor seeds never returned to browsers.
+ *
+ * Mainnet observation backend is a separate process:
+ *   NIO_NETWORK=mainnet node packages/services/mainnet-api-server.mjs
+ * Do not point this server at mainnet credentials or RPC.
  *
  * Env: see packages/services/.env.example
  * Local:  node packages/services/api-server.mjs
@@ -66,7 +70,15 @@ const CORS_ORIGINS = (process.env.GATE_I_CORS_ORIGINS || "*")
   .filter(Boolean);
 
 if (NETWORK !== "testnet") {
-  console.error("refusing to start: NEAR_NETWORK must be testnet");
+  console.error(
+    "refusing to start: NEAR_NETWORK/NIO_NETWORK must be testnet for api-server.mjs (use mainnet-api-server.mjs for mainnet observe)"
+  );
+  process.exit(1);
+}
+if (process.env.NIO_AGENT_OPS_KEY_PATH) {
+  console.error(
+    "refusing to start: NIO_AGENT_OPS_KEY_PATH is mainnet-only — do not mix into testnet api-server"
+  );
   process.exit(1);
 }
 

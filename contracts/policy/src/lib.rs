@@ -2578,6 +2578,19 @@ mod tests {
         let _ = c.request_signature("op-pre".into());
     }
 
+    /// FunctionCall-limited keys cannot attach deposit; request_signature needs ≥1 yocto.
+    /// Proves Option A (agent FullAccess) is required for real MPC completion.
+    #[test]
+    #[should_panic(expected = "attach at least 1 yoctoNEAR for MPC sign")]
+    fn request_signature_requires_one_yocto_deposit() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-yocto", 10));
+        // Same agent predecessor, but zero attached deposit — must fail closed.
+        testing_env!(context(agent(), 0).build());
+        let _ = c.request_signature("op-yocto".into());
+    }
+
     #[test]
     #[should_panic(expected = "owner only")]
     fn agent_cannot_unpause() {

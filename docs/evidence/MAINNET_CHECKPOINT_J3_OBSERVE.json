@@ -1,0 +1,183 @@
+{
+  "checkpoint": "J3",
+  "at": "2026-11-13T04:29:23.912Z",
+  "network": "mainnet",
+  "wiring": "PASS",
+  "local_sign": {
+    "ok": true,
+    "account_id": "agent.nishanthb.near",
+    "public_key": "ed25519:DZUECSrU7kcqzN1PcSBGRgqf6uegsbTFxQ8wbDBxEbgJ",
+    "construction_digest": "27728630e5ef9e60c3ce9e36d084efe652dfc585796a16deca25a4ec7fa0a9ec",
+    "signature_verified": true,
+    "broadcast": false,
+    "near_tx_sketch": {
+      "signer_id": "agent.nishanthb.near",
+      "receiver_id": "agent.nishanthb.near",
+      "actions": [
+        {
+          "type": "AddKey_sketch_only",
+          "note": "not serialized for broadcast"
+        }
+      ],
+      "broadcast": false
+    }
+  },
+  "policy": {
+    "owner": "nishanthb.near",
+    "agent": "agent.nishanthb.near",
+    "paused": true,
+    "autonomous_trading": false,
+    "mandate_epoch": 2
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false
+  },
+  "agent": {
+    "account_id": "agent.nishanthb.near",
+    "exists": true,
+    "amount_yocto": "499958035075000000000000",
+    "locked_yocto": "0",
+    "amount_near": 0.499958035075,
+    "available_near": 0.499958035075
+  },
+  "mpc": {
+    "path": "trading/v1/portfolio/nio-mainnet-v1",
+    "evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "expected_evm_address": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "match": true,
+    "status": "DERIVED_ADDRESS_ONLY",
+    "signer": "v1.signer"
+  },
+  "balances": {
+    "near_available": 0.499958035075,
+    "evm": {
+      "ethereum": {
+        "native_ether": 0,
+        "usdc_ui": 0,
+        "verified": true
+      },
+      "arbitrum": {
+        "native_ether": 0,
+        "usdc_ui": 0,
+        "verified": true
+      },
+      "base": {
+        "native_ether": 0,
+        "usdc_ui": 0,
+        "verified": true
+      }
+    }
+  },
+  "decision": {
+    "choice": "NO_TRADE",
+    "vetoes": [
+      "POLICY_PAUSED",
+      "FUNDED_TRADING_OFF",
+      "BROADCAST_DISABLED",
+      "AUTONOMOUS_OFF",
+      "NO_VERIFIED_EVM_USDC",
+      "QUOTE_DISCOVERY_UNAVAILABLE"
+    ],
+    "route_discovery": null,
+    "quote_discovery_ok": false,
+    "quote_discovery_reason": "catalog_failed",
+    "gate_j_decision": "BLOCKED",
+    "gate_j_reason_codes": [
+      "POLICY_PAUSED"
+    ],
+    "may_sign": false,
+    "may_broadcast": false,
+    "observation_only": true
+  },
+  "quotes": {
+    "ok": false,
+    "reason": "catalog_failed",
+    "detail": {
+      "ok": false,
+      "reason": "tokens_tls_error",
+      "detail": {
+        "ok": false,
+        "reason": "tokens_tls_error",
+        "detail": "unable to verify the first certificate",
+        "api": "https://1click.chaindefuser.com"
+      }
+    },
+    "quoted_count": null,
+    "eligible_count": null,
+    "proposal": null,
+    "chains": [
+      "NEAR",
+      "Ethereum",
+      "Arbitrum",
+      "Base"
+    ]
+  },
+  "gate_j": {
+    "llm_configured": true,
+    "llm_models": {
+      "researcher": "google/gemini-2.5-flash",
+      "strategist": "anthropic/claude-sonnet-4.6",
+      "critic": "openai/gpt-5.2",
+      "copilot": "google/gemini-2.5-flash"
+    },
+    "enforcement": {
+      "decision": "BLOCKED",
+      "reason_codes": [
+        "POLICY_PAUSED"
+      ],
+      "checks": [
+        {
+          "name": "refit_outcome",
+          "ok": true,
+          "outcome": "REJECTED",
+          "reason_codes": [
+            "STRATEGIST_NO_TRADE"
+          ]
+        },
+        {
+          "name": "revocation",
+          "ok": true
+        },
+        {
+          "name": "signing_revoked",
+          "ok": true
+        },
+        {
+          "name": "pause",
+          "ok": false
+        }
+      ],
+      "may_sign": false,
+      "dry_run": true,
+      "timestamp": "2026-11-13T04:29:23.911Z",
+      "note": "LLM/Fitter outputs are not signing authorization"
+    },
+    "strategist_choice": "NO_TRADE",
+    "researcher_ok": true,
+    "critic": "ABSTAIN"
+  },
+  "broadcast_probe": {
+    "ok": false,
+    "submitted": false,
+    "reason": "mainnet_broadcast_disabled",
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false
+    },
+    "note": "No RPC send attempted"
+  },
+  "gate_check": {
+    "ok": false,
+    "submitted": false,
+    "reason": "mainnet_broadcast_disabled",
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false
+    }
+  },
+  "observation_only": true
+}

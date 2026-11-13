@@ -8,6 +8,7 @@ import {
   assertMainnetFundedAllowed,
   CHAIN_PROFILE,
 } from "./chainProfiles.mjs";
+import { assertMainnetBroadcastAllowed } from "../mainnet/safetyGates.mjs";
 
 /**
  * @param {object} args
@@ -109,6 +110,22 @@ export async function broadcastWithJournal({
         may_resign: false,
         note: "broadcast_suppressed_dry_run_journal_has_bytes",
       };
+    }
+
+    // Global mainnet gate — blocks ALL submission, not only 1Click-specific paths.
+    if (profile?.network === "mainnet" || profile?.id === CHAIN_PROFILE.MAINNET_1CLICK) {
+      const gate = assertMainnetBroadcastAllowed(opts.env || process.env);
+      if (!gate.ok) {
+        return {
+          ok: false,
+          submitted: false,
+          reason: gate.reason,
+          gates: gate.gates,
+          may_resign: false,
+          local_tx_hash: hash,
+          note: "mainnet_broadcast_hard_blocked",
+        };
+      }
     }
 
     journal.beginBroadcast(journalId);

@@ -61,10 +61,24 @@ export async function fetchProductionTokens({
   token = process.env.NIO_1CLICK_JWT,
 } = {}) {
   assertNetworkIsolation(MAINNET, { allowMainnet: true });
-  const res = await fetch(`${baseUrl}/v0/tokens`, {
-    headers: authHeaders(token),
-  });
-  const text = await res.text();
+  let res;
+  let text;
+  try {
+    res = await fetch(`${baseUrl}/v0/tokens`, {
+      headers: authHeaders(token),
+    });
+    text = await res.text();
+  } catch (e) {
+    const msg = String(e?.cause?.message || e?.message || e);
+    return {
+      ok: false,
+      reason: /certificate|TLS|SSL|UNABLE_TO_VERIFY/i.test(msg)
+        ? "tokens_tls_error"
+        : "tokens_network_error",
+      detail: msg.slice(0, 300),
+      api: baseUrl,
+    };
+  }
   let body;
   try {
     body = JSON.parse(text);
@@ -135,12 +149,28 @@ export async function productionDryQuote(request, opts = {}) {
     return { ok: false, reason: "funded_quote_blocked" };
   }
 
-  const res = await fetch(`${baseUrl}/v0/quote`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
+  let res;
+  let text;
+  try {
+    res = await fetch(`${baseUrl}/v0/quote`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    });
+    text = await res.text();
+  } catch (e) {
+    const msg = String(e?.cause?.message || e?.message || e);
+    return {
+      ok: false,
+      reason: /certificate|TLS|SSL|UNABLE_TO_VERIFY/i.test(msg)
+        ? "quote_tls_error"
+        : "quote_network_error",
+      detail: msg.slice(0, 300),
+      request: { ...body, dry: true },
+      api: baseUrl,
+      status_label: "NOT_YET_PROVEN",
+    };
+  }
   let parsed;
   try {
     parsed = JSON.parse(text);

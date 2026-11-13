@@ -60,6 +60,7 @@ export const MAINNET = Object.freeze({
     networkId: "mainnet",
     rpcs: [
       process.env.NEAR_RPC_MAINNET,
+      "https://rpc.mainnet.fastnear.com",
       "https://rpc.mainnet.near.org",
       "https://free.rpc.fastnear.com",
     ].filter(Boolean),
