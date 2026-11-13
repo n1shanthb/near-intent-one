@@ -11,6 +11,12 @@
     "autonomous": false
   },
   "readiness": "READY",
+  "hotfix": {
+    "confirm_bypass_closed": true,
+    "reconciler_auth_closed": true,
+    "raw_tx_deadline_journal_secret_closed": true,
+    "tests_pass": 50
+  },
   "auto_live": false,
   "adapters": {
     "module": "packages/mainnet/canaryAdapters.mjs",

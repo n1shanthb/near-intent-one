@@ -753,7 +753,7 @@ describe("J8B-1 sequential state machine", () => {
       env: ENV,
       outcome: { base_delta: "994904" },
     });
-    const early = await canaryStepReconcilePending({
+    const noConfirm = await canaryStepReconcilePending({
       operationId: "op-late",
       storeDir: STORE,
       env: ENV,
@@ -761,10 +761,38 @@ describe("J8B-1 sequential state machine", () => {
       invoke: false,
       evidenceHash: "e".repeat(64),
     });
-    // confirm required first — without confirmPhase, confirmPhaseAfterOutcome inside may still write confirm
-    // canaryStepReconcilePending calls confirmPhaseAfterOutcome itself
+    assert.equal(noConfirm.ok, false);
+    assert.match(noConfirm.reason, /operator_confirm_required:reconcile/);
+
+    confirmPhaseAfterOutcome("op-late", "reconcile", {
+      storeDir: STORE,
+      env: ENV,
+      requiredState: CANARY_STATES.SETTLED,
+    });
+    const early = await canaryStepReconcilePending({
+      operationId: "op-late",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: false,
+      evidenceHash: "e".repeat(64),
+      deps: { reconciler: null },
+    });
     assert.equal(early.ok, true);
     assert.equal(early.dry, true);
+    assert.equal(early.agent_is_reconciler, false);
+
+    const denied = await canaryStepReconcilePending({
+      operationId: "op-late",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      evidenceHash: "e".repeat(64),
+      deps: { reconciler: null },
+    });
+    assert.equal(denied.ok, false);
+    assert.equal(denied.reason, "agent_not_authorized_reconciler");
 
     const live = await canaryStepReconcilePending({
       operationId: "op-late",
@@ -774,12 +802,14 @@ describe("J8B-1 sequential state machine", () => {
       invoke: true,
       evidenceHash: "e".repeat(64),
       deps: {
+        reconciler: MAINNET_IDENTITIES.agent,
         adapters: {
           reconcilePending: async () => ({
             ok: true,
             transaction_hash: "nearReconcile",
             method: "reconcile_pending",
           }),
+          getPending: async () => ({ settlement_state: "Success" }),
         },
       },
     });
@@ -802,5 +832,222 @@ describe("J8B-1 sequential state machine", () => {
     });
     assert.equal(paused.policy_paused_onchain, true);
     assert.equal(paused.owner_pause_required, false);
+  });
+});
+
+describe("J8B-1 hotfix: confirm bypass + raw/deadline + journal secret", () => {
+  it("propose/sign/broadcast/reconcile --invoke fail without prior CLI confirm", async () => {
+    const attestorKp = nacl.sign.keyPair();
+    const signed = signedQuote();
+    await prepareCanaryOperation({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+    });
+    await canaryStepQuoteAttest({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: harnessDeps(signed, attestorKp),
+    });
+    await canaryStepVerifyUnpaused({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: { paused: false },
+    });
+
+    const p = await canaryStepPropose({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      deps: {
+        adapters: {
+          proposeQuotedEvmTransfer: async () => {
+            throw new Error("must_not_propose");
+          },
+          getPaused: async () => false,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({ payload_commitment: "x" }),
+        },
+      },
+    });
+    assert.equal(p.ok, false);
+    assert.match(p.reason, /operator_confirm_required:propose/);
+
+    advanceLifecycle("op-noconfirm", CANARY_STATES.PROPOSED, {
+      storeDir: STORE,
+      env: ENV,
+    });
+    const s = await canaryStepRequestSignature({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      deps: {
+        adapters: {
+          requestSignature: async () => {
+            throw new Error("must_not_sign");
+          },
+        },
+      },
+    });
+    assert.equal(s.ok, false);
+    assert.match(s.reason, /operator_confirm_required:sign/);
+
+    advanceLifecycle("op-noconfirm", CANARY_STATES.MPC_SIGNED, {
+      storeDir: STORE,
+      env: ENV,
+    });
+    advanceLifecycle("op-noconfirm", CANARY_STATES.READY_TO_BROADCAST, {
+      storeDir: STORE,
+      env: ENV,
+    });
+    // Bind quote deadline so broadcast reaches confirm check first
+    const { loadCanaryApproval } = await import("./canaryOneShot.mjs");
+    const loaded = loadCanaryApproval("op-noconfirm", {
+      storeDir: STORE,
+      env: ENV,
+    });
+    loaded.record.outcomes[CANARY_STATES.QUOTE_VERIFIED] = {
+      ...(loaded.record.outcomes[CANARY_STATES.QUOTE_VERIFIED] || {}),
+      quote_deadline_ms: Date.now() + 600_000,
+      min_out: "994904",
+    };
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(loaded.path, JSON.stringify(loaded.record, null, 2));
+
+    const b = await canaryStepBroadcast({
+      operationId: "op-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      deps: {
+        adapters: {
+          eth: async () => {
+            throw new Error("must_not_broadcast");
+          },
+        },
+      },
+    });
+    assert.equal(b.ok, false);
+    assert.match(b.reason, /operator_confirm_required:broadcast/);
+
+    createCanaryApproval({
+      operationId: "op-recon-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+    });
+    bindQuoteToApproval("op-recon-noconfirm", {
+      quoteHash: "h",
+      depositAddress: ESCROW,
+      storeDir: STORE,
+      env: ENV,
+    });
+    for (const st of [
+      CANARY_STATES.QUOTE_VERIFIED,
+      CANARY_STATES.ATTESTED,
+      CANARY_STATES.OWNER_UNPAUSED,
+      CANARY_STATES.PROPOSED,
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+      CANARY_STATES.SETTLED,
+    ]) {
+      advanceLifecycle("op-recon-noconfirm", st, {
+        storeDir: STORE,
+        env: ENV,
+      });
+    }
+    const r = await canaryStepReconcilePending({
+      operationId: "op-recon-noconfirm",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      evidenceHash: "f".repeat(64),
+      deps: { reconciler: MAINNET_IDENTITIES.agent },
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.reason, /operator_confirm_required:reconcile/);
+  });
+
+  it("rejects expired/near-expiry quote deadline before broadcast", async () => {
+    createCanaryApproval({
+      operationId: "op-deadline",
+      storeDir: STORE,
+      env: ENV,
+    });
+    bindQuoteToApproval("op-deadline", {
+      quoteHash: "h",
+      depositAddress: ESCROW,
+      storeDir: STORE,
+      env: ENV,
+    });
+    for (const st of [
+      CANARY_STATES.QUOTE_VERIFIED,
+      CANARY_STATES.ATTESTED,
+      CANARY_STATES.OWNER_UNPAUSED,
+      CANARY_STATES.PROPOSED,
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+    ]) {
+      advanceLifecycle("op-deadline", st, {
+        storeDir: STORE,
+        env: ENV,
+        outcome:
+          st === CANARY_STATES.QUOTE_VERIFIED
+            ? { quote_deadline_ms: Date.now() + 5_000, min_out: "1" }
+            : {},
+      });
+    }
+    confirmPhaseAfterOutcome("op-deadline", "broadcast", {
+      storeDir: STORE,
+      env: ENV,
+      requiredState: CANARY_STATES.READY_TO_BROADCAST,
+    });
+    const r = await canaryStepBroadcast({
+      operationId: "op-deadline",
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: false,
+      deps: { nowMs: Date.now() },
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "quote_deadline_too_close");
+  });
+
+  it("journal secret has no fixed production fallback", async () => {
+    const { resolveCanaryJournalSecret } = await import("./canaryOneShot.mjs");
+    const dir = join(STORE, "journal-secret-store");
+    const r = resolveCanaryJournalSecret({
+      env: { ...ENV, NIO_JOURNAL_SECRET: undefined },
+      storeDir: dir,
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.secret.length >= 32);
+    assert.ok(r.source === "generated" || r.source === "file");
+    assert.notEqual(r.secret, "nio-canary-journal");
+    const short = resolveCanaryJournalSecret({
+      env: { NIO_JOURNAL_SECRET: "too-short" },
+      storeDir: dir,
+    });
+    assert.equal(short.ok, false);
+  });
+
+  it("decodeSignedEip155Tx rejects garbage raw bytes", async () => {
+    const { decodeSignedEip155Tx } = await import(
+      "../intents-codec/quote-auth.mjs"
+    );
+    const bad = decodeSignedEip155Tx("0xdead");
+    assert.equal(bad.ok, false);
   });
 });

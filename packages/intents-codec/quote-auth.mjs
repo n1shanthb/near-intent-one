@@ -408,3 +408,132 @@ export function serializeSignedTx({
   ]);
   return "0x" + Buffer.from(raw).toString("hex");
 }
+
+/** Decode one RLP item; returns { item, rest }. */
+export function rlpDecode(buf, offset = 0) {
+  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
+  if (offset >= b.length) throw new Error("rlp_decode_eof");
+  const prefix = b[offset];
+  if (prefix <= 0x7f) {
+    return { item: b.subarray(offset, offset + 1), rest: offset + 1 };
+  }
+  if (prefix <= 0xb7) {
+    const len = prefix - 0x80;
+    const start = offset + 1;
+    return { item: b.subarray(start, start + len), rest: start + len };
+  }
+  if (prefix <= 0xbf) {
+    const lenOfLen = prefix - 0xb7;
+    const len = Number(BigInt("0x" + b.subarray(offset + 1, offset + 1 + lenOfLen).toString("hex") || "0"));
+    const start = offset + 1 + lenOfLen;
+    return { item: b.subarray(start, start + len), rest: start + len };
+  }
+  if (prefix <= 0xf7) {
+    const len = prefix - 0xc0;
+    const start = offset + 1;
+    const end = start + len;
+    const items = [];
+    let cur = start;
+    while (cur < end) {
+      const d = rlpDecode(b, cur);
+      items.push(d.item);
+      cur = d.rest;
+    }
+    return { item: items, rest: end };
+  }
+  const lenOfLen = prefix - 0xf7;
+  const len = Number(BigInt("0x" + b.subarray(offset + 1, offset + 1 + lenOfLen).toString("hex") || "0"));
+  const start = offset + 1 + lenOfLen;
+  const end = start + len;
+  const items = [];
+  let cur = start;
+  while (cur < end) {
+    const d = rlpDecode(b, cur);
+    items.push(d.item);
+    cur = d.rest;
+  }
+  return { item: items, rest: end };
+}
+
+function bytesToBigInt(buf) {
+  if (!buf || buf.length === 0) return 0n;
+  return BigInt("0x" + Buffer.from(buf).toString("hex"));
+}
+
+/**
+ * Decode a signed legacy EIP-155 raw transaction and recover the signer.
+ * Does not re-sign. Uses recoverFromHash from gate-k/settle.
+ */
+export function decodeSignedEip155Tx(rawHex, { recoverFn } = {}) {
+  const hex = String(rawHex || "").replace(/^0x/, "");
+  if (!hex || hex.length % 2) {
+    return { ok: false, reason: "raw_hex_invalid" };
+  }
+  let decoded;
+  try {
+    decoded = rlpDecode(Buffer.from(hex, "hex"), 0);
+  } catch (e) {
+    return { ok: false, reason: "rlp_decode_failed", detail: String(e.message || e) };
+  }
+  if (!Array.isArray(decoded.item) || decoded.item.length !== 9) {
+    return { ok: false, reason: "rlp_not_legacy_eip155_9tuple" };
+  }
+  const [nonceB, gasPriceB, gasLimitB, toB, valueB, dataB, vB, rB, sB] = decoded.item;
+  const nonce = Number(bytesToBigInt(nonceB));
+  const gasPrice = bytesToBigInt(gasPriceB).toString();
+  const gasLimit = bytesToBigInt(gasLimitB).toString();
+  const to = "0x" + Buffer.from(toB).toString("hex").toLowerCase();
+  const value = bytesToBigInt(valueB).toString();
+  const data = Buffer.from(dataB);
+  const v = bytesToBigInt(vB);
+  const r = Buffer.from(rB);
+  const s = Buffer.from(sB);
+  // EIP-155: v = chainId*2 + 35 + recoveryId
+  const recoveryId = Number((v - 35n) % 2n);
+  const chainId = Number((v - 35n - BigInt(recoveryId)) / 2n);
+  const digestBytes = eip155UnsignedDigest({
+    nonce: BigInt(nonce),
+    gasPrice: BigInt(gasPrice),
+    gasLimit: BigInt(gasLimit),
+    to,
+    value: BigInt(value),
+    data,
+    chainId,
+  });
+  const digest_hex = digestHex(digestBytes);
+  let recovered = null;
+  if (typeof recoverFn === "function") {
+    try {
+      recovered = recoverFn(digestBytes, r, s, recoveryId);
+      const alt = recoveryId ^ 1;
+      // Prefer matching caller-supplied expected later; keep primary recovery
+      void alt;
+    } catch (e) {
+      return { ok: false, reason: "signer_recovery_failed", detail: String(e.message || e) };
+    }
+  }
+  let transfer = null;
+  if (data.length === 68 && data.subarray(0, 4).toString("hex") === "a9059cbb") {
+    transfer = {
+      recipient: "0x" + data.subarray(16, 36).toString("hex").toLowerCase(),
+      amount: BigInt("0x" + data.subarray(36, 68).toString("hex")).toString(),
+    };
+  }
+  return {
+    ok: true,
+    nonce,
+    gasPrice,
+    gasLimit,
+    to,
+    value,
+    data,
+    chainId,
+    recoveryId,
+    r,
+    s,
+    digest_hex,
+    recovered: recovered ? String(recovered).toLowerCase() : null,
+    transfer,
+    rawHex: "0x" + hex.toLowerCase(),
+  };
+}

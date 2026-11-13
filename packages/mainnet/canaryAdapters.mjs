@@ -17,8 +17,10 @@ import {
   eip155UnsignedDigest,
   digestHex,
   serializeSignedTx,
+  decodeSignedEip155Tx,
 } from "../intents-codec/quote-auth.mjs";
 import { CANARY_TOKEN, CANARY_CHAIN_ID, CANARY_AMOUNT } from "./canaryOneShot.mjs";
+import { localTxHash } from "../execution/txJournal.mjs";
 
 const { connect, keyStores, providers } = nearAPI;
 
@@ -84,6 +86,9 @@ export async function createMainnetCanaryAdapters(opts = {}) {
     },
     async getGateJMandate() {
       return viewFunction(rpc, policy, "get_gate_j_mandate", {});
+    },
+    async getReconciler() {
+      return viewFunction(rpc, policy, "get_reconciler", {});
     },
     async isTrustedQuoteSigner(publicKey) {
       return viewFunction(rpc, policy, "is_trusted_quote_signer", {
@@ -259,9 +264,9 @@ export async function createMainnetCanaryAdapters(opts = {}) {
 
     /**
      * Decode + verify a serialized signed tx against authorization (no send).
+     * Recovers signer; never re-signs.
      */
     verifySignedRawAgainstAuth(rawHex, auth) {
-      // Minimal structural checks via re-assembly equality of digest fields
       const want = {
         token: String(auth.token || CANARY_TOKEN).toLowerCase(),
         deposit: String(auth.deposit_address).toLowerCase(),
@@ -272,39 +277,82 @@ export async function createMainnetCanaryAdapters(opts = {}) {
         chain_id: Number(auth.chain_id || CANARY_CHAIN_ID),
         digest: String(auth.digest_hex).toLowerCase(),
         mpc: String(auth.mpc || MAINNET_IDENTITIES.mpc_evm_address).toLowerCase(),
+        local_tx_hash: auth.local_tx_hash
+          ? String(auth.local_tx_hash).toLowerCase()
+          : null,
+        payload_commitment: auth.payload_commitment
+          ? String(auth.payload_commitment).toLowerCase()
+          : null,
       };
-      if (want.chain_id !== CANARY_CHAIN_ID) {
-        return { ok: false, reason: "wrong_chain_id" };
+      const decoded = decodeSignedEip155Tx(rawHex, {
+        recoverFn: (hash, r, s, recoveryId) => {
+          let addr = recoverFromHash(hash, r, s, recoveryId);
+          if (addr.toLowerCase() !== want.mpc) {
+            const alt = recoverFromHash(hash, r, s, recoveryId ^ 1);
+            if (alt.toLowerCase() === want.mpc) addr = alt;
+          }
+          return addr;
+        },
+      });
+      if (!decoded.ok) return decoded;
+      if (decoded.chainId !== CANARY_CHAIN_ID || decoded.chainId !== want.chain_id) {
+        return { ok: false, reason: "wrong_chain_id", got: decoded.chainId };
       }
-      if (want.token !== CANARY_TOKEN) {
-        return { ok: false, reason: "wrong_token" };
+      if (decoded.to !== want.token || decoded.to !== CANARY_TOKEN) {
+        return { ok: false, reason: "wrong_token", got: decoded.to };
       }
-      if (want.amount !== CANARY_AMOUNT) {
-        return { ok: false, reason: "wrong_amount" };
+      if (decoded.nonce !== want.nonce) {
+        return { ok: false, reason: "nonce_mismatch", got: decoded.nonce };
       }
-      // Recompute digest from auth fields and compare
-      const data = erc20TransferData(want.deposit, want.amount);
-      const digest_hex = digestHex(
-        eip155UnsignedDigest({
-          nonce: BigInt(want.nonce),
-          gasPrice: BigInt(want.gas_price),
-          gasLimit: BigInt(want.gas_limit),
-          to: want.token,
-          data,
-          chainId: want.chain_id,
-        })
-      );
-      if (digest_hex.toLowerCase() !== want.digest) {
-        return { ok: false, reason: "auth_digest_inconsistent" };
+      if (decoded.gasPrice !== want.gas_price) {
+        return { ok: false, reason: "gas_price_mismatch", got: decoded.gasPrice };
       }
-      if (!rawHex || !String(rawHex).startsWith("0x")) {
-        return { ok: false, reason: "raw_hex_invalid" };
+      if (decoded.gasLimit !== want.gas_limit) {
+        return { ok: false, reason: "gas_limit_mismatch", got: decoded.gasLimit };
+      }
+      if (!decoded.transfer) {
+        return { ok: false, reason: "not_erc20_transfer" };
+      }
+      if (decoded.transfer.recipient !== want.deposit) {
+        return { ok: false, reason: "escrow_mismatch", got: decoded.transfer.recipient };
+      }
+      if (decoded.transfer.amount !== want.amount || decoded.transfer.amount !== CANARY_AMOUNT) {
+        return { ok: false, reason: "amount_mismatch", got: decoded.transfer.amount };
+      }
+      if (decoded.digest_hex.toLowerCase() !== want.digest) {
+        return { ok: false, reason: "digest_mismatch_vs_auth" };
+      }
+      if (
+        want.payload_commitment &&
+        decoded.digest_hex.toLowerCase() !== want.payload_commitment
+      ) {
+        return { ok: false, reason: "payload_commitment_mismatch" };
+      }
+      if (!decoded.recovered || decoded.recovered !== want.mpc) {
+        return {
+          ok: false,
+          reason: "recovered_signer_mismatch",
+          recovered: decoded.recovered,
+          expected: want.mpc,
+        };
+      }
+      if (want.local_tx_hash) {
+        const got = localTxHash(decoded.rawHex);
+        if (got.toLowerCase() !== want.local_tx_hash) {
+          return { ok: false, reason: "local_tx_hash_mismatch", got };
+        }
       }
       return {
         ok: true,
-        digest_hex,
-        raw_len: String(rawHex).length,
-        note: "Structural auth+digest verified; recovered signer checked at assemble time",
+        digest_hex: decoded.digest_hex,
+        recovered: decoded.recovered,
+        chain_id: decoded.chainId,
+        nonce: decoded.nonce,
+        token: decoded.to,
+        escrow: decoded.transfer.recipient,
+        amount: decoded.transfer.amount,
+        gas_price: decoded.gasPrice,
+        gas_limit: decoded.gasLimit,
       };
     },
   };

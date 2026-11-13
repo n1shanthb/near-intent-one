@@ -68,6 +68,39 @@ export function canaryStoreDir(env = process.env) {
   );
 }
 
+/**
+ * Private journal encryption/auth secret — never a fixed production fallback.
+ * Prefers NIO_JOURNAL_SECRET; else loads/creates a 32-byte file under the canary store.
+ */
+export function resolveCanaryJournalSecret({
+  env = process.env,
+  storeDir = null,
+} = {}) {
+  const fromEnv = env.NIO_JOURNAL_SECRET;
+  if (fromEnv && String(fromEnv).length >= 32) {
+    return { ok: true, secret: String(fromEnv), source: "env" };
+  }
+  if (fromEnv && String(fromEnv).length > 0 && String(fromEnv).length < 32) {
+    return { ok: false, reason: "journal_secret_too_short" };
+  }
+  const dir = storeDir || canaryStoreDir(env);
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, "journal.secret");
+  if (existsSync(path)) {
+    const secret = readFileSync(path, "utf8").trim();
+    if (secret.length < 32) {
+      return { ok: false, reason: "journal_secret_file_too_short", path };
+    }
+    return { ok: true, secret, source: "file", path };
+  }
+  const secret = randomBytes(32).toString("base64url");
+  writeFileSync(path, secret + "\n", { mode: 0o600 });
+  return { ok: true, secret, source: "generated", path };
+}
+
+/** Minimum remaining quote deadline margin before broadcast (ms). */
+export const QUOTE_DEADLINE_MIN_REMAINING_MS = 60_000;
+
 function approvalPath(operationId, dir) {
   return join(dir, `${operationId}.json`);
 }

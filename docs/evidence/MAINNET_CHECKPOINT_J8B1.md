@@ -2,6 +2,10 @@
 
 **HARD STOP: NO Ledger / NO unpause / NO propose / NO request_signature / NO EVM broadcast / NO funding / NO autonomous**
 
+## Hotfix (post-7546588)
+
+Closed three blockers: (1) mutation steps no longer auto-record confirmations — only CLI `confirm` does; (2) agent `reconcile_pending` only if `get_reconciler()===agent`, else owner Ledger path + on-chain PendingOp verify; (3) broadcast decodes journal raw EIP-155, checks MPC/digest/commitment/deadline, private journal secret (no fixed fallback).
+
 ## Readiness
 
 **READY** for first owner-approved trade (operator sequential CLI). Not auto-executable.
