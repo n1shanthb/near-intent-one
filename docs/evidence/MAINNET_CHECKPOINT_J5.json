@@ -1,7 +1,50 @@
 {
-  "checkpoint": "J5",
-  "at": "2026-11-13T06:18:33.556Z",
+  "checkpoint": "J5.1",
+  "at": "2026-11-13T07:29:16.286Z",
   "node": "v22.13.0",
+  "sdk": {
+    "package": "@defuse-protocol/one-click-sdk-typescript",
+    "installed": "0.1.26",
+    "coverage": {
+      "sdk_version_required": ">=0.1.26",
+      "docs": "https://docs.near-intents.org/integration/distribution-channels/1click-api/verify-quote-signature",
+      "dry_quote_fields": [
+        "amountIn",
+        "amountInFormatted",
+        "amountInUsd",
+        "minAmountIn",
+        "amountOut",
+        "amountOutFormatted",
+        "amountOutUsd",
+        "minAmountOut"
+      ],
+      "nondry_extra_fields": [
+        "depositAddress",
+        "depositMemo",
+        "deadline",
+        "timeWhenInactive",
+        "timeEstimate",
+        "refundFee",
+        "withdrawFee"
+      ],
+      "request_fields": [
+        "dry",
+        "swapType",
+        "slippageTolerance",
+        "originAsset",
+        "depositType",
+        "destinationAsset",
+        "amount",
+        "refundTo",
+        "refundType",
+        "recipient",
+        "recipientType",
+        "deadline"
+      ],
+      "note": "0.1.24 hashed dry-like amounts only for all quotes (depositAddress NOT covered). 0.1.26 adds escrow/execution fields for non-dry only."
+    },
+    "pinned_manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
+  },
   "safety": {
     "mainnet_mutations": false,
     "ledger_tx": false,
@@ -9,227 +52,256 @@
     "funding": false,
     "unpause": false,
     "funded_broadcast": false,
+    "deposit_sent": false,
     "autonomous": false,
-    "policy_paused_expected": true,
+    "tls_bypass": false,
     "mandate_epoch_expected": 2,
     "mpc_evm": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
   },
   "tls": {
-    "ok": false,
-    "error": "bind EINVAL 10.149.188.39",
-    "bind": "10.149.188.39"
-  },
-  "tokens": {
     "ok": true,
-    "count": 230,
-    "reason": null
+    "bind": null,
+    "subject": "chaindefuser.com",
+    "issuerCN": "WE1",
+    "issuerO": "Google Trust Services",
+    "fingerprint256": "46:16:C5:AE:50:81:0D:3E:F8:E4:AB:FC:63:F6:40:AB:44:FA:0A:D9:A6:01:47:19:4B:7D:62:9E:37:1A:54:92",
+    "fortinet_mitm": false
   },
-  "live_dry_quotes": {
-    "eth_usdc_to_wrap_near": {
-      "ok": true,
-      "dry": true,
-      "reason": null,
-      "amount_in": "1000000",
-      "amount_out": "293088530881764264705881",
-      "min_amount_out": "290157645572946622058822",
-      "amount_out_usd": "0.987708349072",
-      "deposit_address": null,
-      "signature_present": false,
-      "verify": {
-        "ok": false,
-        "reason": "unsigned_quote"
-      },
-      "tls": "verified",
-      "authenticated_jwt": false
-    },
+  "onchain_max_slippage_bps": 100,
+  "live_dry_quote_signature_verification": {
     "eth_usdc_to_arb_usdc": {
       "ok": true,
       "dry": true,
       "reason": null,
+      "signature_present": true,
+      "timestamp": "2026-11-13T07:29:17.777Z",
+      "correlation_id": "1b8ab97e-ecc6-497c-b07e-024f18761fba",
       "amount_in": "1000000",
       "amount_out": "994498",
       "min_amount_out": "984553",
-      "amount_out_usd": "0.994050475900",
       "deposit_address": null,
-      "signature_present": false,
       "verify": {
-        "ok": false,
-        "reason": "unsigned_quote"
+        "ok": true,
+        "verified": true,
+        "reason": null,
+        "quote_hash": "EVZaKSybc3mRgWCP88vTCS8JX9w5xjk5rAuXru2dLGQT",
+        "escrow_in_signed_hash": false,
+        "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+        "manager_key_mode": "pinned_official"
       },
+      "status_label": "DRY_QUOTE_VERIFIED",
+      "authenticated_jwt": false,
       "tls": "verified",
-      "authenticated_jwt": false
+      "values_altered": false
     },
-    "note": "Dry quotes are observation economics; official signature typically absent until funded signed response"
-  },
-  "signed_quote_verification": {
-    "local_sdk_path": "PASS (see j5.quotePath.test.mjs)",
-    "live_dry_eth_usdc_to_near": "FAIL:unsigned_quote",
-    "live_dry_eth_usdc_to_arb_usdc": "FAIL:unsigned_quote",
-    "verdict": "FAIL_LIVE_DRY_UNSIGNED — local official-SDK verify machinery PASS"
-  },
-  "ai_quote_level_consume": {
-    "ok": true,
-    "quotes_present": 15,
-    "sample_route": "eth_usdc_to_arb_usdc",
-    "sample_fields": {
-      "asset_in_id": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-      "asset_out_id": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-      "amount_in_raw": "1000000",
-      "amount_out_raw": "994498",
-      "min_amount_out_raw": "984553",
-      "amount_out_usd": 0.9940504759
-    },
-    "missing": [],
-    "strategist_choice": "NO_TRADE",
-    "no_trade_preserved": true
-  },
-  "authorization_paths": {
     "eth_usdc_to_wrap_near": {
       "ok": true,
-      "stage": "complete",
-      "route": "eth_usdc_to_wrap_near",
-      "mandate_epoch": 2,
-      "verified": {
+      "dry": true,
+      "reason": null,
+      "signature_present": true,
+      "timestamp": "2026-11-13T07:29:18.956Z",
+      "correlation_id": "286aca6b-780a-4636-b4b7-7d84ba973f9d",
+      "amount_in": "1000000",
+      "amount_out": "282855806130570110701106",
+      "min_amount_out": "280027248069264409594094",
+      "deposit_address": null,
+      "verify": {
         "ok": true,
-        "quote_hash": "82AW5nK42woa8myMUktyxeTwv93X1JjzorGHCH1evALK"
+        "verified": true,
+        "reason": null,
+        "quote_hash": "2Wjih37kuqgnK242tNDo9ZgtHaaoE2FN5cXiRjYMfGBU",
+        "escrow_in_signed_hash": false,
+        "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+        "manager_key_mode": "pinned_official"
       },
-      "attestation": {
-        "deposit_address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "amount_in": "1000000",
-        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-        "asset_out": "nep141:wrap.near",
-        "min_amount_out": "290157645572946622058822",
-        "quote_deadline_ns": "1794551472702000000",
-        "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "chain_id": "1",
-        "recipient": "nishanthb.near",
-        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-        "correlation_id": "j5-eth_usdc_to_wrap_near-1794550752702",
-        "quote_hash": "82AW5nK42woa8myMUktyxeTwv93X1JjzorGHCH1evALK",
-        "max_gas_price": "5000000000",
-        "gas_limit": "250000"
-      },
-      "attestation_id": "e6b7d96aaf6831b526e275573353eeafdfa9039deed84e8c4e9a0a96b23d28a1",
-      "attestation_sig_ok": true,
-      "tx": {
-        "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "amount": "1000000",
-        "chain_id": 1,
-        "nonce": 0,
-        "gas_price": "5000000000",
-        "gas_limit": "250000",
-        "data_hex": "0xa9059cbb000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000f4240",
-        "digest_hex": "1bc3bfd1e963480a7dc96aec7406acfc45b0a2881dd9260912b4551f639683dd",
-        "note": "ERC-20 transfer(token, deposit, amount); tx.to in policy = deposit; digest to = token"
-      },
-      "deposit_is_escrow": true,
-      "recipient_custody": "nishanthb.near",
-      "refund_custody": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-      "policy": {
-        "ok": true,
-        "fails": [],
-        "attestation_id": "e6b7d96aaf6831b526e275573353eeafdfa9039deed84e8c4e9a0a96b23d28a1",
-        "message_utf8": "QUOTE_AUTH_V2\ndeposit=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\namount_in=1000000\nasset_in=nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near\nasset_out=nep141:wrap.near\nmin_out=290157645572946622058822\ndeadline_ns=1794551472702000000\ntoken=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\nchain_id=1\nrecipient=nishanthb.near\nrefund_to=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\ncorrelation_id=j5-eth_usdc_to_wrap_near-1794550752702\nquote_hash=82AW5nK42woa8myMUktyxeTwv93X1JjzorGHCH1evALK\nmax_gas_price=5000000000\ngas_limit=250000\n"
-      },
-      "decimalsRisk": {
-        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-        "asset_out": "nep141:wrap.near",
-        "decimals_in": 6,
-        "decimals_out": 24,
-        "same_decimal_scale": false,
-        "amount_in": "1000000",
-        "min_amount_out": "290157645572946622058822",
-        "policy_floor": "995000",
-        "policy_would_accept": true,
-        "classification": "UNSAFE_LOOSE_SLIPPAGE",
-        "can_safely_validate_value_slippage_exposure": false,
-        "risks": [
-          "min_amount_out raw >> amount_in raw solely due to higher out decimals — policy slippage floor does not measure economic slip"
-        ],
-        "recommendation": "fail_closed — do not fund this route until policy uses USD/normalized units or per-asset caps"
-      },
-      "broadcast": false,
-      "mainnet_submit": false,
-      "attestation_signature_present": true
+      "status_label": "DRY_QUOTE_VERIFIED",
+      "authenticated_jwt": false,
+      "tls": "verified",
+      "values_altered": false
     },
+    "verdict": "PASS"
+  },
+  "live_nondry_quote_signature_verification": {
     "eth_usdc_to_arb_usdc": {
       "ok": true,
-      "stage": "complete",
-      "route": "eth_usdc_to_arb_usdc",
-      "mandate_epoch": 2,
-      "verified": {
+      "dry": false,
+      "reason": null,
+      "signature_present": true,
+      "timestamp": "2026-11-13T07:29:20.195Z",
+      "correlation_id": "84c5624b-f57d-4520-a0be-720dc0262aaa",
+      "amount_in": "1000000",
+      "amount_out": "994498",
+      "min_amount_out": "984553",
+      "deposit_address": "0xe392De1abF0a063a3d81C894581974B01EE5A667",
+      "verify": {
         "ok": true,
-        "quote_hash": "ALkWJrn5VgB1jT8GLtg6YqSEMpn7gcPK1kTdkEh5oqF3"
+        "verified": true,
+        "reason": null,
+        "quote_hash": "BDUKUsHw9DZXqFbMtis4d4uo6dW3h5jKnrScoNRTbKkq",
+        "escrow_in_signed_hash": true,
+        "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+        "manager_key_mode": "pinned_official"
       },
-      "attestation": {
-        "deposit_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "amount_in": "1000000",
-        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-        "asset_out": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-        "min_amount_out": "995000",
-        "quote_deadline_ns": "1794551472740000000",
-        "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "chain_id": "1",
-        "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-        "correlation_id": "j5-eth_usdc_to_arb_usdc-1794550752740",
-        "quote_hash": "ALkWJrn5VgB1jT8GLtg6YqSEMpn7gcPK1kTdkEh5oqF3",
-        "max_gas_price": "5000000000",
-        "gas_limit": "250000"
-      },
-      "attestation_id": "dcc2fbe27ee55b7ce672f0b551676649195a1e1639ac94e29413e9307f42bfaf",
-      "attestation_sig_ok": true,
-      "tx": {
-        "to": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "amount": "1000000",
-        "chain_id": 1,
-        "nonce": 0,
-        "gas_price": "5000000000",
-        "gas_limit": "250000",
-        "data_hex": "0xa9059cbb000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000000000000000000000000000000000000000000000000000000000f4240",
-        "digest_hex": "57ec5ca2b006b6b0b349165ed090609c35eccfe504b4270a3a601bc4e023d6fd",
-        "note": "ERC-20 transfer(token, deposit, amount); tx.to in policy = deposit; digest to = token"
-      },
-      "deposit_is_escrow": true,
-      "recipient_custody": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-      "refund_custody": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-      "policy": {
-        "ok": true,
-        "fails": [],
-        "attestation_id": "dcc2fbe27ee55b7ce672f0b551676649195a1e1639ac94e29413e9307f42bfaf",
-        "message_utf8": "QUOTE_AUTH_V2\ndeposit=0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\namount_in=1000000\nasset_in=nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near\nasset_out=nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near\nmin_out=995000\ndeadline_ns=1794551472740000000\ntoken=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48\nchain_id=1\nrecipient=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\nrefund_to=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\ncorrelation_id=j5-eth_usdc_to_arb_usdc-1794550752740\nquote_hash=ALkWJrn5VgB1jT8GLtg6YqSEMpn7gcPK1kTdkEh5oqF3\nmax_gas_price=5000000000\ngas_limit=250000\n"
-      },
-      "decimalsRisk": {
-        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-        "asset_out": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
-        "decimals_in": 6,
-        "decimals_out": 6,
-        "same_decimal_scale": true,
-        "amount_in": "1000000",
-        "min_amount_out": "995000",
-        "policy_floor": "995000",
-        "policy_would_accept": true,
-        "classification": "SAFE_SAME_DECIMALS",
-        "can_safely_validate_value_slippage_exposure": true,
-        "risks": [],
-        "recommendation": "route_ok_for_raw_policy_checks"
-      },
-      "broadcast": false,
-      "mainnet_submit": false,
-      "attestation_signature_present": true
+      "status_label": "FUNDED_QUOTE_VERIFIED_NO_DEPOSIT_YET",
+      "authenticated_jwt": false,
+      "tls": "verified",
+      "values_altered": false
     },
-    "manipulated_deposit_rejected": {
-      "ok": true,
-      "stage": "one_click_verify",
-      "reason": "signature_invalid"
+    "verdict": "PASS",
+    "deposit_broadcast": false
+  },
+  "sdk_signature_field_coverage": {
+    "sdk_version_required": ">=0.1.26",
+    "docs": "https://docs.near-intents.org/integration/distribution-channels/1click-api/verify-quote-signature",
+    "dry_quote_fields": [
+      "amountIn",
+      "amountInFormatted",
+      "amountInUsd",
+      "minAmountIn",
+      "amountOut",
+      "amountOutFormatted",
+      "amountOutUsd",
+      "minAmountOut"
+    ],
+    "nondry_extra_fields": [
+      "depositAddress",
+      "depositMemo",
+      "deadline",
+      "timeWhenInactive",
+      "timeEstimate",
+      "refundFee",
+      "withdrawFee"
+    ],
+    "request_fields": [
+      "dry",
+      "swapType",
+      "slippageTolerance",
+      "originAsset",
+      "depositType",
+      "destinationAsset",
+      "amount",
+      "refundTo",
+      "refundType",
+      "recipient",
+      "recipientType",
+      "deadline"
+    ],
+    "note": "0.1.24 hashed dry-like amounts only for all quotes (depositAddress NOT covered). 0.1.26 adds escrow/execution fields for non-dry only."
+  },
+  "escrow_authenticity": {
+    "nondry_obtained": true,
+    "signature_verified": true,
+    "deposit_address": "0xe392De1abF0a063a3d81C894581974B01EE5A667",
+    "escrow_in_signed_hash": true,
+    "deposit_broadcast": false,
+    "result": "PASS",
+    "note": "Attestor signature alone is never treated as 1Click escrow proof"
+  },
+  "live_usdc_usdc_min_out_policy": {
+    "label": "live_dry_eth_usdc_to_arb_usdc",
+    "amount_in": "1000000",
+    "min_amount_out": "984553",
+    "max_slippage_bps": 100,
+    "policy_floor": "990000",
+    "result": "BLOCKED",
+    "altered_values": false
+  },
+  "live_vs_fixture": {
+    "live_authorization": {
+      "label": "live_values_unaltered",
+      "altered_values": false,
+      "dry_verify": {
+        "ok": true,
+        "verified": true,
+        "reason": null,
+        "quote_hash": "EVZaKSybc3mRgWCP88vTCS8JX9w5xjk5rAuXru2dLGQT",
+        "escrow_in_signed_hash": false,
+        "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+        "manager_key_mode": "pinned_official"
+      },
+      "min_out_policy": {
+        "label": "live_dry_eth_usdc_to_arb_usdc",
+        "amount_in": "1000000",
+        "min_amount_out": "984553",
+        "max_slippage_bps": 100,
+        "policy_floor": "990000",
+        "result": "BLOCKED",
+        "altered_values": false
+      },
+      "authorization": "BLOCKED_BY_POLICY_SLIPPAGE_FLOOR",
+      "note": "Do not inflate minAmountOut to force PASS"
+    },
+    "fixture_authorization": {
+      "label": "fixture_synthetic_signed",
+      "result": "PASS",
+      "note": "FIXTURE ONLY — not a live quote PASS",
+      "altered_values": false,
+      "path_ok": true
     }
+  },
+  "mutation_negatives": {
+    "all_rejected": true,
+    "results": [
+      {
+        "field": "amountOut",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "minAmountOut",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "originAsset",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "destinationAsset",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "recipient",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "refundTo",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "amountIn",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "nondry_depositAddress",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      },
+      {
+        "field": "nondry_deadline",
+        "verify_ok": false,
+        "expect_reject": true,
+        "pass": true
+      }
+    ]
   },
   "decimals_risk": {
     "contract_model": "raw_amount_in",
     "note": "Fail closed — do not broaden token_scope; do not bypass slippage require!",
-    "one_click_signature_coverage": "Official SDK quoteHash/buildSignedQuote covers request fields + amount* fields only — depositAddress is NOT in the signed hash. QUOTE_AUTH_V2 attestation must bind escrow.",
+    "one_click_signature_coverage": "SDK >=0.1.26: dry signs amounts only; non-dry also signs depositAddress/depositMemo/deadline/fees. 0.1.24 omitted escrow from hash (docs/SDK mismatch). Attestor sig alone ≠ escrow authenticity unless escrow_in_signed_hash.",
     "rows": [
       {
         "id": "eth_usdc_to_wrap_near",
@@ -338,30 +410,37 @@
     "role": "trusted_quote_attestor",
     "algorithm": "ed25519",
     "message_domain": "QUOTE_AUTH_V2",
+    "on_chain_methods": {
+      "set": "set_trusted_quote_signer",
+      "remove": "remove_trusted_quote_signer",
+      "query": "is_trusted_quote_signer"
+    },
     "prerequisites": [
-      "Official 1Click verifyQuoteSignature PASS on the exact OneClickQuoteResponse",
+      "Official 1Click verifyQuoteSignature PASS on the authentic OneClickQuoteResponse",
+      "Pinned official manager key only on mainnet funded paths (no test key override)",
+      "Non-dry: depositAddress must be in SDK signed subset (requires SDK >=0.1.26)",
       "Bind quoteRequest to agent request fields",
       "deposit_address taken only from quote.depositAddress (never LLM)",
-      "Authenticated vs unauthenticated fee schedules kept distinct"
+      "allowUnverifiedOneClick forbidden on mainnet funded paths"
     ],
     "key_custody": {
       "generate": "nacl.sign.keyPair() offline / HSM — never in git, frontend, or logs",
       "storage": "encrypted secret store or hardware; packages/services/attestor.mjs seed path gitignored",
-      "public_material_only_on_chain": "ed25519:<base58> via policy add_trusted_signer (owner Ledger)",
+      "public_material_only_on_chain": "ed25519:<base58> via policy set_trusted_quote_signer (owner Ledger)",
       "isolation": "Attestor key ≠ owner Ledger ≠ agent ops key ≠ MPC derivation seed"
     },
     "rotation": {
       "steps": [
         "Generate new ed25519 keypair offline",
-        "Owner Ledger: add_trusted_signer(new_pk) while old still valid (overlap window)",
+        "Owner Ledger: set_trusted_quote_signer(new_pk) while old still valid (overlap window)",
         "Cut over attestor service to new seed",
-        "Owner Ledger: remove_trusted_signer(old_pk)",
+        "Owner Ledger: remove_trusted_quote_signer(old_pk)",
         "Bump mandate_epoch only if compromise suspected (invalidates pending)"
       ]
     },
     "revocation": {
       "compromise": [
-        "remove_trusted_signer(compromised_pk) immediately",
+        "remove_trusted_quote_signer(compromised_pk) immediately",
         "optional revoke_signing / pause",
         "rotate to fresh key before any new propose_quoted_evm_transfer"
       ],
@@ -370,205 +449,21 @@
     "mainnet_status": {
       "registered": false,
       "do_not_register_until": [
-        "Live funded quotes return verifiable signature+timestamp against published manager key OR explicit owner acceptance of attestor-only trust with documented residual risk",
+        "Live non-dry quote verifies with pinned manager key AND depositAddress in signed hash",
+        "Live min_amount_out passes deployed policy floor (max_slippage_bps) without value inflation",
         "USDC→USDC same-decimal route selected for first tiny trade",
         "Policy unpause + funded_trading gate + broadcast gate explicit owner approval",
         "MPC EVM funded with gas + tiny USDC"
       ]
     },
-    "generated_at": "2026-11-13T06:19:12.776Z",
+    "generated_at": "2026-11-13T07:29:22.313Z",
     "register_on_mainnet_now": false
   },
-  "route_readiness": [
-    {
-      "route_id": "eth_usdc_to_wrap_near",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": true,
-      "signing_implementation_validated": true,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "eth_usdc_to_arb_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": true,
-      "signing_implementation_validated": true,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "eth_usdc_to_base_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "arb_usdc_to_eth_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "base_usdc_to_wrap_near",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "wrap_near_to_eth_usdc",
-      "live_quote_available": false,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    },
-    {
-      "route_id": "eth_usdc_to_near_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "arb_usdc_to_base_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "arb_usdc_to_wrap_near",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "arb_usdc_to_near_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "base_usdc_to_eth_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "base_usdc_to_arb_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "base_usdc_to_near_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "dry observation quote only"
-    },
-    {
-      "route_id": "near_usdc_to_eth_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    },
-    {
-      "route_id": "near_usdc_to_arb_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    },
-    {
-      "route_id": "wrap_near_to_arb_usdc",
-      "live_quote_available": false,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    },
-    {
-      "route_id": "near_usdc_to_base_usdc",
-      "live_quote_available": true,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    },
-    {
-      "route_id": "wrap_near_to_base_usdc",
-      "live_quote_available": false,
-      "authenticated_quote_validated": false,
-      "policy_authorization_tested": false,
-      "signing_implementation_validated": false,
-      "funded_execution_tested": false,
-      "near_origin_funded_claimed": false,
-      "note": "NEAR-origin funded execution NOT claimed — NEP-141 path unproven"
-    }
-  ],
   "blockers_before_tiny_funded_trade": [
-    "Live funded (non-dry) 1Click quotes with verifiable signature+timestamp — or owner-documented residual risk acceptance",
-    "Register isolated ed25519 attestor via owner Ledger add_trusted_signer (not done)",
-    "Fund MPC EVM with gas + tiny USDC (currently unfunded)",
-    "Prefer same-decimal USDC→USDC route; USDC→wNEAR fails-closed on safe slippage validation",
-    "NEAR-origin NEP-141 transfer path not proven — do not claim NEAR-origin funded execution",
-    "Owner unpause + funded_trading + broadcast gates — still OFF",
-    "autonomous_execution remains false",
-    "token_scope must stay allowlist"
+    "Live USDC→USDC minAmountOut below deployed policy floor — do not inflate",
+    "set_trusted_quote_signer not called (attestor unregistered)",
+    "MPC EVM unfunded (gas + USDC)",
+    "Policy paused; funded_trading/broadcast/autonomous OFF",
+    "NEAR-origin NEP-141 path unproven"
   ]
 }

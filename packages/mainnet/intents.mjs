@@ -9,6 +9,10 @@ import {
 } from "@defuse-protocol/one-click-sdk-typescript";
 import { MAINNET, assertNetworkIsolation } from "../networks/profiles.mjs";
 import { secureFetch } from "./secureFetch.mjs";
+import {
+  verifySignedOneClickQuote,
+  ONE_CLICK_MANAGER_PUB_KEY,
+} from "../intents-codec/oneClickVerify.mjs";
 
 const DEFAULT_BASE = MAINNET.intents.apiBase;
 
@@ -171,7 +175,7 @@ export async function productionDryQuote(request, opts = {}) {
       ok: false,
       http_status: got.status,
       reason: got.status === 401 ? "jwt_required" : "quote_http_error",
-      request: { ...body, dry: true },
+      request: { ...body, dry: body.dry },
       body: parsed,
       api: baseUrl,
       bind: got.bind,
@@ -179,27 +183,82 @@ export async function productionDryQuote(request, opts = {}) {
     };
   }
 
-  const quote = parsed.quote || parsed;
+  // Preserve authentic OneClickQuoteResponse — never rebuild signature from our request.
+  if (!parsed?.quote || !parsed?.quoteRequest) {
+    return {
+      ok: false,
+      reason: "malformed_one_click_response",
+      detail: "missing quote and/or quoteRequest on API body",
+      top_keys: parsed && typeof parsed === "object" ? Object.keys(parsed) : null,
+      api: baseUrl,
+      bind: got.bind,
+      status_label: "NOT_YET_PROVEN",
+    };
+  }
+
+  const one_click_response = {
+    quoteRequest: parsed.quoteRequest,
+    quote: parsed.quote,
+    signature: parsed.signature ?? null,
+    timestamp: parsed.timestamp ?? null,
+    correlationId: parsed.correlationId ?? null,
+  };
+
+  // Official SDK verify with pinned manager key BEFORE any normalization/attestation.
+  const one_click_verify = verifySignedOneClickQuote(one_click_response, {
+    agentRequest: {
+      originAsset: body.originAsset,
+      destinationAsset: body.destinationAsset,
+      amount: body.amount,
+      depositType: body.depositType,
+      recipient: body.recipient,
+      refundTo: body.refundTo,
+      dry: body.dry,
+    },
+    requirePinnedOfficialKey: true,
+  });
+
+  const quote = one_click_response.quote;
   return {
     ok: true,
     dry: body.dry,
     api: baseUrl,
+    // Echo of what we sent (for logging) — verification uses one_click_response.quoteRequest
     request: body,
+    quote_request: one_click_response.quoteRequest,
     quote,
+    one_click_response,
+    signature: one_click_response.signature,
+    timestamp: one_click_response.timestamp,
+    correlation_id: one_click_response.correlationId,
+    one_click_verify: {
+      ok: one_click_verify.ok,
+      verified: one_click_verify.verified,
+      reason: one_click_verify.reason,
+      quote_hash: one_click_verify.quote_hash || null,
+      escrow_in_signed_hash: one_click_verify.escrow_in_signed_hash === true,
+      manager_key: ONE_CLICK_MANAGER_PUB_KEY,
+      manager_key_mode: "pinned_official",
+    },
     deposit_address: body.dry ? null : quote.depositAddress || null,
-    correlation_id: quote.correlationId || parsed.correlationId || null,
     amount_in: quote.amountIn || body.amount,
     amount_out: quote.amountOut || quote.minAmountOut || null,
+    min_amount_out: quote.minAmountOut || null,
     deadline: quote.deadline || body.deadline,
     quoted_at: new Date().toISOString(),
     bind: got.bind,
     tls: "verified",
+    authenticated: Boolean(token),
     status_label: body.dry
-      ? "DRY_QUOTE_OBTAINED"
-      : "FUNDED_QUOTE_OBTAINED_NO_DEPOSIT_YET",
+      ? one_click_verify.ok
+        ? "DRY_QUOTE_VERIFIED"
+        : "DRY_QUOTE_OBTAINED_VERIFY_FAIL"
+      : one_click_verify.ok
+        ? "FUNDED_QUOTE_VERIFIED_NO_DEPOSIT_YET"
+        : "FUNDED_QUOTE_OBTAINED_VERIFY_FAIL",
     note: body.dry
-      ? "Dry quote — no deposit address commitment; not a funded trade"
-      : "Funded quote returned — deposit still requires separate broadcast approval",
+      ? "Dry quote — no deposit; signature verified against pinned 1Click manager key when present"
+      : "Non-dry quote returned — deposit MUST NOT be sent without separate broadcast approval; escrow authenticity requires SDK escrow hash coverage PASS",
   };
 }
 

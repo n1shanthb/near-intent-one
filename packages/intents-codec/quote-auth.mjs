@@ -76,12 +76,26 @@ export function attestTidepoolQuote({
   allowUnverifiedOneClick = false,
   maxAgeMs,
   nowMs,
+  /** Production mainnet funded path — forces pinned official key + bans unverified escape */
+  mainnetFundedPath = false,
 }) {
   const checks = [];
   const fail = (reason) => {
     checks.push({ ok: false, reason });
     return { ok: false, checks, attestation: null, signature: null, publicKey: null };
   };
+
+  const envMainnet =
+    process.env.NIO_NETWORK === "mainnet" ||
+    process.env.NEAR_NETWORK === "mainnet";
+  const fundedShape = quoteResponse?.quoteRequest?.dry === false;
+  const isLocalFixture = quoteResponse?._fixture === true;
+  const enforceMainnetFunded =
+    !isLocalFixture &&
+    (mainnetFundedPath === true || (envMainnet && fundedShape));
+  if (enforceMainnetFunded && allowUnverifiedOneClick) {
+    return fail("allowUnverifiedOneClick_forbidden_on_mainnet_funded_path");
+  }
 
   if (!quoteResponse?.quote?.depositAddress) {
     return fail("missing depositAddress");
@@ -121,10 +135,14 @@ export function attestTidepoolQuote({
     depositAddress: q.depositAddress,
   });
 
-  // Official 1Click signature MUST verify before we generate our attestation (J5).
+  // Official 1Click signature MUST verify before we generate our attestation.
+  // Mainnet funded: pinned official manager key only (no test override).
   const oneClick = verifySignedOneClickQuote(quoteResponse, {
     agentRequest,
-    managerPublicKey: tidepoolManagerPubKey || undefined,
+    managerPublicKey: enforceMainnetFunded
+      ? undefined
+      : tidepoolManagerPubKey || undefined,
+    requirePinnedOfficialKey: enforceMainnetFunded,
     maxAgeMs,
     nowMs,
     forbidLlmDeposit: true,
@@ -136,6 +154,8 @@ export function attestTidepoolQuote({
     verified: oneClick.verified,
     reason: oneClick.reason || null,
     quote_hash: oneClick.quote_hash || null,
+    escrow_in_signed_hash: oneClick.escrow_in_signed_hash === true,
+    manager_key_mode: oneClick.manager_key_mode || null,
   });
   if (!oneClick.ok && !allowUnverifiedOneClick) {
     return fail(`one_click_verify_failed:${oneClick.reason}`);
@@ -144,8 +164,13 @@ export function attestTidepoolQuote({
     checks.push({
       ok: true,
       check: "allow_unverified_legacy_escape",
-      note: "explicit allowUnverifiedOneClick — not safe for mainnet funded path",
+      note: "explicit allowUnverifiedOneClick — LEGACY TESTNET ONLY; forbidden on mainnet funded",
     });
+  }
+  // Escrow authenticity: attestor signature alone is NOT proof of 1Click escrow origin
+  // unless the official signed subset covers depositAddress (non-dry + SDK >=0.1.26).
+  if (fundedShape && oneClick.ok && !oneClick.escrow_in_signed_hash) {
+    return fail("escrow_not_in_official_signed_hash");
   }
 
   const qh = oneClick.quote_hash || oneClickQuoteHash(quoteResponse);

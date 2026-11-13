@@ -163,7 +163,7 @@ export function buildDecimalsRiskReport() {
     contract_model: "raw_amount_in",
     note: "Fail closed — do not broaden token_scope; do not bypass slippage require!",
     one_click_signature_coverage:
-      "Official SDK quoteHash/buildSignedQuote covers request fields + amount* fields only — depositAddress is NOT in the signed hash. QUOTE_AUTH_V2 attestation must bind escrow.",
+      "SDK >=0.1.26: dry signs amounts only; non-dry also signs depositAddress/depositMemo/deadline/fees. 0.1.24 omitted escrow from hash (docs/SDK mismatch). Attestor sig alone ≠ escrow authenticity unless escrow_in_signed_hash.",
     rows,
     unsafe_route_ids: unsafe.map((r) => r.id),
     safe_for_tiny_funded_usdc_stable_bridge: rows

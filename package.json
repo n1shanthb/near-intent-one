@@ -51,7 +51,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@defuse-protocol/one-click-sdk-typescript": "^0.1.24",
+    "@defuse-protocol/one-click-sdk-typescript": "^0.1.26",
     "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.8.0",
     "bs58": "^5.0.0",

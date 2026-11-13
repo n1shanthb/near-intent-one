@@ -49,11 +49,39 @@ export const ASSETS = Object.freeze({
 /**
  * Mirror of policy slippage floor (raw amount_in units — known mismatch risk).
  */
-export function policySlippageFloorOk(amountIn, minAmountOut, maxSlippageBps) {
+export function policySlippageFloor(amountIn, maxSlippageBps) {
   const minRatio = 10_000n - BigInt(maxSlippageBps);
-  const floor = (BigInt(amountIn) * minRatio) / 10_000n;
+  return (BigInt(amountIn) * minRatio) / 10_000n;
+}
+
+export function policySlippageFloorOk(amountIn, minAmountOut, maxSlippageBps) {
+  const floor = policySlippageFloor(amountIn, maxSlippageBps);
   const minOut = BigInt(minAmountOut);
   return minOut >= floor || minOut >= BigInt(amountIn);
+}
+
+/**
+ * Compare an unaltered live quote minAmountOut to deployed policy floor.
+ * Never inflate quote values to force PASS.
+ */
+export function evaluateLiveMinOutAgainstPolicy({
+  amountIn,
+  minAmountOut,
+  maxSlippageBps,
+  label = "live",
+}) {
+  const floor = policySlippageFloor(amountIn, maxSlippageBps);
+  const minOut = BigInt(minAmountOut);
+  const ok = minOut >= floor || minOut >= BigInt(amountIn);
+  return {
+    label,
+    amount_in: String(amountIn),
+    min_amount_out: String(minAmountOut),
+    max_slippage_bps: Number(maxSlippageBps),
+    policy_floor: String(floor),
+    result: ok ? "PASS" : "BLOCKED",
+    altered_values: false,
+  };
 }
 
 /**

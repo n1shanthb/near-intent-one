@@ -18,6 +18,7 @@ import {
   runLocalQuoteAuthorizationPath,
   simulatePolicyChecks,
   buildErc20TxParams,
+  evaluateLiveMinOutAgainstPolicy,
 } from "./quotePath.mjs";
 import { buildDecimalsRiskReport, analyzeDecimalsRisk } from "./decimalsRisk.mjs";
 import {
@@ -124,23 +125,44 @@ describe("J5 oneClick signed-quote verification", () => {
       "unsigned_quote"
     );
 
-    // Official buildSignedQuote hash covers amounts only — NOT depositAddress.
-    // Mutating depositAddress alone still verifies; our attestor binds escrow separately.
-    const mutatedDeposit = mutateQuoteResponse(signed, (c) => {
-      c.quote.depositAddress = "0x0000000000000000000000000000000000000bad";
-    });
-    assert.equal(
-      verifySignedOneClickQuote(mutatedDeposit, { managerPublicKey: mgr }).ok,
-      true,
-      "1Click manager sig does not cover depositAddress — attestor must bind it"
-    );
-    const mutatedAmount = mutateQuoteResponse(signed, (c) => {
-      c.quote.amountOut = "1";
-    });
-    assert.equal(
-      verifySignedOneClickQuote(mutatedAmount, { managerPublicKey: mgr }).ok,
-      false
-    );
+    // SDK >=0.1.26 non-dry: depositAddress IS in signed subset — mutation must fail.
+    const mutations = [
+      ["depositAddress", (c) => {
+        c.quote.depositAddress = "0x0000000000000000000000000000000000000bad";
+      }],
+      ["recipient", (c) => {
+        c.quoteRequest.recipient = "0x0000000000000000000000000000000000000bad";
+      }],
+      ["refundTo", (c) => {
+        c.quoteRequest.refundTo = "0x0000000000000000000000000000000000000bad";
+      }],
+      ["amountIn", (c) => {
+        c.quote.amountIn = "999999";
+      }],
+      ["amountOut", (c) => {
+        c.quote.amountOut = "1";
+      }],
+      ["minAmountOut", (c) => {
+        c.quote.minAmountOut = "1";
+      }],
+      ["deadline", (c) => {
+        c.quote.deadline = new Date(Date.now() + 999_000).toISOString();
+      }],
+      ["originAsset", (c) => {
+        c.quoteRequest.originAsset = ASSETS.arb_usdc.asset_id;
+      }],
+      ["destinationAsset", (c) => {
+        c.quoteRequest.destinationAsset = ASSETS.wrap_near.asset_id;
+      }],
+    ];
+    for (const [name, mut] of mutations) {
+      const mutated = mutateQuoteResponse(signed, mut);
+      assert.equal(
+        verifySignedOneClickQuote(mutated, { managerPublicKey: mgr }).ok,
+        false,
+        `mutation of ${name} must invalidate non-dry signature`
+      );
+    }
 
     assert.equal(
       verifySignedOneClickQuote(signed, {
@@ -457,36 +479,50 @@ describe("J5 decimals risk + AI quote-level inputs", () => {
   });
 });
 
-describe("J5 live dry quote observation (unsigned expected)", () => {
-  it("fetches dry quote economics without signature (observation only)", async () => {
+describe("J5.1 live dry quote verification (authentic body)", () => {
+  it("preserves signature/timestamp and verifies with pinned manager key", async () => {
     const q = await productionDryQuote({
       originAsset: ASSETS.eth_usdc.asset_id,
-      destinationAsset: ASSETS.wrap_near.asset_id,
+      destinationAsset: ASSETS.arb_usdc.asset_id,
       amount: "1000000",
       refundTo: OWNER_EVM,
-      recipient: OWNER_NEAR,
+      recipient: OWNER_EVM,
     });
     if (!q.ok) {
-      // TLS/network may fail on college MITM — record skip, do not invent
       assert.ok(
-        ["quote_tls_error", "quote_network_error", "jwt_required", "quote_http_error"].includes(
-          q.reason
-        ),
+        [
+          "quote_tls_error",
+          "quote_network_error",
+          "jwt_required",
+          "quote_http_error",
+          "malformed_one_click_response",
+        ].includes(q.reason),
         `unexpected fail ${q.reason}`
       );
       return;
     }
     assert.equal(q.dry, true);
-    assert.equal(q.deposit_address, null);
-    assert.ok(q.amount_out);
-    const asResponse = {
-      quoteRequest: q.request,
-      quote: q.quote,
-      signature: q.signature || q.quote?.signature || null,
-      timestamp: q.timestamp || q.quote?.timestamp || null,
-    };
-    const v = verifySignedOneClickQuote(asResponse);
-    assert.equal(v.ok, false);
-    assert.equal(v.reason, "unsigned_quote");
+    assert.ok(q.one_click_response?.signature, "signature must be preserved");
+    assert.ok(q.one_click_response?.timestamp, "timestamp must be preserved");
+    assert.ok(q.one_click_response?.quoteRequest);
+    assert.equal(q.one_click_verify.manager_key_mode, "pinned_official");
+    assert.equal(
+      q.one_click_verify.ok,
+      true,
+      `live dry verify failed: ${q.one_click_verify.reason}`
+    );
+    // Live minOut vs deployed 100 bps floor — never inflate values
+    const minOut = q.min_amount_out || q.quote.minAmountOut;
+    const policy = evaluateLiveMinOutAgainstPolicy({
+      amountIn: q.amount_in || "1000000",
+      minAmountOut: minOut,
+      maxSlippageBps: 100,
+      label: "live_dry",
+    });
+    assert.equal(policy.altered_values, false);
+    assert.equal(policy.policy_floor, "990000");
+    if (BigInt(minOut) < 990000n) {
+      assert.equal(policy.result, "BLOCKED");
+    }
   });
 });
