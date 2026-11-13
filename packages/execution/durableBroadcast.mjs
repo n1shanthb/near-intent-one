@@ -8,7 +8,10 @@ import {
   assertMainnetFundedAllowed,
   CHAIN_PROFILE,
 } from "./chainProfiles.mjs";
-import { assertMainnetBroadcastAllowed } from "../mainnet/safetyGates.mjs";
+import {
+  assertMainnetBroadcastAllowed,
+  resolveCanaryUnlock,
+} from "../mainnet/safetyGates.mjs";
 
 /**
  * @param {object} args
@@ -39,12 +42,35 @@ export async function broadcastWithJournal({
     return { ok: false, reason: "journal_unwritable", detail: String(e.message || e) };
   }
 
+  // Mainnet canary: require operationId so unlock is revalidated from disk
+  // (never trust a caller-constructed prevalidated unlock object alone).
   const fundedGate = assertMainnetFundedAllowed(profile, {
     journal,
     depositBound: opts.depositBound,
-    canaryUnlock: opts.canaryUnlock || opts.canary || null,
+    canaryUnlock: null,
+    canary: null,
+    // chainProfiles still accepts canaryUnlock; pass freshly resolved below via broadcast gate
   });
-  if (profile?.id === CHAIN_PROFILE.MAINNET_1CLICK && !fundedGate.ok) {
+  if (profile?.id === CHAIN_PROFILE.MAINNET_1CLICK) {
+    const unlock = resolveCanaryUnlock(
+      {
+        operationId: opts.operationId,
+        storeDir: opts.storeDir,
+        requireQuoteBound: true,
+        expected: opts.expected || {},
+      },
+      opts.env || process.env
+    );
+    if (!unlock.ok) {
+      return { ok: false, reason: unlock.reason || "canary_revalidate_failed" };
+    }
+    const fundedWithCanary = assertMainnetFundedAllowed(profile, {
+      journal,
+      depositBound: opts.depositBound,
+      canaryUnlock: unlock,
+    });
+    if (!fundedWithCanary.ok) return { ok: false, ...fundedWithCanary };
+  } else if (!fundedGate.ok) {
     return { ok: false, ...fundedGate };
   }
 
@@ -113,12 +139,22 @@ export async function broadcastWithJournal({
       };
     }
 
-    // Global mainnet gate — blocks ALL submission unless one-shot canary unlock is valid.
+    // Global mainnet gate — always revalidate by operationId from disk.
     if (profile?.network === "mainnet" || profile?.id === CHAIN_PROFILE.MAINNET_1CLICK) {
+      if (!opts.operationId) {
+        return {
+          ok: false,
+          submitted: false,
+          reason: "operation_id_required_for_canary_broadcast",
+          may_resign: false,
+          local_tx_hash: hash,
+        };
+      }
       const gate = assertMainnetBroadcastAllowed(opts.env || process.env, {
-        canaryUnlock: opts.canaryUnlock || opts.canary || null,
         operationId: opts.operationId,
         storeDir: opts.storeDir,
+        requireQuoteBound: true,
+        expected: opts.expected || {},
       });
       if (!gate.ok) {
         return {
@@ -128,7 +164,7 @@ export async function broadcastWithJournal({
           gates: gate.gates,
           may_resign: false,
           local_tx_hash: hash,
-          note: "mainnet_broadcast_hard_blocked",
+          note: "mainnet_broadcast_hard_blocked_or_revalidate_failed",
         };
       }
     }

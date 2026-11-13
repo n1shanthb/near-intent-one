@@ -44,9 +44,9 @@ export function buildLedgerRunbook({
 # Method: unpause() — opens agent propose/sign window
 $near = "${nearCli}"
 $HD = "${hdPath}"
-$ARGS = "${files.unpause}"
+$NioArgsFile = "${files.unpause}"
 
-& $near contract call-function as-transaction ${MAINNET_IDENTITIES.policy} unpause file-args $ARGS \`
+& $near contract call-function as-transaction ${MAINNET_IDENTITIES.policy} unpause file-args $NioArgsFile \`
   prepaid-gas '30.0 Tgas' \`
   attached-deposit '0 NEAR' \`
   sign-as ${MAINNET_IDENTITIES.owner} \`
@@ -59,9 +59,9 @@ $ARGS = "${files.unpause}"
 # Method: pause() — does NOT cancel already-signed or broadcast EVM txs
 $near = "${nearCli}"
 $HD = "${hdPath}"
-$ARGS = "${files.pause}"
+$NioArgsFile = "${files.pause}"
 
-& $near contract call-function as-transaction ${MAINNET_IDENTITIES.policy} pause file-args $ARGS \`
+& $near contract call-function as-transaction ${MAINNET_IDENTITIES.policy} pause file-args $NioArgsFile \`
   prepaid-gas '30.0 Tgas' \`
   attached-deposit '0 NEAR' \`
   sign-as ${MAINNET_IDENTITIES.owner} \`

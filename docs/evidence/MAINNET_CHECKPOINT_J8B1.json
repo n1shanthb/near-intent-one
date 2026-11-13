@@ -1,0 +1,72 @@
+{
+  "checkpoint": "J8B-1",
+  "title": "Final one-shot live execution hardening",
+  "hard_stop": {
+    "ledger": false,
+    "unpause": false,
+    "propose": false,
+    "request_signature": false,
+    "evm_broadcast": false,
+    "funding": false,
+    "autonomous": false
+  },
+  "readiness": "READY",
+  "auto_live": false,
+  "adapters": {
+    "module": "packages/mainnet/canaryAdapters.mjs",
+    "kind": "mainnet_canary_adapters_v1",
+    "propose_quoted_evm_transfer": "real",
+    "request_signature_1_yocto": "real",
+    "mpc_assemble_recover": "real",
+    "arbitrum_broadcast": "real_via_durableBroadcast",
+    "reconcile_pending": "real_separate_confirm",
+    "mocked_production_path": false
+  },
+  "state_machine": [
+    "PREPARED",
+    "QUOTE_VERIFIED",
+    "ATTESTED",
+    "OWNER_UNPAUSED",
+    "PROPOSED",
+    "MPC_SIGNED",
+    "READY_TO_BROADCAST",
+    "BROADCASTED",
+    "SETTLEMENT_PENDING",
+    "SETTLED",
+    "RECONCILED"
+  ],
+  "tests": {
+    "command": "node --test packages/mainnet/j8b0.canary.test.mjs packages/mainnet/j8b1.hardening.test.mjs packages/mainnet/agentBackend.test.mjs",
+    "pass": 46,
+    "fail": 0
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false,
+    "canary_requires_disk_revalidation": true,
+    "monolith_live_forbidden": true
+  },
+  "settlement": {
+    "base_usdc_delta_required": true,
+    "one_click_success_alone_insufficient": true,
+    "reconcile_pending_separate": true
+  },
+  "operator_cli": "scripts/mainnet/canary-operator.mjs",
+  "ledger_args_var": "$NioArgsFile",
+  "scope": {
+    "owner": "nishanthb.near",
+    "policy": "policy.nishanthb.near",
+    "agent": "agent.nishanthb.near",
+    "epoch": 2,
+    "chain_id": 42161,
+    "amount": "1000000",
+    "autonomous": false
+  },
+  "blockers": [
+    "Owner Ledger unpause/pause required for live window",
+    "Ops credential + attestor key must be present on operator host",
+    "Fresh quote within approval TTL",
+    "Exported MPC ECDSA not invalidated by pause"
+  ]
+}

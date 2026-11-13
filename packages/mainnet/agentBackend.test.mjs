@@ -102,8 +102,10 @@ describe("J3 safety gates", () => {
     assert.equal(r.ok, false);
     assert.ok(
       r.reason === "mainnet_broadcast_disabled" ||
-        r.reason === "mainnet_broadcast_disabled" ||
+        r.reason === "no_canary_unlock" ||
+        r.reason === "operation_id_required_for_canary_broadcast" ||
         String(r.reason || "").includes("mainnet") ||
+        String(r.reason || "").includes("canary") ||
         String(r.reason || "").includes("funded") ||
         String(r.reason || "").includes("journal") ||
         String(r.reason || "").includes("gated")

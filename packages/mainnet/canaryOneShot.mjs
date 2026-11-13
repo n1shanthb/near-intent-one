@@ -28,6 +28,39 @@ export const CANARY_ATTESTOR_PK =
 export const DEFAULT_MAX_GAS_PRICE = "100000000";
 export const DEFAULT_APPROVAL_TTL_MS = 30 * 60_000;
 
+/** Sequential lifecycle — each mutation requires a NEW confirm after prior outcome. */
+export const CANARY_STATES = Object.freeze({
+  PREPARED: "PREPARED",
+  QUOTE_VERIFIED: "QUOTE_VERIFIED",
+  ATTESTED: "ATTESTED",
+  OWNER_UNPAUSED: "OWNER_UNPAUSED",
+  PROPOSED: "PROPOSED",
+  MPC_SIGNED: "MPC_SIGNED",
+  READY_TO_BROADCAST: "READY_TO_BROADCAST",
+  BROADCASTED: "BROADCASTED",
+  SETTLEMENT_PENDING: "SETTLEMENT_PENDING",
+  SETTLED: "SETTLED",
+  RECONCILED: "RECONCILED",
+  REFUNDED: "REFUNDED",
+  FAILED: "FAILED",
+});
+
+const ALLOWED_TRANSITIONS = Object.freeze({
+  PREPARED: ["QUOTE_VERIFIED", "FAILED"],
+  QUOTE_VERIFIED: ["ATTESTED", "FAILED"],
+  ATTESTED: ["OWNER_UNPAUSED", "FAILED"],
+  OWNER_UNPAUSED: ["PROPOSED", "FAILED"],
+  PROPOSED: ["MPC_SIGNED", "FAILED"],
+  MPC_SIGNED: ["READY_TO_BROADCAST", "FAILED"],
+  READY_TO_BROADCAST: ["BROADCASTED", "FAILED"],
+  BROADCASTED: ["SETTLEMENT_PENDING", "FAILED"],
+  SETTLEMENT_PENDING: ["SETTLED", "REFUNDED", "FAILED"],
+  SETTLED: ["RECONCILED"],
+  RECONCILED: [],
+  REFUNDED: [],
+  FAILED: [],
+});
+
 export function canaryStoreDir(env = process.env) {
   return (
     env.NIO_CANARY_STORE_DIR ||
@@ -136,13 +169,20 @@ export function createCanaryApproval({
   };
   const { mac, fingerprint } = signApprovalPayload(payload, env);
   const record = {
-    version: 1,
+    version: 2,
     created_at: new Date().toISOString(),
     payload,
     mac,
     fingerprint,
     used: false,
     used_at: null,
+    lifecycle_state: CANARY_STATES.PREPARED,
+    locked_nonce: null,
+    locked_digest_hex: null,
+    locked_local_tx_hash: null,
+    locked_broadcast_hash: null,
+    base_usdc_before: null,
+    outcomes: {},
     consumed_phases: {},
     operator_confirmations: {},
   };
@@ -307,6 +347,7 @@ export function consumeCanaryApproval(
 /**
  * Build canary unlock context for safety gates / broadcast.
  * Env flags are ignored; only a validated approval unlocks.
+ * Callers of broadcast MUST pass operationId so the gate re-loads from disk.
  */
 export function buildCanaryUnlockContext(operationId, opts = {}) {
   const v = validateCanaryApproval(operationId, opts);
@@ -321,5 +362,202 @@ export function buildCanaryUnlockContext(operationId, opts = {}) {
     funded_trading: true, // scoped — does NOT flip global gates
     mainnet_broadcast_enabled: true,
     autonomous_execution_enabled: false,
+  };
+}
+
+export function getLifecycleState(record) {
+  return record?.lifecycle_state || CANARY_STATES.PREPARED;
+}
+
+export function advanceLifecycle(
+  operationId,
+  toState,
+  { env = process.env, storeDir = null, outcome = null } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  const from = getLifecycleState(loaded.record);
+  const allowed = ALLOWED_TRANSITIONS[from] || [];
+  if (!allowed.includes(toState)) {
+    return { ok: false, reason: `invalid_transition:${from}->${toState}` };
+  }
+  const next = {
+    ...loaded.record,
+    lifecycle_state: toState,
+    outcomes: {
+      ...loaded.record.outcomes,
+      [toState]: {
+        at: new Date().toISOString(),
+        ...(outcome || {}),
+      },
+    },
+  };
+  atomicWrite(loaded.path, next);
+  return { ok: true, from, to: toState, record: next };
+}
+
+/**
+ * Confirm a phase only if current lifecycle is the required prior state.
+ * Confirmations are NOT accepted up-front for future mutations.
+ */
+export function confirmPhaseAfterOutcome(
+  operationId,
+  phase,
+  {
+    env = process.env,
+    storeDir = null,
+    requiredState,
+    note = null,
+  } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  const state = getLifecycleState(loaded.record);
+  if (requiredState && state !== requiredState) {
+    return {
+      ok: false,
+      reason: `confirm_wrong_state:have=${state}:need=${requiredState}`,
+    };
+  }
+  // Reject if this phase was already confirmed for a prior attempt without outcome
+  return recordOperatorConfirmation(operationId, phase, {
+    env,
+    storeDir,
+    confirmed: true,
+    note: note || `confirmed_at_state:${state}`,
+  });
+}
+
+export function bindTxAuthorization(
+  operationId,
+  {
+    nonce,
+    digestHex,
+    localTxHash = null,
+    gasPrice,
+    gasLimit,
+    env = process.env,
+    storeDir = null,
+  }
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  if (loaded.record.used) return { ok: false, reason: "approval_already_used" };
+  if (
+    loaded.record.locked_nonce != null &&
+    Number(loaded.record.locked_nonce) !== Number(nonce)
+  ) {
+    return { ok: false, reason: "nonce_already_bound_different" };
+  }
+  if (
+    loaded.record.locked_digest_hex &&
+    String(loaded.record.locked_digest_hex).toLowerCase() !==
+      String(digestHex).toLowerCase()
+  ) {
+    return { ok: false, reason: "digest_already_bound_different" };
+  }
+  const payload = {
+    ...loaded.record.payload,
+    // keep MAC fields; tx locks stored alongside
+  };
+  const { mac, fingerprint } = signApprovalPayload(payload, env);
+  const next = {
+    ...loaded.record,
+    mac,
+    fingerprint,
+    locked_nonce: Number(nonce),
+    locked_digest_hex: String(digestHex).toLowerCase(),
+    locked_local_tx_hash: localTxHash,
+    locked_gas_price: String(gasPrice),
+    locked_gas_limit: String(gasLimit),
+  };
+  atomicWrite(loaded.path, next);
+  return { ok: true, record: next };
+}
+
+export function bindBroadcastHash(
+  operationId,
+  broadcastHash,
+  { env = process.env, storeDir = null } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  const next = {
+    ...loaded.record,
+    locked_broadcast_hash: broadcastHash,
+  };
+  atomicWrite(loaded.path, next);
+  return { ok: true, record: next };
+}
+
+export function setBaseUsdcBefore(
+  operationId,
+  raw,
+  { env = process.env, storeDir = null } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  const next = { ...loaded.record, base_usdc_before: String(raw) };
+  atomicWrite(loaded.path, next);
+  return { ok: true, record: next };
+}
+
+/** Try claim exclusive execution lock (crash-safe concurrent block). */
+export function tryClaimExecution(
+  operationId,
+  workerId,
+  { env = process.env, storeDir = null, ttlMs = 120_000 } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  const now = Date.now();
+  const claim = loaded.record.execution_claim;
+  if (
+    claim?.owner &&
+    claim.owner !== workerId &&
+    Number(claim.until || 0) > now
+  ) {
+    return { ok: false, reason: "execution_claimed_by_other", claim };
+  }
+  const next = {
+    ...loaded.record,
+    execution_claim: { owner: workerId, until: now + ttlMs },
+  };
+  atomicWrite(loaded.path, next);
+  return { ok: true, record: next };
+}
+
+export function releaseExecutionClaim(
+  operationId,
+  workerId,
+  { env = process.env, storeDir = null } = {}
+) {
+  const loaded = loadCanaryApproval(operationId, { env, storeDir });
+  if (!loaded.ok) return loaded;
+  if (
+    loaded.record.execution_claim?.owner &&
+    loaded.record.execution_claim.owner !== workerId
+  ) {
+    return { ok: false, reason: "not_claim_owner" };
+  }
+  const next = { ...loaded.record, execution_claim: null };
+  atomicWrite(loaded.path, next);
+  return { ok: true };
+}
+
+export function windowStatusReport({
+  policyPausedOnchain = null,
+  mpcSignatureOutstanding = false,
+  broadcastStatus = "not_sent",
+  lifecycle = null,
+} = {}) {
+  const pausedKnown = typeof policyPausedOnchain === "boolean";
+  return {
+    policy_paused_onchain: pausedKnown ? policyPausedOnchain : "unknown",
+    owner_pause_required: pausedKnown ? policyPausedOnchain === false : true,
+    mpc_signature_outstanding: Boolean(mpcSignatureOutstanding),
+    broadcast_status: broadcastStatus, // verified | unknown | not_sent
+    lifecycle_state: lifecycle,
+    note: "Never claim re-paused before on-chain get_paused===true",
   };
 }
