@@ -1,0 +1,483 @@
+{
+  "checkpoint": "J8A",
+  "at": "2026-11-13T11:16:12.233Z",
+  "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+  "mutations": {
+    "propose_quoted_evm_transfer": false,
+    "request_signature": false,
+    "eth_sendRawTransaction": false,
+    "unpause": false,
+    "escrow_deposit": false,
+    "ledger_sign": false
+  },
+  "broadcast_probe": {
+    "ok": false,
+    "submitted": false,
+    "reason": "mainnet_broadcast_disabled",
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false
+    },
+    "note": "No RPC send attempted"
+  },
+  "funding": {
+    "eth_tx": "0x08d6a912d3b250f20b0c5d3dd6c5b724f0a060405b028fcc3a93159e5fba9ea4",
+    "usdc_tx": "0x5a524ab39087965ac18c5b46c23287bb5eeef121ffa7d164ae2aa10dcd808e1d",
+    "eth_receipt_ok": true,
+    "usdc_receipt_ok": true,
+    "balances": {
+      "arbitrum": {
+        "chain_id": 42161,
+        "chain_ok": true,
+        "eth_wei": "63000000000000",
+        "eth": 0.000063,
+        "usdc_raw": "2000982",
+        "usdc": 2.000982,
+        "usdc_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "nonce": 0
+      },
+      "base": {
+        "eth_wei": "0",
+        "eth": 0,
+        "usdc_raw": "0",
+        "usdc": 0,
+        "usdc_contract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      }
+    },
+    "ok": true
+  },
+  "policy": {
+    "paused": true,
+    "autonomous_trading": false,
+    "revoked": false,
+    "mandate_epoch": 2,
+    "trusted_attestor": true,
+    "attestor_pk": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+    "intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "reserved_pending_exposure": "0",
+    "unresolved_pending": 0,
+    "limits": {
+      "max_trade_value": "5000000",
+      "max_slippage_bps": 100,
+      "max_gas_budget": "2500000000000000",
+      "max_pending_exposure": "10000000",
+      "token_scope": "allowlist",
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "arb_usdc_allowed": true,
+      "base_usdc_allowed": true,
+      "mpc_destination_allowed": true
+    }
+  },
+  "gates": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false,
+    "observe_only": true,
+    "unlock_attempted_ignored": false,
+    "auth_gates_raw": {
+      "network_is_mainnet": true,
+      "mainnet_mode": false,
+      "allow_sign": false,
+      "allow_broadcast": false,
+      "canary_approved": false,
+      "public_demo_safe": false
+    },
+    "note": "J3: broadcast gates hard-false; no mainnet tx submission"
+  },
+  "quote": {
+    "ok": true,
+    "dry": false,
+    "reason": null,
+    "verify": {
+      "ok": true,
+      "verified": true,
+      "reason": null,
+      "quote_hash": "AkkDC2QPLkeAc9sBbbx79wdXYftTiMG9tyMVQGT7XSCi",
+      "escrow_in_signed_hash": true,
+      "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+      "manager_key_mode": "pinned_official"
+    },
+    "amount_in": "1000000",
+    "amount_out": "997398",
+    "min_amount_out": "994904",
+    "deposit_address": "0x274e83E4EcD364645a66eabd2548aaF38956044F",
+    "correlation_id": "77a75d34-0193-4b1b-8f55-c4cfc2eb0e75",
+    "timestamp": "2026-11-13T11:16:16.513Z",
+    "floor_eval": {
+      "label": "j8a_fresh_nondry",
+      "amount_in": "1000000",
+      "min_amount_out": "994904",
+      "max_slippage_bps": 100,
+      "policy_floor": "990000",
+      "result": "PASS",
+      "altered_values": false
+    },
+    "reused_old_quote": false,
+    "values_altered": false
+  },
+  "gas": {
+    "eth_gasPrice_wei": "20016000",
+    "eth_gasPrice_gwei": 0.020016,
+    "estimate": {
+      "ok": true,
+      "method": "eth_estimateGas_from_mpc",
+      "gas": 63344,
+      "data": "0xa9059cbb000000000000000000000000274e83e4ecd364645a66eabd2548aaf38956044f00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    "node_l1": {
+      "ok": true,
+      "gas_estimate_for_l1": 354,
+      "base_fee_wei": "20002000",
+      "l1_base_fee_estimate_wei": "1893158",
+      "l1_component_fee_wei": "7080708000"
+    },
+    "chosen": {
+      "ok": true,
+      "blockers": [],
+      "warnings": [
+        {
+          "code": "do_not_apply_sepolia_1gwei_floor",
+          "note": "gate-k 1 gwei floor is incompatible with attestor max_gas_price on Arbitrum; J8B must use live*1.5 capped at attestor max"
+        }
+      ],
+      "gas_limit": "100000",
+      "gas_price": "30024000",
+      "max_gas_price": "100000000",
+      "eth_need_at_proposed": "3002400000000",
+      "eth_need_at_ceiling": "10000000000000",
+      "eth_balance": "63000000000000",
+      "eth_covers_proposed": true,
+      "eth_covers_ceiling": true
+    }
+  },
+  "attestation": {
+    "ok": true,
+    "reason": null,
+    "local_sig_ok": true,
+    "attestation_id": "f1370b3214fc5e8c6cab2a179c4f0335a7a41a4a63ae39fb3291e83c050c9a56",
+    "publicKey": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+    "attestation": {
+      "deposit_address": "0x274e83e4ecd364645a66eabd2548aaf38956044f",
+      "amount_in": "1000000",
+      "asset_in": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+      "asset_out": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "min_amount_out": "994904",
+      "quote_deadline_ns": "1794828675947000000",
+      "token_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "chain_id": "42161",
+      "recipient": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "correlation_id": "77a75d34-0193-4b1b-8f55-c4cfc2eb0e75",
+      "quote_hash": "AkkDC2QPLkeAc9sBbbx79wdXYftTiMG9tyMVQGT7XSCi",
+      "max_gas_price": "100000000",
+      "gas_limit": "100000"
+    },
+    "signature_prefix": "ed25519:2PTR9ibfJ1cQaEXL…",
+    "checks": [
+      {
+        "ok": true,
+        "check": "originAsset",
+        "value": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+      },
+      {
+        "ok": true,
+        "check": "destinationAsset",
+        "value": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+      },
+      {
+        "ok": true,
+        "check": "amount",
+        "value": "1000000"
+      },
+      {
+        "ok": true,
+        "check": "depositType",
+        "value": "ORIGIN_CHAIN"
+      },
+      {
+        "ok": true,
+        "check": "recipient",
+        "value": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      },
+      {
+        "ok": true,
+        "check": "refundTo",
+        "value": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      },
+      {
+        "ok": true,
+        "check": "deposit_from_quote_only",
+        "depositAddress": "0x274e83E4EcD364645a66eabd2548aaF38956044F"
+      },
+      {
+        "ok": true,
+        "check": "one_click_signature_verify",
+        "verified": true,
+        "reason": null,
+        "quote_hash": "AkkDC2QPLkeAc9sBbbx79wdXYftTiMG9tyMVQGT7XSCi",
+        "escrow_in_signed_hash": true,
+        "manager_key_mode": "pinned_official"
+      },
+      {
+        "ok": true,
+        "check": "policy_economics",
+        "floor": "990000",
+        "min_out": "994904",
+        "gas_cost": "10000000000000"
+      }
+    ]
+  },
+  "local_simulation": {
+    "policy": {
+      "ok": true,
+      "fails": [],
+      "attestation_id": "f1370b3214fc5e8c6cab2a179c4f0335a7a41a4a63ae39fb3291e83c050c9a56",
+      "message_utf8": "QUOTE_AUTH_V2\ndeposit=0x274e83e4ecd364645a66eabd2548aaf38956044f\namount_in=1000000\nasset_in=nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near\nasset_out=nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near\nmin_out=994904\ndeadline_ns=1794828675947000000\ntoken=0xaf88d065e77c8cc2239327c5edb3a432268e5831\nchain_id=42161\nrecipient=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\nrefund_to=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\ncorrelation_id=77a75d34-0193-4b1b-8f55-c4cfc2eb0e75\nquote_hash=AkkDC2QPLkeAc9sBbbx79wdXYftTiMG9tyMVQGT7XSCi\nmax_gas_price=100000000\ngas_limit=100000\n",
+      "execution_blockers_for_j8b": [
+        "policy_paused_blocks_propose",
+        "backend_funded_trading_gate_false",
+        "backend_broadcast_gate_false"
+      ],
+      "local_authorization_ok": true
+    },
+    "tx_bundle": {
+      "policy_tx": {
+        "to": "0x274e83e4ecd364645a66eabd2548aaf38956044f",
+        "token_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "amount": "1000000",
+        "chain_id": 42161,
+        "nonce": 0,
+        "gas_price": "30024000",
+        "gas_limit": "100000",
+        "data_hex": "0xa9059cbb000000000000000000000000274e83e4ecd364645a66eabd2548aaf38956044f00000000000000000000000000000000000000000000000000000000000f4240",
+        "digest_hex": "f8ba46c754ad71158f8a6dda5a5d036f26e1c8449e2707980b0f3d87e4df4a37",
+        "note": "ERC-20 transfer(token, deposit, amount); tx.to in policy = deposit; digest to = token"
+      },
+      "nonce": 0,
+      "gas_price": "30024000",
+      "gas_limit": "100000",
+      "max_gas_price": "100000000",
+      "digest_binding": {
+        "policy_tx_to_means": "1click_escrow_deposit",
+        "policy_tx_to": "0x274e83e4ecd364645a66eabd2548aaf38956044f",
+        "eip155_tx_to_means": "erc20_token_contract",
+        "eip155_tx_to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "transfer_recipient_in_data": "0x274e83e4ecd364645a66eabd2548aaf38956044f",
+        "amount": "1000000",
+        "digest_hex": "f8ba46c754ad71158f8a6dda5a5d036f26e1c8449e2707980b0f3d87e4df4a37",
+        "digest_matches_buildErc20TxParams": true,
+        "note": "On-chain propose binds policy.to==deposit and digest.to==token — both required"
+      },
+      "raw_unsigned": {
+        "signed": false,
+        "serialize_signed_tx_invoked": false,
+        "reason": "MPC signature not requested; raw tx not constructed for broadcast",
+        "would_call_serializeSignedTx_with": {
+          "nonce": 0,
+          "gasPrice": "30024000",
+          "gasLimit": "100000",
+          "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "data_hex": "0xa9059cbb000000000000000000000000274e83e4ecd364645a66eabd2548aaf38956044f00000000000000000000000000000000000000000000000000000000000f4240",
+          "chainId": 42161
+        }
+      },
+      "mpc_signing_request_shape": {
+        "method": "propose_quoted_evm_transfer then request_signature",
+        "invoked": false,
+        "payload_commitment_would_be": "f8ba46c754ad71158f8a6dda5a5d036f26e1c8449e2707980b0f3d87e4df4a37",
+        "domain_id": 0,
+        "path": "trading/v1/portfolio/nio-mainnet-v1",
+        "predecessor": "policy.nishanthb.near"
+      }
+    },
+    "path_ok": true,
+    "on_chain_state_mutated": false,
+    "request_signature_called": false,
+    "propose_called": false
+  },
+  "blockers_for_j8b_execution": [
+    "policy_paused_blocks_propose",
+    "backend_funded_trading_gate_false",
+    "backend_broadcast_gate_false"
+  ],
+  "go_no_go": {
+    "preflight": "GO",
+    "execution": "NO-GO",
+    "reason": "Local quote→attest→digest path PASS; execution awaits J8B owner Ledger unpause + explicit gate unlocks + operator confirm. Do not execute now."
+  },
+  "j8b_runbook": {
+    "title": "J8B — first 1 USDC Arb→Base execution (owner-approved, non-autonomous)",
+    "posture": {
+      "autonomous_trading": "MUST remain false",
+      "confirm_each_mutation": true,
+      "reuse_j8a_quote": false,
+      "note": "Fetch a NEW non-dry quote at execution time; J8A quote may expire"
+    },
+    "ledger_actions": [
+      {
+        "step": "L1",
+        "method": "set_paused",
+        "args": {
+          "paused": false
+        },
+        "signer": "nishanthb.near",
+        "receiver": "policy.nishanthb.near",
+        "hd_path": "m/44'/397'/0'/0'/1'",
+        "require_explicit_confirm": true,
+        "purpose": "Unpause so agent can propose_quoted_evm_transfer"
+      },
+      {
+        "step": "L2-optional-emergency",
+        "method": "set_paused",
+        "args": {
+          "paused": true
+        },
+        "purpose": "Emergency re-pause"
+      },
+      {
+        "step": "L3-optional-emergency",
+        "method": "remove_trusted_quote_signer",
+        "args": {
+          "public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9"
+        },
+        "purpose": "Revoke attestor if compromise suspected"
+      }
+    ],
+    "agent_calls": [
+      {
+        "step": "A0",
+        "action": "Operator sets temporary execution env unlocks ONLY for this run",
+        "detail": "Funded trading + broadcast gates require explicit code/checkpoint unlock in J8B — not ambient forever"
+      },
+      {
+        "step": "A1",
+        "action": "Fetch fresh non-dry 1Click quote (25 bps, 1 USDC Arb→Base, MPC recipient/refund)"
+      },
+      {
+        "step": "A2",
+        "action": "Production attest with registered attestor key (pinned manager, escrow in hash, floor check)"
+      },
+      {
+        "step": "A3",
+        "action": "agent.nishanthb.near → propose_quoted_evm_transfer",
+        "args_shape": {
+          "operation_id": "j8b-<timestamp>",
+          "attestation": "<from A2>",
+          "attestation_signature": "<from A2>",
+          "signer_public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+          "tx": {
+            "nonce": "<eth_getTransactionCount pending>",
+            "gas_price": "<= attestation.max_gas_price (live*1.5, no 1gwei floor)",
+            "gas_limit": "== attestation.gas_limit",
+            "chain_id": "42161",
+            "token_contract": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+            "to": "<quote.depositAddress escrow>",
+            "amount": "1000000"
+          },
+          "expected_epoch": 2
+        }
+      },
+      {
+        "step": "A4",
+        "action": "agent.nishanthb.near → request_signature(operation_id) with 1 yocto",
+        "note": "Triggers v1.signer MPC — first real mainnet sign"
+      },
+      {
+        "step": "A5",
+        "action": "Assemble EIP-155 raw tx (to=token, data=transfer(escrow,amount)) and eth_sendRawTransaction once"
+      }
+    ],
+    "expected_state_changes": [
+      "policy.paused: true → false (after L1)",
+      "pending[operation_id] reserved; reserved_pending_exposure += 1000000",
+      "attestation_id consumed in storage",
+      "Arbitrum: MPC USDC -= 1000000; escrow += 1000000; ETH gas spent",
+      "1Click settlement progresses; Base MPC USDC increases by ~minAmountOut"
+    ],
+    "signed_evm_tx_checks": [
+      "Recovered signer == 0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "chainId == 42161",
+      "nonce matches propose",
+      "to == native USDC token (NOT escrow, NOT USDC.e)",
+      "data == transfer(escrowDeposit, 1000000)",
+      "keccak(unsigned) == policy payload_commitment",
+      "gasPrice <= attested max_gas_price",
+      "gasLimit == attested gas_limit"
+    ],
+    "source_receipt_verification": [
+      "status == 0x1",
+      "Transfer log token=0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "from=0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "to=escrow deposit from THIS quote",
+      "value=1000000"
+    ],
+    "settlement_monitoring": [
+      "Poll 1Click status by correlationId until SUCCESS or terminal failure",
+      "Do not resign same attestation_id",
+      "Do not rebroadcast different bytes for same nonce without owner cancel path"
+    ],
+    "base_usdc_verification": [
+      "balanceOf(MPC) on 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 increases",
+      "delta >= attested min_amount_out (policy floor aware)",
+      "chainId Base 8453"
+    ],
+    "timeout_failure": [
+      "If quote expires before propose: abort, re-quote, new attestation",
+      "If propose succeeds but MPC sign fails: owner may need cancel/replace nonce path",
+      "If broadcast stuck: wait; never resign different digest at same nonce",
+      "If 1Click fails after deposit: follow official recovery; keep paused if unsure"
+    ],
+    "emergency": [
+      "Ledger set_paused(true) immediately",
+      "Optional remove_trusted_quote_signer",
+      "Do not enable autonomous_trading"
+    ],
+    "j8a_reference": {
+      "sample_deposit_do_not_reuse": "0x274e83E4EcD364645a66eabd2548aaF38956044F",
+      "sample_min_out": "994904",
+      "gas_model": {
+        "ok": true,
+        "blockers": [],
+        "warnings": [
+          {
+            "code": "do_not_apply_sepolia_1gwei_floor",
+            "note": "gate-k 1 gwei floor is incompatible with attestor max_gas_price on Arbitrum; J8B must use live*1.5 capped at attestor max"
+          }
+        ],
+        "gas_limit": "100000",
+        "gas_price": "30024000",
+        "max_gas_price": "100000000",
+        "eth_need_at_proposed": "3002400000000",
+        "eth_need_at_ceiling": "10000000000000",
+        "eth_balance": "63000000000000",
+        "eth_covers_proposed": true,
+        "eth_covers_ceiling": true
+      }
+    }
+  },
+  "safety": {
+    "unpause": false,
+    "propose": false,
+    "request_signature": false,
+    "broadcast": false,
+    "escrow_deposit": false,
+    "autonomous": false,
+    "new_funding": false,
+    "contract_upgrade": false,
+    "mock_success": false,
+    "secrets_in_evidence": false
+  }
+}
