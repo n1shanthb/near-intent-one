@@ -1200,9 +1200,21 @@ export async function canaryStepSettle({
   if (!verifyApprovalMac(rec, env)) {
     return { ok: false, reason: "approval_mac_invalid" };
   }
-  if (loaded.is_recovery) {
+  if (loaded.is_recovery || loaded.is_signed_recovery) {
     const p = rec.payload || {};
-    if (p.kind !== RECOVERY_KIND) {
+    const isSigned =
+      loaded.is_signed_recovery || p.kind === SIGNED_TX_RECOVERY_KIND;
+    if (isSigned) {
+      if (p.kind !== SIGNED_TX_RECOVERY_KIND) {
+        return { ok: false, reason: "signed_recovery_kind_required" };
+      }
+      if (p.forbids_request_signature !== true) {
+        return {
+          ok: false,
+          reason: "signed_recovery_must_forbid_request_signature",
+        };
+      }
+    } else if (p.kind !== RECOVERY_KIND) {
       return { ok: false, reason: "recovery_kind_required" };
     }
     if (p.forbids_propose !== true) {

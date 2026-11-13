@@ -40,6 +40,7 @@ import {
 import {
   inspectSignedRecovery,
   createSignedTxRecoveryAuthorization,
+  persistSignedRawCanary,
 } from "../../packages/mainnet/canarySignedRecovery.mjs";
 import { redactSecrets } from "../../packages/mainnet/agentCredentials.mjs";
 
@@ -78,6 +79,7 @@ async function main() {
   create-recovery-auth --op <id> [--near-tx <hash>] [--confirm-recovery]
   inspect-signed-recovery --op <id> --near-tx <signingParentTx> [--propose-tx <hash>]
   create-signed-recovery-auth --op <id> --near-tx <signingParentTx> [--propose-tx <hash>] [--confirm-signed-recovery]
+  persist-signed-raw --op <id> [--near-tx <signingParentTx>] [--propose-tx <hash>] [--confirm-persist] [--invoke]
   show-abort --op <id>
 `);
     return;
@@ -147,6 +149,19 @@ async function main() {
     return;
   }
 
+  if (cmd === "persist-signed-raw") {
+    if (!op) throw new Error("--op required");
+    const r = await persistSignedRawCanary({
+      operationId: op,
+      nearSignTx: arg("near-tx"),
+      nearProposeTx: arg("propose-tx") || arg("near-propose-tx"),
+      operatorConfirmed: flag("confirm-persist"),
+      invoke,
+    });
+    console.log(JSON.stringify(redactSecrets(r), null, 2));
+    return;
+  }
+
   if (cmd === "show-abort") {
     if (!op) throw new Error("--op required");
     const r = await inspectReservedOperation({
@@ -208,6 +223,7 @@ async function main() {
     const required = {
       propose: CANARY_STATES.OWNER_UNPAUSED,
       sign: CANARY_STATES.PROPOSED,
+      persist_signed_raw: CANARY_STATES.MPC_SIGNED,
       broadcast: CANARY_STATES.READY_TO_BROADCAST,
       reconcile: CANARY_STATES.SETTLED,
     }[phase];

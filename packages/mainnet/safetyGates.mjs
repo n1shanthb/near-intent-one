@@ -13,6 +13,7 @@ import {
   validateExecutableApproval,
   loadCanaryApproval,
   RECOVERY_KIND,
+  SIGNED_TX_RECOVERY_KIND,
 } from "./canaryOneShot.mjs";
 
 export function mainnetExecutionGates(env = process.env) {
@@ -68,8 +69,24 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
 
   // Recovery unlock is scoped to the SAME existing operation only.
   if (v.is_recovery) {
-    if (v.payload?.kind !== RECOVERY_KIND || v.payload?.forbids_propose !== true) {
+    const isSignedRecovery =
+      v.is_signed_recovery === true ||
+      v.payload?.kind === SIGNED_TX_RECOVERY_KIND;
+    const isProposeRecovery = v.payload?.kind === RECOVERY_KIND;
+    if (!isSignedRecovery && !isProposeRecovery) {
       return { ok: false, reason: "recovery_payload_invalid" };
+    }
+    if (v.payload?.forbids_propose !== true) {
+      return { ok: false, reason: "recovery_must_forbid_propose" };
+    }
+    if (isSignedRecovery && v.payload?.forbids_request_signature !== true) {
+      return {
+        ok: false,
+        reason: "signed_recovery_must_forbid_request_signature",
+      };
+    }
+    if (isSignedRecovery && (!v.payload?.near_sign_tx || !v.payload?.local_tx_hash)) {
+      return { ok: false, reason: "signed_recovery_bindings_incomplete" };
     }
     const original = loadCanaryApproval(opId, {
       env,
@@ -102,11 +119,27 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     ) {
       return { ok: false, reason: "recovery_original_digest_mismatch" };
     }
+    return {
+      ok: true,
+      mode: isSignedRecovery
+        ? "one_shot_canary_signed_recovery"
+        : "one_shot_canary_recovery",
+      operation_id: opId,
+      payload: v.payload,
+      record: v.record,
+      allows_sign: !isSignedRecovery,
+      allows_broadcast: true,
+      autonomous_execution_enabled: false,
+      freshly_validated: true,
+      is_recovery: true,
+      is_signed_recovery: Boolean(isSignedRecovery),
+      scoped_operation_only: true,
+    };
   }
 
   return {
     ok: true,
-    mode: v.is_recovery ? "one_shot_canary_recovery" : "one_shot_canary",
+    mode: "one_shot_canary",
     operation_id: opId,
     payload: v.payload,
     record: v.record,
@@ -114,8 +147,8 @@ export function resolveCanaryUnlock(opts = {}, env = process.env) {
     allows_broadcast: true,
     autonomous_execution_enabled: false,
     freshly_validated: true,
-    is_recovery: Boolean(v.is_recovery),
-    scoped_operation_only: Boolean(v.is_recovery),
+    is_recovery: false,
+    scoped_operation_only: false,
   };
 }
 

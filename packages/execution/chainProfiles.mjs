@@ -134,11 +134,17 @@ export function assertMainnetFundedAllowed(
   const unlock = canaryUnlock || canary || null;
   const modeOk =
     unlock?.mode === "one_shot_canary" ||
-    unlock?.mode === "one_shot_canary_recovery";
+    unlock?.mode === "one_shot_canary_recovery" ||
+    unlock?.mode === "one_shot_canary_signed_recovery";
+  // Signed-recovery forbids request_signature; broadcast still allowed when allows_broadcast.
+  const signOk =
+    unlock?.allows_broadcast === true &&
+    (unlock?.allows_sign === true ||
+      unlock?.mode === "one_shot_canary_signed_recovery");
   const canaryOk =
     unlock?.ok === true &&
     modeOk &&
-    unlock?.allows_sign === true &&
+    signOk &&
     unlock?.allows_broadcast === true &&
     unlock?.autonomous_execution_enabled !== true;
 
@@ -171,7 +177,10 @@ export function assertMainnetFundedAllowed(
       ok: true,
       mode: unlock.mode,
       operation_id: unlock.operation_id,
-      is_recovery: unlock.mode === "one_shot_canary_recovery",
+      is_recovery:
+        unlock.mode === "one_shot_canary_recovery" ||
+        unlock.mode === "one_shot_canary_signed_recovery",
+      is_signed_recovery: unlock.mode === "one_shot_canary_signed_recovery",
       note: "Scoped canary unlock — not a permanent funded-path enable",
     };
   }
