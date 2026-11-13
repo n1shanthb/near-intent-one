@@ -32,6 +32,7 @@ import {
   getLifecycleState,
   resolveCanaryJournalSecret,
   validateExecutableApproval,
+  loadCanaryApproval,
   loadRecoveryAuthorization,
   verifyApprovalMac,
   RECOVERY_KIND,
@@ -1181,6 +1182,9 @@ export async function canaryStepSettle({
   }
 
   // Fail closed on MAC / recovery binding — never bypass via SETTLEMENT_PENDING alone.
+  // Expiry remains STRICT for sign/broadcast (validateExecutableApproval).
+  // Post-broadcast settlement may continue after auth TTL ONLY with bound broadcast hash
+  // + intact HMAC + exact op/digest + original fingerprint — never authorizes new movement.
   if (!verifyApprovalMac(rec, env)) {
     return { ok: false, reason: "approval_mac_invalid" };
   }
@@ -1195,16 +1199,34 @@ export async function canaryStepSettle({
     if (String(p.operation_id) !== String(operationId)) {
       return { ok: false, reason: "operation_id_mismatch" };
     }
-    if (Date.parse(p.expires_at) <= Date.now()) {
+    const lockedDigest = String(rec.locked_digest_hex || "").toLowerCase();
+    const payloadDigest = String(p.digest_hex || "").toLowerCase();
+    if (!lockedDigest || !payloadDigest || lockedDigest !== payloadDigest) {
+      return { ok: false, reason: "recovery_digest_mismatch" };
+    }
+    const original = loadCanaryApproval(operationId, { env, storeDir });
+    if (!original.ok) {
+      return { ok: false, reason: "original_approval_missing" };
+    }
+    if (
+      String(p.recovery_of_fingerprint || "") !==
+      String(original.record.fingerprint || "")
+    ) {
+      return { ok: false, reason: "recovery_fingerprint_mismatch" };
+    }
+
+    const postBroadcastSettlement =
+      Boolean(rec.locked_broadcast_hash) &&
+      getLifecycleState(rec) === CANARY_STATES.SETTLEMENT_PENDING;
+    const expired = Date.parse(p.expires_at) <= Date.now();
+
+    if (expired && !postBroadcastSettlement) {
       return { ok: false, reason: "approval_expired" };
     }
-    if (rec.used) {
-      // Legitimate post-broadcast resume only: consumed recovery that already
-      // bound an EVM broadcast hash. Forged SETTLEMENT_PENDING without broadcast fails.
-      if (!rec.locked_broadcast_hash) {
-        return { ok: false, reason: "approval_already_used" };
-      }
-    } else {
+    if (rec.used && !rec.locked_broadcast_hash) {
+      return { ok: false, reason: "approval_already_used" };
+    }
+    if (!expired && !rec.used) {
       const v = validateExecutableApproval(operationId, {
         env,
         storeDir,
@@ -1213,6 +1235,7 @@ export async function canaryStepSettle({
       });
       if (!v.ok) return { ok: false, reason: v.reason };
     }
+    // expired + postBroadcastSettlement: evidence verification only (no re-sign/rebroadcast)
   } else {
     const v = validateExecutableApproval(operationId, {
       env,

@@ -1,5 +1,5 @@
 {
-  "checkpoint": "J8B-R-FINAL-FAIL-CLOSED",
+  "checkpoint": "J8B-R-POST-BROADCAST-SETTLE-EXPIRY",
   "hard_stop_held": true,
   "operation_id": "j8b-canary-1794572720062-8db4f42a",
   "near_propose_parent_tx": "HnpL7Sh2E7QPSi4rq1sefDQV4nYayFnKpkvbU2NUdzad",
@@ -11,16 +11,11 @@
     "signing_state": "Reserved",
     "settlement_state": "None",
     "payload_commitment": "b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed",
-    "amount_in": "1000000",
-    "deposit": "0xcaa3dc3d6d2bb72ade403c614949e66d5ed37f1e",
-    "epoch": 2,
     "near_receipt_independently_verified": true,
-    "signer_id": "agent.nishanthb.near",
-    "receiver_id": "policy.nishanthb.near",
-    "has_quoted_evm_reserved": true,
     "recovery_auth_exists": false,
-    "create_recovery_auth_invoked": false
+    "create_recovery_auth_invoked": false,
+    "original_used_failed_preserved": true
   },
-  "tests_pass": 76,
+  "tests_pass": 83,
   "verdict": "PASS"
 }

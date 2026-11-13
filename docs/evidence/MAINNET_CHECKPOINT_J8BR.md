@@ -17,6 +17,7 @@
 
 1. `verifyNearProposeReceipt` requires tx success + agent→policy signer/receiver + parsed `EVENT_JSON` `quoted_evm_reserved` with exact `operation_id` and digest from this tx's outcomes. Success alone / hash alone / text mention is NO-GO.
 2. `canaryStepSettle` fails closed on recovery MAC / binding failures. `SETTLEMENT_PENDING` alone does not bypass. Used recovery allowed only with bound `locked_broadcast_hash`.
+3. Auth TTL stays STRICT for sign/broadcast. Post-broadcast settlement evidence may continue after TTL only with valid HMAC + exact op/digest + original fingerprint + `SETTLEMENT_PENDING` + bound broadcast hash; still requires Arb receipt + 1Click terminal + Base Δ≥994904.
 
 ## Live zero-mutation rehearsal (parent tx)
 
@@ -41,7 +42,7 @@ node scripts/mainnet/canary-operator.mjs create-recovery-auth --op j8b-canary-17
 
 ## Tests
 
-`76/76` pass — j8b0 + j8b1 + j8br + j8br.e2e + agentBackend
+`83/83` pass — j8b0 + j8b1 + j8br + j8br.e2e + agentBackend
 
 ## Verdict
 

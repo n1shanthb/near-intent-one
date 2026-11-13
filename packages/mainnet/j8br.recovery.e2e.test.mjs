@@ -13,6 +13,9 @@ import {
   confirmPhaseAfterOutcome,
   advanceLifecycle,
   validateExecutableApproval,
+  signApprovalPayload,
+  bindBroadcastHash,
+  consumeCanaryApproval,
   CANARY_STATES,
   CANARY_AMOUNT,
   CANARY_TOKEN,
@@ -853,9 +856,6 @@ describe("J8B-R fail-closed receipt + settle negatives", () => {
             : {},
       });
     }
-    const { bindBroadcastHash, consumeCanaryApproval } = await import(
-      "./canaryOneShot.mjs"
-    );
     bindBroadcastHash(op, "0x" + "ab".repeat(32), {
       storeDir: STORE,
       env: ENV,
@@ -886,5 +886,296 @@ describe("J8B-R fail-closed receipt + settle negatives", () => {
     });
     assert.equal(settle.ok, true);
     assert.equal(settle.stage, CANARY_STATES.SETTLED);
+  });
+});
+
+describe("J8B-R post-broadcast settlement after auth TTL", () => {
+  const DIGEST =
+    "b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed";
+
+  async function createRecoveryAtProposed(op, digest = DIGEST) {
+    const priv = secp256k1.utils.randomPrivateKey();
+    await seedFailedOriginal(op, { digest, priv });
+    const created = await createRecoveryAuthorization({
+      operationId: op,
+      nearProposeTx: NEAR_TX,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      operatorConfirmed: true,
+      deps: {
+        pending: {
+          epoch: 2,
+          amount_in: { "": CANARY_AMOUNT },
+          destination: ESCROW,
+          payload_commitment: digest,
+          signing_state: "Reserved",
+          settlement_state: "None",
+        },
+        nearReceiptVerify: { ok: true, independently_verified: true },
+        adapters: {
+          getPaused: async () => true,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            epoch: 2,
+            amount_in: { "": CANARY_AMOUNT },
+            destination: ESCROW,
+            payload_commitment: digest,
+            signing_state: "Reserved",
+            settlement_state: "None",
+          }),
+          listPending: async () => [],
+        },
+      },
+    });
+    assert.equal(created.ok, true);
+    return created;
+  }
+
+  function expireRecoveryAuth(op, { minutesAgo = 31 } = {}) {
+    const rec = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    assert.equal(rec.ok, true);
+    const payload = {
+      ...rec.record.payload,
+      expires_at: new Date(Date.now() - minutesAgo * 60_000).toISOString(),
+    };
+    const { mac, fingerprint } = signApprovalPayload(payload, ENV);
+    const next = { ...rec.record, payload, mac, fingerprint };
+    writeFileSync(rec.path, JSON.stringify(next, null, 2));
+    return next;
+  }
+
+  function advanceToSettlementPending(op, { broadcastHash = "0x" + "ab".repeat(32) } = {}) {
+    for (const s of [
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+    ]) {
+      advanceLifecycle(op, s, {
+        storeDir: STORE,
+        env: ENV,
+        outcome:
+          s === CANARY_STATES.BROADCASTED
+            ? { broadcast_hash: broadcastHash }
+            : {},
+      });
+    }
+    bindBroadcastHash(op, broadcastHash, { storeDir: STORE, env: ENV });
+  }
+
+  it("settles successfully at T+31m after broadcast with intact bindings", async () => {
+    const op = "op-settle-t31";
+    await createRecoveryAtProposed(op);
+    advanceToSettlementPending(op);
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, true);
+    assert.equal(settle.stage, CANARY_STATES.SETTLED);
+  });
+
+  it("rejects T+31m settle with tampered MAC", async () => {
+    const op = "op-settle-t31-mac";
+    await createRecoveryAtProposed(op);
+    advanceToSettlementPending(op);
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+    const rec = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    rec.record.mac = "00".repeat(32);
+    writeFileSync(rec.path, JSON.stringify(rec.record, null, 2));
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.reason, "approval_mac_invalid");
+  });
+
+  it("rejects T+31m settle when broadcast hash missing", async () => {
+    const op = "op-settle-t31-nobcast";
+    await createRecoveryAtProposed(op);
+    for (const s of [
+      CANARY_STATES.MPC_SIGNED,
+      CANARY_STATES.READY_TO_BROADCAST,
+      CANARY_STATES.BROADCASTED,
+      CANARY_STATES.SETTLEMENT_PENDING,
+    ]) {
+      advanceLifecycle(op, s, { storeDir: STORE, env: ENV });
+    }
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+    const rec = loadRecoveryAuthorization(op, { storeDir: STORE, env: ENV });
+    delete rec.record.locked_broadcast_hash;
+    writeFileSync(rec.path, JSON.stringify(rec.record, null, 2));
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: true,
+          terminal: true,
+          normalized: "SUCCESS",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+        baseVerify: { ok: true, delta: "994904", min_amount_out: "994904" },
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.reason, "approval_expired");
+  });
+
+  it("rejects expired recovery before request_signature", async () => {
+    const op = "op-expired-presign";
+    await createRecoveryAtProposed(op);
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+    confirmPhaseAfterOutcome(op, "sign", {
+      storeDir: STORE,
+      env: ENV,
+      requiredState: CANARY_STATES.PROPOSED,
+    });
+    const r = await canaryStepRequestSignature({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      deps: {
+        adapters: {
+          requestSignature: async () => {
+            throw new Error("must_not_sign_expired");
+          },
+          getPaused: async () => false,
+          getMandateEpoch: async () => 2,
+          getPending: async () => ({
+            signing_state: "Reserved",
+            payload_commitment: DIGEST,
+          }),
+        },
+      },
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "approval_expired");
+  });
+
+  it("rejects expired recovery before EVM broadcast", async () => {
+    const op = "op-expired-prebcast";
+    await createRecoveryAtProposed(op);
+    advanceLifecycle(op, CANARY_STATES.MPC_SIGNED, {
+      storeDir: STORE,
+      env: ENV,
+    });
+    advanceLifecycle(op, CANARY_STATES.READY_TO_BROADCAST, {
+      storeDir: STORE,
+      env: ENV,
+    });
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+    confirmPhaseAfterOutcome(op, "broadcast", {
+      storeDir: STORE,
+      env: ENV,
+      requiredState: CANARY_STATES.READY_TO_BROADCAST,
+    });
+    const r = await canaryStepBroadcast({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      invoke: true,
+      deps: {
+        adapters: {
+          eth: async () => {
+            throw new Error("must_not_broadcast_expired");
+          },
+        },
+      },
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "approval_expired");
+  });
+
+  it("records REFUNDED at T+31m with bound broadcast (no success inference)", async () => {
+    const op = "op-settle-t31-refund";
+    await createRecoveryAtProposed(op);
+    advanceToSettlementPending(op);
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: false,
+          terminal: true,
+          normalized: "REFUNDED",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.stage, CANARY_STATES.REFUNDED);
+  });
+
+  it("keeps SETTLEMENT_PENDING at T+31m when 1Click incomplete", async () => {
+    const op = "op-settle-t31-pending";
+    await createRecoveryAtProposed(op);
+    advanceToSettlementPending(op);
+    expireRecoveryAuth(op, { minutesAgo: 31 });
+
+    const settle = await canaryStepSettle({
+      operationId: op,
+      storeDir: STORE,
+      env: ENV,
+      testHarness: true,
+      deps: {
+        sourceVerify: { ok: true, status: "CONFIRMED" },
+        oneClick: {
+          ok: false,
+          terminal: false,
+          normalized: "PENDING",
+          deposit_address: ESCROW,
+        },
+        minAmountOut: "994904",
+      },
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.reason, "settlement_incomplete");
+    assert.equal(settle.stage, CANARY_STATES.SETTLEMENT_PENDING);
   });
 });
