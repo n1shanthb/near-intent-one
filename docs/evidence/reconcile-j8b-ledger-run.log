@@ -1,0 +1,68 @@
+---
+pid: 2236
+cwd: "E:\\near-intent-one"
+command: "$near = \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\"; $HD = \"m/44'/397'/0'/0'/1'\"; $NioArgsFile = \"C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\reconcile-j8b-canary-1794572720062-8db4f42a.args.json\"; & $near contract call-function as-transaction policy.nishanthb.near reconcile_pending file-args $NioArgsFile prepaid-gas '50.0 Tgas' attached-deposit '0 NEAR' sign-as nishanthb.near network-config mainnet sign-with-ledger --seed-phrase-hd-path $HD usb send 2>&1"
+title: "Ledger reconcile_pending with auto-send"
+status: succeeded
+started_at: 2026-11-13T16:01:07.363Z
+running_for_ms: 42528    
+---
+near.exe : ├  Unsigned transaction:
+At C:\Users\Nishanth\AppData\Local\Temp\ps-script-17f6cd79-6fa3-4f96-a3df-1eb6b61705fc.ps1:90 char:236
++ ... args.json"; & $near contract call-function as-transaction policy.nish ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (├  Unsigned transaction::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+│    signer_id:    nishanthb.near
+│    receiver_id:  policy.nishanthb.near
+│    actions:
+│       -- function call:      
+│                       method name:  reconcile_pending
+│                       args:         {
+│                                       "evidence_hash": 
+"6bb8b4703e374411285eb3eaecea0fc180ce3494bcbd485f26b976653bb88cf7",
+│                                       "operation_id": "j8b-canary-1794572720062-8db4f42a",
+│                                       "settlement_state": "Success"
+│                                     }
+│                       gas:          50.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Opening the NEAR application... Please approve opening the application[0m
+├  Please allow getting the PublicKey on Ledger device (HD Path: m/44'/397'/0'/0'/1')
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58
+│    Signature:  ed25519:Qww46sidaV7d7HPdZGKQKFpJ5Qaze5qBJiDNyfcLL1RhifUjuKripiLxEWjcwzHcazfhUaoCpdFG8AHsKHQfAJ5
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 3.0 Tgas
+│    Transaction fee: 0.0002765737313799 NEAR (USD equivalent is unavailable due to an error: Failed to parse the 
+response from Coingecko API as JSON: error decoding response body)
+│    Transaction ID: EWLeboFnxdTeJK2VatMECPQCZXY9Q5vVyLBFNSboQdNq
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.near.org/transactions/EWLeboFnxdTeJK2VatMECPQCZXY9Q5vVyLBFNSboQdNq
+│     [0m
+├  Function execution logs:
+│    [36mLogs [policy.nishanthb.near]:[39m
+│      EVENT_JSON:{"event":"settlement","operation_id":"j8b-canary-1794572720062-8db4f42a","state":"Success"}
+│      EVENT_JSON:{"event":"reconciled","operation_id":"j8b-canary-1794572720062-8db4f42a","evidence_hash":"6bb8b4703
+e374411285eb3eaecea0fc180ce3494bcbd485f26b976653bb88cf7","verified_onchain":false}
+│    [36mLogs [nishanthb.near]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+The "reconcile_pending" call to <policy.nishanthb.near> on behalf of <nishanthb.near> succeeded.
+Here is your console command if you need to script it or re-run:
+    [33m'C:\Users\Nishanth\bin\near-cli-rs\near-cli-rs-x86_64-pc-windows-msvc\near.exe' contract call-function 
+as-transaction policy.nishanthb.near reconcile_pending file-args 
+'C:\Users\Nishanth\.nio-secure\mainnet-canary\reconcile-j8b-canary-1794572720062-8db4f42a.args.json' prepaid-gas '50.0 
+Tgas' attached-deposit '0 NEAR' sign-as nishanthb.near network-config mainnet sign-with-ledger --seed-phrase-hd-path 
+'m/44'\''/397'\''/0'\''/0'\''/1'\''' usb send[39m
+
+---
+exit_code: 0
+elapsed_ms: 42528
+ended_at: 2026-11-13T16:01:49.891Z
+---

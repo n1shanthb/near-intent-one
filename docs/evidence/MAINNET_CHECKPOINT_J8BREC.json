@@ -1,0 +1,49 @@
+{
+  "checkpoint": "J8B-REC",
+  "verdict": "PASS",
+  "lifecycle": "RECONCILED",
+  "operation_id": "j8b-canary-1794572720062-8db4f42a",
+  "reconcile": {
+    "method": "reconcile_pending",
+    "signer": "nishanthb.near",
+    "sign_path": "ledger",
+    "hd_path": "m/44'/397'/0'/0'/1'",
+    "policy": "policy.nishanthb.near",
+    "settlement_state": "Success",
+    "evidence_hash": "6bb8b4703e374411285eb3eaecea0fc180ce3494bcbd485f26b976653bb88cf7",
+    "near_tx": "EWLeboFnxdTeJK2VatMECPQCZXY9Q5vVyLBFNSboQdNq",
+    "explorer": "https://explorer.near.org/transactions/EWLeboFnxdTeJK2VatMECPQCZXY9Q5vVyLBFNSboQdNq"
+  },
+  "preflight": {
+    "args_exact_match": true,
+    "signing_state": "Signed",
+    "settlement_state_before": "None",
+    "evidence_hash_before": null,
+    "reconciler": null,
+    "paused": true,
+    "mandate_epoch": 2,
+    "local_lifecycle_before": "SETTLED"
+  },
+  "post_verify": {
+    "tx_final_status": "FINAL",
+    "settlement_state": "Success",
+    "evidence_hash": "6bb8b4703e374411285eb3eaecea0fc180ce3494bcbd485f26b976653bb88cf7",
+    "paused": true,
+    "local_lifecycle_after": "RECONCILED"
+  },
+  "prior_settlement": {
+    "arb_tx": "0x4e9583a86d9cc62dd508e72d5e6d965711ef7eeecce5422c42fa7fa37c0d6c48",
+    "base_tx": "0x2251df330813e77546d0e01ce15a7797b50871faa578fb8a597055f80da3b36f",
+    "base_usdc_out": "997398",
+    "min_out": "994904"
+  },
+  "hard_stop": {
+    "unpause": false,
+    "set_reconciler": false,
+    "propose": false,
+    "mpc_sign": false,
+    "evm_broadcast": false,
+    "duplicate_reconcile": false
+  },
+  "recorded_at": "2026-11-13T16:02:32.458Z"
+}
