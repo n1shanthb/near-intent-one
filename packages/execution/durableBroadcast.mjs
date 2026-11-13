@@ -42,6 +42,7 @@ export async function broadcastWithJournal({
   const fundedGate = assertMainnetFundedAllowed(profile, {
     journal,
     depositBound: opts.depositBound,
+    canaryUnlock: opts.canaryUnlock || opts.canary || null,
   });
   if (profile?.id === CHAIN_PROFILE.MAINNET_1CLICK && !fundedGate.ok) {
     return { ok: false, ...fundedGate };
@@ -112,9 +113,13 @@ export async function broadcastWithJournal({
       };
     }
 
-    // Global mainnet gate — blocks ALL submission, not only 1Click-specific paths.
+    // Global mainnet gate — blocks ALL submission unless one-shot canary unlock is valid.
     if (profile?.network === "mainnet" || profile?.id === CHAIN_PROFILE.MAINNET_1CLICK) {
-      const gate = assertMainnetBroadcastAllowed(opts.env || process.env);
+      const gate = assertMainnetBroadcastAllowed(opts.env || process.env, {
+        canaryUnlock: opts.canaryUnlock || opts.canary || null,
+        operationId: opts.operationId,
+        storeDir: opts.storeDir,
+      });
       if (!gate.ok) {
         return {
           ok: false,

@@ -1,0 +1,116 @@
+{
+  "checkpoint": "J8B-0",
+  "at": "2026-11-13T11:34:22.506Z",
+  "safety": {
+    "ledger_executed": false,
+    "unpause": false,
+    "pause": false,
+    "propose": false,
+    "request_signature": false,
+    "broadcast": false,
+    "escrow_transfer": false,
+    "new_funding": false,
+    "autonomous": false,
+    "secrets_in_evidence": false
+  },
+  "identities": {
+    "owner": "nishanthb.near",
+    "policy": "policy.nishanthb.near",
+    "agent": "agent.nishanthb.near",
+    "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "epoch": 2,
+    "attestor": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9"
+  },
+  "hard_blocker_fixes": [
+    {
+      "issue": "set_paused does not exist",
+      "fix": "Ledger runbook uses unpause()/pause()",
+      "file": "packages/mainnet/canaryLedgerRunbook.mjs"
+    },
+    {
+      "issue": "safetyGates hard-false",
+      "fix": "Default remains hard-false; scoped one-shot canary unlock only via validated approval",
+      "file": "packages/mainnet/safetyGates.mjs"
+    },
+    {
+      "issue": "assertMainnetFundedAllowed always rejects",
+      "fix": "Allows only when canaryUnlock.mode===one_shot_canary with journal+deposit bind",
+      "file": "packages/execution/chainProfiles.mjs"
+    },
+    {
+      "issue": "agentRuntime requires paused=true",
+      "fix": "Preserved for observe agent; canary is separate CLI, not agent tick",
+      "file": "packages/mainnet/agentRuntime.mjs"
+    },
+    {
+      "issue": "mainnet-api-server observation-only",
+      "fix": "Preserved — canary execution is local CLI, not HTTP tick",
+      "file": "packages/services/mainnet-api-server.mjs"
+    },
+    {
+      "issue": "1Click status needs depositAddress",
+      "fix": "canarySettlement.monitorOneClickByDeposit uses GET /v0/status?depositAddress=",
+      "file": "packages/mainnet/canarySettlement.mjs"
+    }
+  ],
+  "gates_default": {
+    "funded_trading": false,
+    "mainnet_broadcast_enabled": false,
+    "autonomous_execution_enabled": false,
+    "observe_only": true,
+    "unlock_attempted_ignored": false,
+    "auth_gates_raw": {
+      "network_is_mainnet": false,
+      "mainnet_mode": false,
+      "allow_sign": false,
+      "allow_broadcast": false,
+      "canary_approved": false,
+      "public_demo_safe": true
+    },
+    "note": "J3 default: broadcast gates hard-false; canary one-shot is separate scoped unlock"
+  },
+  "broadcast_without_canary": {
+    "ok": false,
+    "submitted": false,
+    "reason": "mainnet_broadcast_disabled",
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false
+    },
+    "canary_reason": "no_canary_unlock"
+  },
+  "approval_prep": {
+    "ok": true,
+    "operation_id": "j8b0-wire-1794569662508",
+    "fingerprint": "6b651dd172d83f7d24dc222a2c9547b55b38d6369ebf0f2fb4aedb0296a21e6e",
+    "expires_at": "2026-11-13T12:04:22.508Z",
+    "path": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\j8b0-wire-1794569662508.json",
+    "note": "Approval created for wiring only — not consumed for live trade"
+  },
+  "ledger_preview": {
+    "contract_methods": {
+      "open_window": "unpause",
+      "close_window": "pause",
+      "incorrect_do_not_use": "set_paused"
+    },
+    "signer": "nishanthb.near",
+    "receiver": "policy.nishanthb.near",
+    "hd_path": "m/44'/397'/0'/0'/1'",
+    "args_files": {
+      "unpause": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\unpause.args.json",
+      "pause": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\pause.args.json"
+    },
+    "unpause_command": "# DO NOT RUN until J8B live execution approved\n# Method: unpause() — opens agent propose/sign window\n$near = \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\"\n$HD = \"m/44'/397'/0'/0'/1'\"\n$ARGS = \"C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\unpause.args.json\"\n\n& $near contract call-function as-transaction policy.nishanthb.near unpause file-args $ARGS `\n  prepaid-gas '30.0 Tgas' `\n  attached-deposit '0 NEAR' `\n  sign-as nishanthb.near `\n  network-config mainnet `\n  sign-with-ledger --seed-phrase-hd-path $HD `\n  usb\n",
+    "pause_command": "# EMERGENCY / post-canary close window\n# Method: pause() — does NOT cancel already-signed or broadcast EVM txs\n$near = \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\"\n$HD = \"m/44'/397'/0'/0'/1'\"\n$ARGS = \"C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\pause.args.json\"\n\n& $near contract call-function as-transaction policy.nishanthb.near pause file-args $ARGS `\n  prepaid-gas '30.0 Tgas' `\n  attached-deposit '0 NEAR' `\n  sign-as nishanthb.near `\n  network-config mainnet `\n  sign-with-ledger --seed-phrase-hd-path $HD `\n  usb\n",
+    "view_paused_command": "& \"C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe\" contract call-function as-read-only policy.nishanthb.near get_paused json-args \"{}\" network-config mainnet now",
+    "residual_risk_notes": [
+      "pause() or remove_trusted_quote_signer does NOT invalidate an EVM tx already MPC-signed or broadcast",
+      "If MPC signature exists without confirmed broadcast: retain durable journal; operator reconciliation only; never auto-resign",
+      "Do not generate a replacement transaction at the same nonce without owner cancel path"
+    ],
+    "executed": false
+  },
+  "readiness": "READY_FOR_J8B_OWNER_APPROVED_LIVE_EXECUTION_CHECKPOINT",
+  "next": "Next checkpoint: owner-approved first live execution with operator confirmation at each mutation (unpause → propose → sign → broadcast → settle → pause)"
+}

@@ -125,17 +125,33 @@ export function assertProfileIsolation(profile, { token, originAsset, settleBase
   return true;
 }
 
-export function assertMainnetFundedAllowed(profile, { journal, depositBound, allowSign } = {}) {
+export function assertMainnetFundedAllowed(
+  profile,
+  { journal, depositBound, allowSign, canaryUnlock, canary } = {}
+) {
   if (profile.id !== CHAIN_PROFILE.MAINNET_1CLICK) return { ok: true };
-  if (process.env.NIO_MAINNET_ALLOW_SIGN !== "1" && !allowSign) {
-    return { ok: false, reason: "mainnet_sign_disabled" };
+
+  const unlock = canaryUnlock || canary || null;
+  const canaryOk =
+    unlock?.ok === true &&
+    unlock?.mode === "one_shot_canary" &&
+    unlock?.allows_sign === true &&
+    unlock?.allows_broadcast === true &&
+    unlock?.autonomous_execution_enabled !== true;
+
+  // Env flags alone never unlock mainnet funded path (J3). Canary is the only scoped unlock.
+  if (!canaryOk) {
+    if (process.env.NIO_MAINNET_ALLOW_SIGN !== "1" && !allowSign) {
+      return { ok: false, reason: "mainnet_sign_disabled" };
+    }
+    if (process.env.NIO_MAINNET_ALLOW_BROADCAST !== "1") {
+      return { ok: false, reason: "mainnet_broadcast_disabled" };
+    }
+    if (process.env.NIO_MAINNET_ALLOW_FUNDED_QUOTE !== "1") {
+      return { ok: false, reason: "mainnet_funded_quote_disabled" };
+    }
   }
-  if (process.env.NIO_MAINNET_ALLOW_BROADCAST !== "1") {
-    return { ok: false, reason: "mainnet_broadcast_disabled" };
-  }
-  if (process.env.NIO_MAINNET_ALLOW_FUNDED_QUOTE !== "1") {
-    return { ok: false, reason: "mainnet_funded_quote_disabled" };
-  }
+
   if (!journal?.assertWritable) {
     return { ok: false, reason: "journal_required_for_mainnet_funded" };
   }
@@ -147,8 +163,16 @@ export function assertMainnetFundedAllowed(profile, { journal, depositBound, all
   if (!depositBound?.deposit_address || !depositBound?.binding_ok) {
     return { ok: false, reason: "deposit_binding_required" };
   }
+  if (canaryOk) {
+    return {
+      ok: true,
+      mode: "one_shot_canary",
+      operation_id: unlock.operation_id,
+      note: "Scoped canary unlock — not a permanent funded-path enable",
+    };
+  }
   if (profile.allows_funded === false && process.env.NIO_MAINNET_FUNDED_UNLOCK !== "1") {
     return { ok: false, reason: "mainnet_funded_path_locked" };
   }
-  return { ok: false, reason: "mainnet_funded_still_gated" }; // explicit: still NO until unlock
+  return { ok: false, reason: "mainnet_funded_still_gated" };
 }

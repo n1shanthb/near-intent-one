@@ -253,7 +253,8 @@ async function handle(req, res) {
         reason: gate.reason,
         gates: gate.gates,
         path,
-        note: "J3 observation-only — execution endpoints disabled",
+        note:
+          "Observation-only HTTP API — execution endpoints disabled. First live canary is local CLI (J8B-0), not an agent tick.",
         body_ignored: Boolean(body && Object.keys(body).length),
       });
     }

@@ -29,7 +29,24 @@ export {
   mainnetExecutionGates,
   assertMainnetBroadcastAllowed,
   guardedMainnetSubmit,
+  resolveCanaryUnlock,
 } from "./safetyGates.mjs";
+export {
+  createCanaryApproval,
+  validateCanaryApproval,
+  buildCanaryUnlockContext,
+  consumeCanaryApproval,
+} from "./canaryOneShot.mjs";
+export {
+  prepareCanaryOperation,
+  runCanaryExecutor,
+} from "./canaryExecutor.mjs";
+export { buildLedgerRunbook } from "./canaryLedgerRunbook.mjs";
+export {
+  monitorOneClickByDeposit,
+  verifySourceUsdcTransfer,
+  settlementRecoverySteps,
+} from "./canarySettlement.mjs";
 export {
   loadAgentOpsCredentials,
   resolveOpsKeyPath,
