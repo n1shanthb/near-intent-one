@@ -394,11 +394,17 @@ export async function verifyMission1Settlement({
       settlement_recovery: settlementRecoverySteps(settle.normalized),
     };
   }
+  if (nearUsdcBefore == null || nearUsdcBefore === "") {
+    return {
+      ok: false,
+      reason: "near_usdc_before_missing_refuse_zero_default",
+    };
+  }
   const dest =
     deps.nearVerify ||
     (await verifyNearNep141Delta({
       accountId: recipient,
-      beforeRaw: nearUsdcBefore || "0",
+      beforeRaw: nearUsdcBefore,
       minAmountOut,
       tokenContract: NEAR_NATIVE_USDC_CONTRACT,
       rpcUrl: nearRpcUrl,
@@ -424,21 +430,22 @@ export async function verifyMission1Settlement({
 
 /**
  * Static + injectable audit of production readiness (no mainnet mutations).
+ * NO-GO until Mission1 step runner is complete and independent of J8B Arb operator.
  */
 export function auditMission1ProductionPath({
   journalFactory = openTxJournal,
   env = process.env,
+  runnerAssert = null,
 } = {}) {
   const gaps = [];
   const ready = [];
 
-  // Settlement verifiers exist and are parameterized
   ready.push("verifySourceUsdcTransfer_parameterized_for_ethereum");
   ready.push("verifyNearNep141Delta_production_nep141");
   ready.push("monitorOneClickByDeposit_by_deposit_address");
   ready.push("mission1_settlement_wrapper_wired");
+  ready.push("near_usdc_before_snapshot_required");
 
-  // Durable journal + duplicate broadcast protections (shared execution journal)
   let journalOk = false;
   try {
     const dir = join(homedir(), ".nio-secure", "tmp-mission1-audit");
@@ -463,7 +470,6 @@ export function auditMission1ProductionPath({
     } else {
       ready.push("durable_tx_journal_sqlite_available");
     }
-    // Duplicate idempotency returns same record (exact-once)
     const dup = j.insertDraft({
       id: `${id}-b`,
       portfolio_id: "nio-mainnet-v1",
@@ -481,7 +487,6 @@ export function auditMission1ProductionPath({
     gaps.push(`journal_audit_failed:${e.message || e}`);
   }
 
-  // J8B executor still hardcodes Arb chain — Mission 1 needs its own path module
   if (CANARY_CHAIN_ID !== 42161) {
     gaps.push("unexpected_j8b_default_chain");
   } else {
@@ -490,15 +495,36 @@ export function auditMission1ProductionPath({
   ready.push("mission1_approval_kind_separate_store");
   ready.push("mission1_transaction_plan_documented");
 
-  // Remaining engineering: full step runner still must use this module (not J8B executor defaults)
-  gaps.push(
-    "canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR"
-  );
+  // Require independently executable Eth→NEAR runner (not J8B canary-operator)
+  let runner;
+  try {
+    if (runnerAssert) {
+      runner = runnerAssert();
+    } else {
+      // Lazy import to avoid cycles at module load
+      runner = null;
+    }
+  } catch (e) {
+    gaps.push(`runner_assert_failed:${e.message || e}`);
+    runner = { ok: false };
+  }
+  if (runner?.ok) {
+    ready.push("mission1_step_runner_complete");
+    ready.push("mission1_executor_independent_of_j8b_arb");
+  } else if (runner && runner.ok === false) {
+    gaps.push(
+      `mission1_runner_incomplete:missing=${(runner.missing || []).join(",")}`
+    );
+  } else {
+    gaps.push("mission1_runner_not_asserted");
+  }
 
+  const hardGaps = gaps.filter(Boolean);
   return {
-    ok: gaps.filter((g) => !g.startsWith("canaryExecutor_default")).length === 0 && journalOk,
+    ok: hardGaps.length === 0 && journalOk && runner?.ok === true,
     production_ready_components: ready,
-    engineering_gaps: gaps,
+    engineering_gaps: hardGaps,
+    runner,
     settlement: {
       source: "evm_erc20_transfer@eip155:1",
       destination: "near_nep141_ft_delta",
@@ -507,4 +533,13 @@ export function auditMission1ProductionPath({
     },
     hard_stop: true,
   };
+}
+
+/** Convenience: audit with live runner assert (call from scripts/tests). */
+export async function auditMission1ProductionPathWithRunner(opts = {}) {
+  const { assertMission1RunnerComplete } = await import("./mission1Executor.mjs");
+  return auditMission1ProductionPath({
+    ...opts,
+    runnerAssert: assertMission1RunnerComplete,
+  });
 }

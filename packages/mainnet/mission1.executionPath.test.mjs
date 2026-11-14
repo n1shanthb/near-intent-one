@@ -126,13 +126,22 @@ describe("Mission1 execution path", () => {
     assert.equal(r.destination.kind, "nep141");
   });
 
-  it("production path audit reports journal + M1 isolation", () => {
+  it("production path audit is NO-GO until runner asserted", () => {
     const audit = auditMission1ProductionPath({ env });
+    assert.equal(audit.ok, false);
     assert.ok(audit.production_ready_components.includes("durable_tx_journal_sqlite_available"));
     assert.ok(
       audit.production_ready_components.includes("mission1_approval_kind_separate_store")
     );
     assert.equal(audit.settlement.destination, "near_nep141_ft_delta");
     assert.ok(audit.hard_stop);
+  });
+
+  it("production path audit READY with runner assert", async () => {
+    const { auditMission1ProductionPathWithRunner } = await import(
+      "./mission1ExecutionPath.mjs"
+    );
+    const audit = await auditMission1ProductionPathWithRunner({ env });
+    assert.equal(audit.ok, true, JSON.stringify(audit.engineering_gaps));
   });
 });

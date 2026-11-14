@@ -22,13 +22,13 @@
 | NEAR USDC storage | registered=true |
 | Policy paused | true epoch=2 |
 | J8B pending | settlement=Success unresolved=0 |
-| Eth gas fee est | ≈$0.030317519864448004 (OK) |
+| Eth gas fee est | ≈$0.020584084237056 (OK) |
 | Base gas fee est | ≈$0.001046592 (OK) |
-| 1Click TLS | ok=true fortinet_mitm=false error=none |
+| 1Click TLS | ok=true fortinet_mitm=null error=none |
 
 ## Mission 1 approval preview (NOT an authorization)
 
-- Suggested op id: `m1-canary-1794628040832-99a9376c` (not persisted)
+- Suggested op id: `m1-canary-1794629538374-ab5d4ec2` (not persisted)
 - Amount: 1 USDC (`1000000`) Eth native USDC → NEP-141 USDC @ `nishanthb.near`
 - Signer: `0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4`
 - Slippage request: 50 bps (policy max 100)
@@ -37,7 +37,7 @@
 
 ## Engineering gaps
 
-- canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR
+
 
 ## Production path components ready
 
@@ -45,10 +45,13 @@
 - verifyNearNep141Delta_production_nep141
 - monitorOneClickByDeposit_by_deposit_address
 - mission1_settlement_wrapper_wired
+- near_usdc_before_snapshot_required
 - durable_tx_journal_sqlite_available
 - journal_duplicate_idempotency_blocked
 - j8b_defaults_isolated_from_mission1_module
 - mission1_approval_kind_separate_store
 - mission1_transaction_plan_documented
+- mission1_step_runner_complete
+- mission1_executor_independent_of_j8b_arb
 
 Paper funded autonomous: **DISABLED** (ok=true)

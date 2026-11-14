@@ -1,7 +1,7 @@
 {
   "checkpoint": "J9_POST_FUNDING_VERIFY",
   "baseline": "b0afa50e0b385f0952f157db427c118efc354263",
-  "recorded_at": "2026-11-14T03:47:20.833Z",
+  "recorded_at": "2026-11-14T04:12:18.374Z",
   "mutations_invoked": false,
   "hard_stop": true,
   "network": {
@@ -25,12 +25,8 @@
       "status": 200,
       "bind": null,
       "error": null,
-      "fortinet_mitm": false,
-      "peer_issuer": {
-        "C": "US",
-        "O": "Google Trust Services",
-        "CN": "WE1"
-      }
+      "fortinet_mitm": null,
+      "peer_issuer": null
     }
   },
   "funding_live": {
@@ -49,11 +45,11 @@
       "nonce_latest": 0,
       "nonce_pending": 0,
       "gas": {
-        "gas_price_wei": "174286699",
+        "gas_price_wei": "118331978",
         "gas_limit": "54360",
-        "fee_wei": "9474224957640",
-        "fee_eth": 0.00000947422495764,
-        "fee_usd_approx": 0.030317519864448004,
+        "fee_wei": "6432526324080",
+        "fee_eth": 0.00000643252632408,
+        "fee_usd_approx": 0.020584084237056,
         "trade_usdc": 1,
         "within_gas_price_ceiling": true,
         "within_max_gas_budget": true,
@@ -153,7 +149,7 @@
       "amount_out": "999798",
       "min_amount_out": "994799",
       "deposit_address": null,
-      "deadline": "2026-11-14T04:02:12.633Z",
+      "deadline": "2026-11-14T04:27:09.195Z",
       "policy_fit": {
         "label": "m1_eth_usdc_to_near_usdc",
         "amount_in": "1000000",
@@ -223,15 +219,59 @@
       "verifyNearNep141Delta_production_nep141",
       "monitorOneClickByDeposit_by_deposit_address",
       "mission1_settlement_wrapper_wired",
+      "near_usdc_before_snapshot_required",
       "durable_tx_journal_sqlite_available",
       "journal_duplicate_idempotency_blocked",
       "j8b_defaults_isolated_from_mission1_module",
       "mission1_approval_kind_separate_store",
-      "mission1_transaction_plan_documented"
+      "mission1_transaction_plan_documented",
+      "mission1_step_runner_complete",
+      "mission1_executor_independent_of_j8b_arb"
     ],
-    "engineering_gaps": [
-      "canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR"
-    ],
+    "engineering_gaps": [],
+    "runner": {
+      "ok": true,
+      "missing": [],
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "capabilities": {
+        "ok": true,
+        "kind": "mission1_eth_near_executor_v1",
+        "independent_of_j8b": true,
+        "rejects_j8b_operator": true,
+        "chain_id": 1,
+        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "recipient": "nishanthb.near",
+        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "amount": "1000000",
+        "steps": [
+          "prepareApproval",
+          "quoteAttest",
+          "verifyUnpaused",
+          "propose",
+          "requestSignature",
+          "persistSignedRaw",
+          "broadcast",
+          "settle",
+          "reconcilePending",
+          "verifyPaused"
+        ],
+        "invoke_default": false,
+        "hard_stop_without_financial_approval": true
+      }
+    },
     "settlement": {
       "source": "evm_erc20_transfer@eip155:1",
       "destination": "near_nep141_ft_delta",
@@ -239,6 +279,48 @@
       "duplicate_broadcast": "journal_state_machine"
     },
     "hard_stop": true
+  },
+  "mission1_runner": {
+    "complete": true,
+    "capabilities": {
+      "ok": true,
+      "kind": "mission1_eth_near_executor_v1",
+      "independent_of_j8b": true,
+      "rejects_j8b_operator": true,
+      "chain_id": 1,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "amount": "1000000",
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "invoke_default": false,
+      "hard_stop_without_financial_approval": true
+    },
+    "steps": [
+      "prepareApproval",
+      "quoteAttest",
+      "verifyUnpaused",
+      "propose",
+      "requestSignature",
+      "persistSignedRaw",
+      "broadcast",
+      "settle",
+      "reconcilePending",
+      "verifyPaused"
+    ]
   },
   "paper": {
     "funded_disabled": {
@@ -273,9 +355,9 @@
   },
   "mission1_approval_preview": {
     "persisted": false,
-    "operation_id_suggested": "m1-canary-1794628040832-99a9376c",
+    "operation_id_suggested": "m1-canary-1794629538374-ab5d4ec2",
     "payload": {
-      "operation_id": "m1-canary-1794628040832-99a9376c",
+      "operation_id": "m1-canary-1794629538374-ab5d4ec2",
       "owner": "nishanthb.near",
       "policy": "policy.nishanthb.near",
       "agent": "agent.nishanthb.near",
@@ -289,7 +371,7 @@
       "recipient": "nishanthb.near",
       "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "attestor_public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
-      "max_gas_price": "174286699",
+      "max_gas_price": "118331978",
       "max_slippage_bps": 50,
       "quote_hash": null,
       "deposit_address": null,
@@ -352,8 +434,8 @@
           "value_wei": "0",
           "calldata": "ERC20.transfer(depositAddress, 1000000)",
           "nonce": 0,
-          "estimated_fee_eth": 0.00000947422495764,
-          "estimated_fee_usd": 0.030317519864448004,
+          "estimated_fee_eth": 0.00000643252632408,
+          "estimated_fee_usd": 0.020584084237056,
           "explorer": "https://etherscan.io/tx/<tx_hash>"
         },
         {
@@ -387,9 +469,7 @@
     "requires_explicit_financial_approval": true,
     "this_preflight_is_not_trade_approval": true
   },
-  "engineering_gaps": [
-    "canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR"
-  ],
+  "engineering_gaps": [],
   "approvals_required_before_trade": [
     "Restore non-MITM path for 1Click (mobile hotspot / FortiGate CA) and re-fetch funded quotes",
     "Explicit Mission 1 financial approval (new op id — never reuse J8B)",

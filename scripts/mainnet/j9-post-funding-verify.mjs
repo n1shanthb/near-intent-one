@@ -14,8 +14,12 @@ import { secureFetch, detectMobileBindAddress } from "../../packages/mainnet/sec
 import {
   buildMission1ApprovalPreview,
   buildMission1TransactionPlan,
-  auditMission1ProductionPath,
+  auditMission1ProductionPathWithRunner,
 } from "../../packages/mainnet/mission1ExecutionPath.mjs";
+import {
+  assertMission1RunnerComplete,
+  mission1RunnerCapabilities,
+} from "../../packages/mainnet/mission1Executor.mjs";
 import {
   resolveCanarySettlementPlan,
 } from "../../packages/mainnet/canarySettlement.mjs";
@@ -151,7 +155,8 @@ const adapters = await createViewOnlyPolicyAdapters({});
 const pendingAudit = await policyPendingAudit(adapters);
 
 console.error("[j9-post] Production path audit…");
-const pathAudit = auditMission1ProductionPath();
+const pathAudit = await auditMission1ProductionPathWithRunner();
+const runner = assertMission1RunnerComplete();
 const settleM1 = resolveCanarySettlementPlan(M1_ETH_NEAR_USDC);
 const settleM2 = resolveCanarySettlementPlan(M2_BASE_NEAR_USDC);
 
@@ -229,11 +234,12 @@ if (!tls.ok) {
 }
 if (!pathAudit.ok) {
   for (const g of pathAudit.engineering_gaps) {
-    if (!String(g).startsWith("canaryExecutor_default")) m1Blockers.push(`path:${g}`);
+    m1Blockers.push(`path:${g}`);
   }
 }
-// Executor gap is soft for READY_FOR_OWNER_APPROVAL if mission1ExecutionPath exists —
-// mark as engineering_gap not hard blocker when funding+quote+policy clear.
+if (!runner.ok) {
+  m1Blockers.push(`runner_incomplete:${(runner.missing || []).join(",")}`);
+}
 const engineeringGaps = [
   ...pathAudit.engineering_gaps,
   ...(tls.ok ? [] : ["fresh_1click_quotes_require_non_fortinet_path_or_installed_fg_ca"]),
@@ -250,7 +256,9 @@ const m1Ready =
   pendingAudit.blocking_pending.length === 0 &&
   quoteOk &&
   tls.ok &&
-  paperGate.ok;
+  paperGate.ok &&
+  pathAudit.ok &&
+  runner.ok;
 
 const m2Ready =
   fundingOk.base_usdc &&
@@ -325,6 +333,11 @@ const report = {
     settlement_plan: settleM2,
   },
   production_path: pathAudit,
+  mission1_runner: {
+    complete: runner.ok,
+    capabilities: mission1RunnerCapabilities(),
+    steps: runner.steps,
+  },
   paper: {
     funded_disabled: paperGate,
     shadows: paperShadows.map((s) =>

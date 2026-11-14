@@ -59,8 +59,25 @@ export {
   validateMission1CanaryApproval,
   verifyMission1Settlement,
   auditMission1ProductionPath,
+  auditMission1ProductionPathWithRunner,
   MISSION1_APPROVAL_KIND,
 } from "./mission1ExecutionPath.mjs";
+export {
+  listMission1RunnerSteps,
+  mission1RunnerCapabilities,
+  assertMission1RunnerComplete,
+  mission1StepPrepareApproval,
+  mission1StepQuoteAttest,
+  mission1StepVerifyUnpaused,
+  mission1StepPropose,
+  mission1StepRequestSignature,
+  mission1StepPersistSignedRaw,
+  mission1StepBroadcast,
+  mission1StepSettle,
+  mission1StepReconcilePending,
+  mission1StepVerifyPaused,
+  MISSION1_STEP_HANDLERS,
+} from "./mission1Executor.mjs";
 export {
   M1_ETH_NEAR_USDC,
   M2_BASE_ETH_USDC,
