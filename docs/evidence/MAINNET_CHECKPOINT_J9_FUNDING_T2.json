@@ -1,0 +1,30 @@
+{
+  "checkpoint": "J9_FUNDING_T2",
+  "verdict": "PASS",
+  "mutations_invoked_by_agent": false,
+  "tx_hash": "0x812a817d45e30d3d3a4d1591503f774d57b25ed80421890b8ba84d035203d3a8",
+  "explorer": "https://etherscan.io/tx/0x812a817d45e30d3d3a4d1591503f774d57b25ed80421890b8ba84d035203d3a8",
+  "chain_id": 1,
+  "receipt_status": "0x1",
+  "block_number": 26410469,
+  "tx_from": "0x196e429522f151c04b990d1b354c28018ecebe55",
+  "transfer": {
+    "from": "0x196e429522f151c04b990d1b354c28018ecebe55",
+    "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "value": "1200535",
+    "value_usdc": 1.200535
+  },
+  "amount_note": "Received 1.200535 USDC (?1.0 required for Mission 1). Not exact 1.0 ? surplus retained on MPC.",
+  "mpc_usdc_raw": "1200535",
+  "mpc_usdc": 1.200535,
+  "mpc_eth": 0,
+  "policy_paused": true,
+  "stopped": {
+    "t3": true,
+    "t4": true,
+    "swap": true,
+    "unpause": true,
+    "ledger": true
+  },
+  "recorded_at": "2026-11-14T03:17:18.771Z"
+}
