@@ -1,0 +1,50 @@
+{
+  "kind": "J17_QUOTE_SIGNER_REVOKE",
+  "started_at": "2026-11-14T12:31:13.792Z",
+  "network": "testnet",
+  "policy": "j16f6890.testnet",
+  "actor": "nio-owner-02b7cf.testnet",
+  "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh",
+  "method": "remove_trusted_quote_signer",
+  "revocation_plan": {
+    "method": "remove_trusted_quote_signer",
+    "contract": "j16f6890.testnet",
+    "args": {
+      "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh"
+    },
+    "actor": "nio-owner-02b7cf.testnet",
+    "auth_env": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED",
+    "after_successful_testnet_transfer": [
+      "Owner-authorized call remove_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" }) on j16f6890.testnet",
+      "Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs",
+      "Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed",
+      "Do not reuse the disposable J16 attestor key on mainnet"
+    ],
+    "seed_protection": [
+      ".gate-i-data/ is gitignored",
+      "**/attestor*.seed.json is gitignored",
+      "Never print secretKey64 in evidence or logs"
+    ]
+  },
+  "never_auto_from_broadcast": true,
+  "authorization": {
+    "env": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED",
+    "gate": {
+      "ok": false,
+      "reason": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED_required",
+      "note": "Separate owner authorization for remove_trusted_quote_signer — post-test cleanup only"
+    }
+  },
+  "ok": false,
+  "action": "REFUSED",
+  "reason": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED_required",
+  "planned_call": {
+    "contract": "j16f6890.testnet",
+    "method": "remove_trusted_quote_signer",
+    "args": {
+      "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh"
+    },
+    "actor": "nio-owner-02b7cf.testnet"
+  },
+  "finished_at": "2026-11-14T12:31:13.794Z"
+}

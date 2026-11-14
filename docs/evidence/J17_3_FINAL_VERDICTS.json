@@ -1,0 +1,42 @@
+{
+  "kind": "J17_3_FINAL_VERDICTS",
+  "baseline": "dcc5e64",
+  "finished_at": "2026-11-14T12:32:00.000Z",
+  "hard_stop": {
+    "no_signer_register": true,
+    "no_mpc_sign": true,
+    "no_sepolia_transfer": true,
+    "no_funding": true,
+    "no_mainnet": true
+  },
+  "tests": {
+    "test:j17": "41/41 PASS"
+  },
+  "gates": {
+    "JOURNAL_SECRET_PATH_WIRED": "PASS",
+    "PRE_PROPOSE_INTENT_PERSIST": "PASS",
+    "AMBIGUOUS_NEAR_NO_DUPLICATE": "PASS",
+    "REGISTER_SCRIPT_AUTH_GATED": "PASS",
+    "REVOKE_METHOD_CONFIRMED": "PASS",
+    "LIVE_PREFLIGHT_REQUIRED": "PASS",
+    "AUTH_SECRET_PREVIEW_NOT_SUCCESS": "PASS",
+    "TECHNICAL_READINESS": "PASS_WITH_OWNER_PREREQS",
+    "AUTHORIZATION_READY": "NO-GO_PENDING_OWNER_PREREQS",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
+  "owner_prereqs": [
+    "Provision NIO_TX_JOURNAL_SECRET or NIO_TX_JOURNAL_SECRET_PATH once",
+    "Separate auth: J17_QUOTE_SIGNER_REGISTER_AUTHORIZED=1 → npm run j17:register-quote-signer",
+    "Fresh live presign-check PASS including JOURNAL_AND_REPLAY_SAFE",
+    "Separate auth: J17_MPC_SIGN_BROADCAST_AUTHORIZED=1 → npm run j17:mpc-broadcast",
+    "Post-test: J17_QUOTE_SIGNER_REVOKE_AUTHORIZED=1 → npm run j17:revoke-quote-signer (remove_trusted_quote_signer)"
+  ],
+  "evidence": [
+    "docs/evidence/J17_3_OWNER_AUTHORIZATION_PREVIEWS.md",
+    "docs/evidence/J17_2_PRE_SIGN_SAFETY.json",
+    "docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md",
+    "docs/evidence/J17_QUOTE_SIGNER_REGISTER.json",
+    "docs/evidence/J17_QUOTE_SIGNER_REVOKE.json"
+  ],
+  "verdict": "NO-GO_PENDING_OWNER_PREREQS"
+}

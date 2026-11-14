@@ -1,5 +1,5 @@
 /**
- * J17.1/J17.2 — Sepolia MPC→ERC-20 path helpers (ABI-aligned with contracts/policy).
+ * J17.1–J17.3 — Sepolia MPC→ERC-20 path helpers (ABI-aligned with contracts/policy).
  * Labeled DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS — not Intents settlement.
  */
 import { createHash, randomBytes } from "node:crypto";
@@ -9,6 +9,7 @@ import {
   readFileSync,
   writeFileSync,
   renameSync,
+  readdirSync,
 } from "node:fs";
 import { join } from "node:path";
 import {
@@ -24,6 +25,8 @@ import {
 export const SCENARIO_LABEL = "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS";
 export const CHAIN_ID = 11155111;
 export const J16_POLICY = "j16f6890.testnet";
+export const J16_OWNER = "nio-owner-02b7cf.testnet";
+export const J16_AGENT = "nio-agent-02b7cf.testnet";
 export const J16_MPC = "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55";
 export const J16_PATH = "trading/v1/portfolio/j16-mpc-6890";
 export const USDC_SEPOLIA = "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2";
@@ -37,9 +40,31 @@ export const EXPECTED_ATTESTOR_PK =
   "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh";
 /** Dual owner-auth env keys — funding auth ≠ signer register ≠ sign/broadcast. */
 export const AUTH_QUOTE_SIGNER_REGISTER = "J17_QUOTE_SIGNER_REGISTER_AUTHORIZED";
+export const AUTH_QUOTE_SIGNER_REVOKE = "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED";
 export const AUTH_MPC_SIGN_BROADCAST = "J17_MPC_SIGN_BROADCAST_AUTHORIZED";
 /** Observed historical Tidepool transfer gas — NEVER satisfies readiness alone. */
 export const HISTORICAL_GAS_OBSERVED = 142000n;
+
+/** Durable operation-intent statuses (persist before propose). */
+export const OP_INTENT_STATUS = Object.freeze({
+  INTENT_LOCKED: "INTENT_LOCKED",
+  PROPOSE_AMBIGUOUS: "PROPOSE_AMBIGUOUS",
+  PROPOSED: "PROPOSED",
+  PRE_SIGN_LOCKED: "PRE_SIGN_LOCKED",
+  MPC_AMBIGUOUS: "MPC_AMBIGUOUS",
+  MPC_SIGNED: "MPC_SIGNED",
+  BROADCAST: "BROADCAST",
+  TERMINAL_FAIL: "TERMINAL_FAIL",
+});
+
+const OP_INTENT_OPEN = new Set([
+  OP_INTENT_STATUS.INTENT_LOCKED,
+  OP_INTENT_STATUS.PROPOSE_AMBIGUOUS,
+  OP_INTENT_STATUS.PROPOSED,
+  OP_INTENT_STATUS.PRE_SIGN_LOCKED,
+  OP_INTENT_STATUS.MPC_AMBIGUOUS,
+  OP_INTENT_STATUS.MPC_SIGNED,
+]);
 
 /** Real policy view methods — never invent get_state. */
 export const POLICY_VIEWS = [
@@ -436,10 +461,79 @@ export function verifyPolicyViews(views) {
 
 /**
  * Journal secret for financial execution — fail closed, never regenerate on recovery.
- * Provision once: env NIO_TX_JOURNAL_SECRET OR durable file under .nio-secure/j17/.
+ * Resolution order:
+ * 1) NIO_TX_JOURNAL_SECRET
+ * 2) NIO_TX_JOURNAL_SECRET_PATH (file)
+ * 3) default `.nio-secure/j17/journal.secret` when rootDir provided
  */
 export function journalSecretFilePath(rootDir) {
   return join(rootDir, ".nio-secure", "j17", "journal.secret");
+}
+
+export function journalSecretFingerprint(secret) {
+  return createHash("sha256").update(String(secret)).digest("hex").slice(0, 16);
+}
+
+/**
+ * @param {{ env?: NodeJS.ProcessEnv, rootDir?: string|null, includeSecret?: boolean }} [opts]
+ * When includeSecret=true, returns secret for the journal writer only — never log it.
+ */
+export function resolveJournalSecret({
+  env = process.env,
+  rootDir = null,
+  includeSecret = false,
+} = {}) {
+  const fromEnv = env.NIO_TX_JOURNAL_SECRET;
+  if (fromEnv && String(fromEnv).length >= 32) {
+    const out = {
+      ok: true,
+      source: "env",
+      length: String(fromEnv).length,
+      fingerprint: journalSecretFingerprint(fromEnv),
+    };
+    if (includeSecret) out.secret = String(fromEnv);
+    return out;
+  }
+  if (fromEnv && String(fromEnv).length > 0 && String(fromEnv).length < 32) {
+    return { ok: false, reason: "NIO_TX_JOURNAL_SECRET_too_short" };
+  }
+
+  const pathCandidates = [];
+  if (env.NIO_TX_JOURNAL_SECRET_PATH) {
+    pathCandidates.push({
+      path: String(env.NIO_TX_JOURNAL_SECRET_PATH),
+      source: "path_env",
+    });
+  }
+  if (rootDir) {
+    pathCandidates.push({
+      path: journalSecretFilePath(rootDir),
+      source: "default_file",
+    });
+  }
+  for (const c of pathCandidates) {
+    if (!c.path || !existsSync(c.path)) continue;
+    const secret = readFileSync(c.path, "utf8").trim();
+    if (secret.length < 32) {
+      return { ok: false, reason: "journal_secret_file_too_short", path: c.path };
+    }
+    const out = {
+      ok: true,
+      source: c.source,
+      path: c.path,
+      length: secret.length,
+      fingerprint: journalSecretFingerprint(secret),
+    };
+    if (includeSecret) out.secret = secret;
+    return out;
+  }
+
+  return {
+    ok: false,
+    reason: "NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback",
+    provision:
+      "Set NIO_TX_JOURNAL_SECRET or NIO_TX_JOURNAL_SECRET_PATH, or provision .nio-secure/j17/journal.secret once; never regenerate on recovery",
+  };
 }
 
 export function requireJournalSecret({
@@ -447,24 +541,8 @@ export function requireJournalSecret({
   rootDir = null,
   allowGenerate = false,
 } = {}) {
-  const fromEnv = env.NIO_TX_JOURNAL_SECRET;
-  if (fromEnv && String(fromEnv).length >= 32) {
-    return { ok: true, source: "env", length: String(fromEnv).length };
-  }
-  if (fromEnv && String(fromEnv).length > 0 && String(fromEnv).length < 32) {
-    return { ok: false, reason: "NIO_TX_JOURNAL_SECRET_too_short" };
-  }
-  if (rootDir) {
-    const path = journalSecretFilePath(rootDir);
-    if (existsSync(path)) {
-      const secret = readFileSync(path, "utf8").trim();
-      if (secret.length < 32) {
-        return { ok: false, reason: "journal_secret_file_too_short", path };
-      }
-      // Never return the secret value to callers of the readiness check.
-      return { ok: true, source: "file", path, length: secret.length };
-    }
-  }
+  const resolved = resolveJournalSecret({ env, rootDir, includeSecret: false });
+  if (resolved.ok) return resolved;
   if (allowGenerate && rootDir) {
     return {
       ok: false,
@@ -473,11 +551,88 @@ export function requireJournalSecret({
         "Run scripts/j17/provision-journal-secret.mjs once under owner control; never auto-regenerate on crash recovery",
     };
   }
+  return resolved;
+}
+
+/**
+ * Wire resolved file/env secret into process env so persistPreBroadcast / openTxJournal
+ * see NIO_TX_JOURNAL_SECRET and NIO_TX_JOURNAL_SECRET_PATH consistently.
+ * Does not print the secret. Does not regenerate.
+ */
+export function hydrateJournalSecretEnv({
+  env = process.env,
+  rootDir = null,
+} = {}) {
+  const resolved = resolveJournalSecret({ env, rootDir, includeSecret: true });
+  if (!resolved.ok) return resolved;
+  env.NIO_TX_JOURNAL_SECRET = resolved.secret;
+  if (resolved.path) env.NIO_TX_JOURNAL_SECRET_PATH = resolved.path;
   return {
-    ok: false,
-    reason: "NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback",
-    provision:
-      "Set NIO_TX_JOURNAL_SECRET (≥32) or create .nio-secure/j17/journal.secret once; do not regenerate during recovery",
+    ok: true,
+    source: resolved.source,
+    path: resolved.path || null,
+    length: resolved.length,
+    fingerprint: resolved.fingerprint,
+  };
+}
+
+/**
+ * Auth flag / secret file / preview alone never count as successful execution.
+ * Requires a fresh live preflight evidence artifact with matching fingerprint age.
+ */
+export function requireLivePreflightForExecution({
+  evidence,
+  maxAgeMs = 5 * 60 * 1000,
+  nowMs = Date.now(),
+  authEnabled = false,
+  secretConfigured = false,
+  previewPresent = false,
+}) {
+  const blockers = [];
+  const allowedKinds = new Set([
+    "J17_2_PRE_SIGN_SAFETY",
+    "J17_3_LIVE_PREFLIGHT",
+    "J17_3_PRE_SIGN_SAFETY",
+  ]);
+  if (!evidence || !allowedKinds.has(evidence.kind)) {
+    blockers.push("live_preflight_evidence_missing");
+  }
+  if (!evidence?.finished_at) {
+    blockers.push("live_preflight_timestamp_missing");
+  } else {
+    const finished = Date.parse(evidence.finished_at);
+    if (!Number.isFinite(finished) || nowMs - finished > maxAgeMs) {
+      blockers.push("live_preflight_stale");
+    }
+  }
+  const gates = evidence?.gates || {};
+  const requiredPass = [
+    "FUNDING_CONFIRMED",
+    "PENDING_CONFLICT_SAFE",
+    "GAS_ESTIMATION_FAIL_CLOSED",
+    "ATTESTOR_KEY_VERIFIED",
+    "ONE_TRANSFER_BOUNDARY",
+    "POLICY_STATE_VERIFIED",
+  ];
+  for (const g of requiredPass) {
+    if (gates[g] !== "PASS") blockers.push(`live_preflight_gate_${g}`);
+  }
+  if (gates.JOURNAL_AND_REPLAY_SAFE !== "PASS") {
+    blockers.push("live_preflight_journal_not_ready");
+  }
+  if (gates.MAINNET_AUTONOMY_READY === "PASS") {
+    blockers.push("mainnet_ready_must_remain_no_go");
+  }
+  // Presence of auth/secret/preview without live pass is insufficient
+  if (blockers.length) {
+    if (authEnabled) blockers.push("auth_flag_alone_not_execution");
+    if (secretConfigured) blockers.push("secret_file_alone_not_execution");
+    if (previewPresent) blockers.push("preview_alone_not_execution");
+  }
+  return {
+    ok: blockers.length === 0,
+    blockers: [...new Set(blockers)],
+    note: "Live preflight must pass immediately before authorized transfer; flags/files/previews are not success",
   };
 }
 
@@ -511,10 +666,15 @@ export function verifyAttestorKeyCorrespondence({
 }
 
 export const ATTESTOR_REVOCATION_PLAN = {
+  method: "remove_trusted_quote_signer",
+  contract: J16_POLICY,
+  args: { public_key: EXPECTED_ATTESTOR_PK },
+  actor: J16_OWNER,
+  auth_env: AUTH_QUOTE_SIGNER_REVOKE,
   after_successful_testnet_transfer: [
-    "Owner call clear/unset trusted quote signer on j16f6890.testnet (or set_trusted_quote_signer to a new rotated key)",
+    `Owner-authorized call remove_trusted_quote_signer({ public_key: "${EXPECTED_ATTESTOR_PK}" }) on ${J16_POLICY}`,
+    "Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs",
     "Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed",
-    "Confirm is_trusted_quote_signer(old_pk) === false before discarding revocation evidence",
     "Do not reuse the disposable J16 attestor key on mainnet",
   ],
   seed_protection: [
@@ -651,6 +811,17 @@ export function requireQuoteSignerRegisterAuth(env = process.env) {
   return { ok: true };
 }
 
+export function requireQuoteSignerRevokeAuth(env = process.env) {
+  if (!isAuthEnabled(AUTH_QUOTE_SIGNER_REVOKE, env)) {
+    return {
+      ok: false,
+      reason: `${AUTH_QUOTE_SIGNER_REVOKE}_required`,
+      note: "Separate owner authorization for remove_trusted_quote_signer — post-test cleanup only",
+    };
+  }
+  return { ok: true };
+}
+
 export function requireMpcSignBroadcastAuth(env = process.env) {
   // Funding auth must NOT unlock signing after funding is complete.
   if (isAuthEnabled("J17_SEPOLIA_FUNDING_AUTHORIZED", env) &&
@@ -676,11 +847,17 @@ function preSignIntentPath(storeDir, operationId) {
   return join(storeDir, `presign-${operationId}.json`);
 }
 
+function writeIntentAtomic(path, record) {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, JSON.stringify(record, null, 2));
+  renameSync(tmp, path);
+}
+
 /**
- * Persist immutable signing intent BEFORE request_signature.
- * Recovery must load this record instead of initiating a duplicate propose.
+ * Create immutable operation intent BEFORE propose_quoted_evm_transfer.
+ * If any open intent exists, resume it — never silently mint a new operation_id.
  */
-export function persistPreSignIntent({
+export function createOperationIntent({
   storeDir,
   operationId,
   epoch,
@@ -692,14 +869,24 @@ export function persistPreSignIntent({
   gasPrice,
   chainId = CHAIN_ID,
   token = USDC_SEPOLIA,
-  signingIntent = "request_signature",
-  proposeNearTx = null,
-  status = "PRE_SIGN_LOCKED",
+  secretFingerprint = null,
+  forceNew = false,
 }) {
   if (!storeDir || !operationId) {
     return { ok: false, reason: "storeDir_and_operationId_required" };
   }
   mkdirSync(storeDir, { recursive: true });
+  const open = findOpenOperationIntents(storeDir);
+  if (open.length && !forceNew) {
+    const existing = open[0];
+    return {
+      ok: true,
+      resumed: true,
+      path: existing.path,
+      record: existing.record,
+      note: "Open operation intent found — recover this operation_id; do not generate a new one",
+    };
+  }
   const path = preSignIntentPath(storeDir, operationId);
   if (existsSync(path)) {
     const existing = JSON.parse(readFileSync(path, "utf8"));
@@ -708,11 +895,11 @@ export function persistPreSignIntent({
       resumed: true,
       path,
       record: existing,
-      note: "Existing pre-sign intent found — do not create a duplicate operation",
+      note: "Existing intent file found — resume, do not duplicate propose",
     };
   }
   const record = {
-    kind: "J17_PRE_SIGN_INTENT",
+    kind: "J17_OPERATION_INTENT",
     immutable: true,
     operation_id: operationId,
     epoch: Number(epoch),
@@ -724,15 +911,65 @@ export function persistPreSignIntent({
     gas_price: String(gasPrice),
     chain_id: Number(chainId),
     token: String(token).toLowerCase(),
-    signing_intent: signingIntent,
-    propose_near_tx: proposeNearTx,
-    status,
+    signing_intent: "propose_then_request_signature",
+    propose_near_tx: null,
+    mpc_near_tx: null,
+    secret_fingerprint: secretFingerprint,
+    status: OP_INTENT_STATUS.INTENT_LOCKED,
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
-  const tmp = `${path}.tmp`;
-  writeFileSync(tmp, JSON.stringify(record, null, 2));
-  renameSync(tmp, path);
+  writeIntentAtomic(path, record);
   return { ok: true, resumed: false, path, record };
+}
+
+export function advanceOperationIntent({
+  storeDir,
+  operationId,
+  status,
+  patch = {},
+}) {
+  const loaded = loadPreSignIntent({ storeDir, operationId });
+  if (!loaded.ok) return loaded;
+  const record = {
+    ...loaded.record,
+    ...patch,
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  // Immutable identity fields cannot change after create
+  record.operation_id = loaded.record.operation_id;
+  record.digest_hex = loaded.record.digest_hex;
+  record.nonce = loaded.record.nonce;
+  record.amount = loaded.record.amount;
+  record.destination = loaded.record.destination;
+  record.epoch = loaded.record.epoch;
+  writeIntentAtomic(loaded.path, record);
+  return { ok: true, path: loaded.path, record };
+}
+
+/**
+ * Persist / resume helper kept for J17.2 callers; prefers create+advance semantics.
+ */
+export function persistPreSignIntent(args) {
+  const created = createOperationIntent({
+    ...args,
+    forceNew: false,
+  });
+  if (!created.ok) return created;
+  if (created.resumed) return created;
+  if (args.status && args.status !== OP_INTENT_STATUS.INTENT_LOCKED) {
+    return advanceOperationIntent({
+      storeDir: args.storeDir,
+      operationId: args.operationId,
+      status: args.status,
+      patch: {
+        propose_near_tx: args.proposeNearTx || null,
+        signing_intent: args.signingIntent || "request_signature",
+      },
+    });
+  }
+  return created;
 }
 
 export function loadPreSignIntent({ storeDir, operationId }) {
@@ -744,10 +981,173 @@ export function loadPreSignIntent({ storeDir, operationId }) {
   return { ok: true, path, record };
 }
 
-export function findRecoverablePreSignIntents(storeDir) {
+export function findOpenOperationIntents(storeDir) {
   if (!storeDir || !existsSync(storeDir)) return [];
-  // Caller may scan; keep helper minimal — recovery by known operation_id is preferred.
-  return [];
+  const out = [];
+  for (const name of readdirSync(storeDir)) {
+    if (!name.startsWith("presign-") || !name.endsWith(".json")) continue;
+    try {
+      const path = join(storeDir, name);
+      const record = JSON.parse(readFileSync(path, "utf8"));
+      if (OP_INTENT_OPEN.has(record.status)) {
+        out.push({ path, record });
+      }
+    } catch {
+      /* skip corrupt */
+    }
+  }
+  return out.sort((a, b) =>
+    String(a.record.created_at).localeCompare(String(b.record.created_at))
+  );
+}
+
+export function findRecoverablePreSignIntents(storeDir) {
+  return findOpenOperationIntents(storeDir);
+}
+
+/**
+ * Decide whether a NEAR propose / request_signature may proceed given intent status.
+ * Ambiguous prior outcomes never authorize a new operation_id.
+ */
+export function planNearMutation({ record, method }) {
+  if (!record) {
+    return {
+      allowed: false,
+      may_new_operation: false,
+      reason: "intent_record_required",
+    };
+  }
+  const status = record.status;
+  if (method === "propose_quoted_evm_transfer") {
+    if (status === OP_INTENT_STATUS.INTENT_LOCKED) {
+      return { allowed: true, may_new_operation: false };
+    }
+    if (status === OP_INTENT_STATUS.PROPOSE_AMBIGUOUS) {
+      return {
+        allowed: false,
+        may_new_operation: false,
+        may_duplicate_propose: false,
+        reason: "propose_ambiguous_recover_via_near_receipt_or_get_pending",
+      };
+    }
+    if (
+      status === OP_INTENT_STATUS.PROPOSED ||
+      status === OP_INTENT_STATUS.PRE_SIGN_LOCKED ||
+      status === OP_INTENT_STATUS.MPC_AMBIGUOUS ||
+      status === OP_INTENT_STATUS.MPC_SIGNED
+    ) {
+      return {
+        allowed: false,
+        may_new_operation: false,
+        may_duplicate_propose: false,
+        reason: "propose_already_done_or_past",
+      };
+    }
+  }
+  if (method === "request_signature") {
+    if (
+      status === OP_INTENT_STATUS.PROPOSED ||
+      status === OP_INTENT_STATUS.PRE_SIGN_LOCKED
+    ) {
+      return { allowed: true, may_new_operation: false };
+    }
+    if (status === OP_INTENT_STATUS.MPC_AMBIGUOUS) {
+      return {
+        allowed: false,
+        may_new_operation: false,
+        may_duplicate_request_signature: false,
+        reason: "mpc_ambiguous_recover_via_near_receipt_no_resign",
+      };
+    }
+    if (status === OP_INTENT_STATUS.MPC_SIGNED) {
+      return {
+        allowed: false,
+        may_new_operation: false,
+        may_duplicate_request_signature: false,
+        reason: "mpc_already_signed",
+      };
+    }
+    if (status === OP_INTENT_STATUS.INTENT_LOCKED) {
+      return {
+        allowed: false,
+        may_new_operation: false,
+        reason: "propose_required_before_request_signature",
+      };
+    }
+  }
+  return {
+    allowed: false,
+    may_new_operation: false,
+    reason: `unsupported_status_method:${status}:${method}`,
+  };
+}
+
+/**
+ * Classify NEAR RPC mutation outcomes. Ambiguous ⇒ quarantine; never new op / never blind retry.
+ */
+export function evaluateNearMutationOutcome({
+  method,
+  priorStatus,
+  confirmedReceipt = false,
+  ambiguous = false,
+  hardFailure = false,
+}) {
+  if (ambiguous) {
+    const next =
+      method === "propose_quoted_evm_transfer"
+        ? OP_INTENT_STATUS.PROPOSE_AMBIGUOUS
+        : OP_INTENT_STATUS.MPC_AMBIGUOUS;
+    return {
+      action: "QUARANTINE",
+      next_status: next,
+      may_retry: false,
+      may_new_operation: false,
+      may_duplicate: false,
+      reason: "ambiguous_near_rpc_recover_via_receipt",
+      prior_status: priorStatus,
+    };
+  }
+  if (hardFailure) {
+    return {
+      action: "FAIL_CLOSED",
+      next_status: OP_INTENT_STATUS.TERMINAL_FAIL,
+      may_retry: false,
+      may_new_operation: false,
+      may_duplicate: false,
+      reason: "near_mutation_hard_failure",
+    };
+  }
+  if (confirmedReceipt) {
+    if (method === "propose_quoted_evm_transfer") {
+      return {
+        action: "ADVANCE",
+        next_status: OP_INTENT_STATUS.PROPOSED,
+        may_retry: false,
+        may_new_operation: false,
+        may_duplicate: false,
+      };
+    }
+    if (method === "request_signature") {
+      return {
+        action: "ADVANCE",
+        next_status: OP_INTENT_STATUS.MPC_SIGNED,
+        may_retry: false,
+        may_new_operation: false,
+        may_duplicate: false,
+      };
+    }
+  }
+  return {
+    action: "QUARANTINE",
+    next_status:
+      method === "propose_quoted_evm_transfer"
+        ? OP_INTENT_STATUS.PROPOSE_AMBIGUOUS
+        : OP_INTENT_STATUS.MPC_AMBIGUOUS,
+    may_retry: false,
+    may_new_operation: false,
+    may_duplicate: false,
+    reason: "unconfirmed_near_outcome",
+  };
 }
 
 export { publicKeyEd25519 };

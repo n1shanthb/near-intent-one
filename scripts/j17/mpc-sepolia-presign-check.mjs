@@ -23,6 +23,7 @@ import {
   POLICY_VIEWS,
   EXPECTED_ATTESTOR_PK,
   AUTH_QUOTE_SIGNER_REGISTER,
+  AUTH_QUOTE_SIGNER_REVOKE,
   AUTH_MPC_SIGN_BROADCAST,
   ATTESTOR_REVOCATION_PLAN,
   expectedProposeQuotedEvmAbi,
@@ -30,13 +31,15 @@ import {
   refuseProposeTradeEvmFallback,
   bindEip155DigestFromQuotedTx,
   verifyPolicyViews,
-  requireJournalSecret,
+  resolveJournalSecret,
   requireFreshGasEstimate,
   verifyAttestorKeyCorrespondence,
   analyzePendingConflict,
   verifyOneTransferBoundary,
   requireQuoteSignerRegisterAuth,
+  requireQuoteSignerRevokeAuth,
   requireMpcSignBroadcastAuth,
+  requireLivePreflightForExecution,
   journalSecretFilePath,
 } from "../../packages/autonomous/j17.sepoliaPath.mjs";
 
@@ -305,13 +308,15 @@ try {
   };
 
   // --- Journal secret provisioning (no print/regenerate) ---
-  const journal = requireJournalSecret({ rootDir: ROOT, allowGenerate: false });
+  const journal = resolveJournalSecret({ rootDir: ROOT, includeSecret: false });
   report.journal = {
     ok: journal.ok,
     reason: journal.reason || null,
     source: journal.source || null,
-    provision_file: journalSecretFilePath(ROOT).replace(ROOT, "."),
-    env_var: "NIO_TX_JOURNAL_SECRET",
+    fingerprint: journal.fingerprint || null,
+    path: journal.path || null,
+    provision_file: journalSecretFilePath(ROOT),
+    env_vars: ["NIO_TX_JOURNAL_SECRET", "NIO_TX_JOURNAL_SECRET_PATH"],
     regenerate_on_recovery: false,
     docs: "docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md",
   };
@@ -376,6 +381,16 @@ try {
     quote_signer_register: {
       env: AUTH_QUOTE_SIGNER_REGISTER,
       gate: requireQuoteSignerRegisterAuth(),
+      script: "npm run j17:register-quote-signer",
+      executed_this_run: false,
+      never_auto_from_broadcast: true,
+    },
+    quote_signer_revoke: {
+      env: AUTH_QUOTE_SIGNER_REVOKE,
+      method: "remove_trusted_quote_signer",
+      gate: requireQuoteSignerRevokeAuth(),
+      script: "npm run j17:revoke-quote-signer",
+      plan: ATTESTOR_REVOCATION_PLAN,
       executed_this_run: false,
     },
     mpc_sign_broadcast: {
@@ -383,7 +398,30 @@ try {
       gate: requireMpcSignBroadcastAuth(),
       executed_this_run: false,
       funding_auth_insufficient: true,
+      requires_live_preflight: true,
     },
+  };
+
+  // Auth/secret/preview alone are not execution success
+  report.execution_is_not = {
+    auth_flag_alone: requireLivePreflightForExecution({
+      evidence: null,
+      authEnabled: true,
+      secretConfigured: false,
+      previewPresent: false,
+    }),
+    secret_file_alone: requireLivePreflightForExecution({
+      evidence: null,
+      authEnabled: false,
+      secretConfigured: true,
+      previewPresent: false,
+    }),
+    preview_alone: requireLivePreflightForExecution({
+      evidence: { kind: "J17_2_PRE_SIGN_SAFETY", transfer_preview: {} },
+      authEnabled: false,
+      secretConfigured: false,
+      previewPresent: true,
+    }),
   };
 
   // --- Gates / blockers ---

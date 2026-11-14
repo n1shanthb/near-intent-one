@@ -55,9 +55,9 @@ Historical 142k fallback: **REFUSED** (`historical_gas_estimate_never_satisfies_
 
 ### Post-test signer revocation plan
 
-1. Owner call clear/unset trusted quote signer on j16f6890.testnet (or set_trusted_quote_signer to a new rotated key)
+1. Owner-authorized call remove_trusted_quote_signer({ public_key: "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh" }) on j16f6890.testnet
+1. Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs
 1. Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed
-1. Confirm is_trusted_quote_signer(old_pk) === false before discarding revocation evidence
 1. Do not reuse the disposable J16 attestor key on mainnet
 
 ## Dual owner authorizations (separate)

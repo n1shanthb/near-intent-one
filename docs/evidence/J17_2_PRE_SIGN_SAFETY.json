@@ -1,7 +1,7 @@
 {
   "kind": "J17_2_PRE_SIGN_SAFETY",
   "baseline": "0cb57a6",
-  "started_at": "2026-11-14T12:21:33.647Z",
+  "started_at": "2026-11-14T12:31:42.314Z",
   "hard_stop_mainnet": true,
   "hard_stop_no_signer_register": true,
   "hard_stop_no_mpc_no_broadcast": true,
@@ -132,10 +132,17 @@
     "seed_gitignored": true,
     "is_trusted_on_policy": false,
     "revocation_plan": {
+      "method": "remove_trusted_quote_signer",
+      "contract": "j16f6890.testnet",
+      "args": {
+        "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh"
+      },
+      "actor": "nio-owner-02b7cf.testnet",
+      "auth_env": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED",
       "after_successful_testnet_transfer": [
-        "Owner call clear/unset trusted quote signer on j16f6890.testnet (or set_trusted_quote_signer to a new rotated key)",
+        "Owner-authorized call remove_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" }) on j16f6890.testnet",
+        "Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs",
         "Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed",
-        "Confirm is_trusted_quote_signer(old_pk) === false before discarding revocation evidence",
         "Do not reuse the disposable J16 attestor key on mainnet"
       ],
       "seed_protection": [
@@ -159,8 +166,13 @@
     "ok": false,
     "reason": "NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback",
     "source": null,
-    "provision_file": ".\\.nio-secure\\j17\\journal.secret",
-    "env_var": "NIO_TX_JOURNAL_SECRET",
+    "fingerprint": null,
+    "path": null,
+    "provision_file": "E:\\near-intent-one\\.nio-secure\\j17\\journal.secret",
+    "env_vars": [
+      "NIO_TX_JOURNAL_SECRET",
+      "NIO_TX_JOURNAL_SECRET_PATH"
+    ],
     "regenerate_on_recovery": false,
     "docs": "docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md"
   },
@@ -237,6 +249,39 @@
         "reason": "J17_QUOTE_SIGNER_REGISTER_AUTHORIZED_required",
         "note": "Separate owner authorization for set_trusted_quote_signer — not funding, not broadcast"
       },
+      "script": "npm run j17:register-quote-signer",
+      "executed_this_run": false,
+      "never_auto_from_broadcast": true
+    },
+    "quote_signer_revoke": {
+      "env": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED",
+      "method": "remove_trusted_quote_signer",
+      "gate": {
+        "ok": false,
+        "reason": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED_required",
+        "note": "Separate owner authorization for remove_trusted_quote_signer — post-test cleanup only"
+      },
+      "script": "npm run j17:revoke-quote-signer",
+      "plan": {
+        "method": "remove_trusted_quote_signer",
+        "contract": "j16f6890.testnet",
+        "args": {
+          "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh"
+        },
+        "actor": "nio-owner-02b7cf.testnet",
+        "auth_env": "J17_QUOTE_SIGNER_REVOKE_AUTHORIZED",
+        "after_successful_testnet_transfer": [
+          "Owner-authorized call remove_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" }) on j16f6890.testnet",
+          "Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs",
+          "Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed",
+          "Do not reuse the disposable J16 attestor key on mainnet"
+        ],
+        "seed_protection": [
+          ".gate-i-data/ is gitignored",
+          "**/attestor*.seed.json is gitignored",
+          "Never print secretKey64 in evidence or logs"
+        ]
+      },
       "executed_this_run": false
     },
     "mpc_sign_broadcast": {
@@ -247,7 +292,57 @@
         "note": "Separate owner authorization for propose → request_signature → broadcast"
       },
       "executed_this_run": false,
-      "funding_auth_insufficient": true
+      "funding_auth_insufficient": true,
+      "requires_live_preflight": true
+    }
+  },
+  "execution_is_not": {
+    "auth_flag_alone": {
+      "ok": false,
+      "blockers": [
+        "live_preflight_evidence_missing",
+        "live_preflight_timestamp_missing",
+        "live_preflight_gate_FUNDING_CONFIRMED",
+        "live_preflight_gate_PENDING_CONFLICT_SAFE",
+        "live_preflight_gate_GAS_ESTIMATION_FAIL_CLOSED",
+        "live_preflight_gate_ATTESTOR_KEY_VERIFIED",
+        "live_preflight_gate_ONE_TRANSFER_BOUNDARY",
+        "live_preflight_gate_POLICY_STATE_VERIFIED",
+        "live_preflight_journal_not_ready",
+        "auth_flag_alone_not_execution"
+      ],
+      "note": "Live preflight must pass immediately before authorized transfer; flags/files/previews are not success"
+    },
+    "secret_file_alone": {
+      "ok": false,
+      "blockers": [
+        "live_preflight_evidence_missing",
+        "live_preflight_timestamp_missing",
+        "live_preflight_gate_FUNDING_CONFIRMED",
+        "live_preflight_gate_PENDING_CONFLICT_SAFE",
+        "live_preflight_gate_GAS_ESTIMATION_FAIL_CLOSED",
+        "live_preflight_gate_ATTESTOR_KEY_VERIFIED",
+        "live_preflight_gate_ONE_TRANSFER_BOUNDARY",
+        "live_preflight_gate_POLICY_STATE_VERIFIED",
+        "live_preflight_journal_not_ready",
+        "secret_file_alone_not_execution"
+      ],
+      "note": "Live preflight must pass immediately before authorized transfer; flags/files/previews are not success"
+    },
+    "preview_alone": {
+      "ok": false,
+      "blockers": [
+        "live_preflight_timestamp_missing",
+        "live_preflight_gate_FUNDING_CONFIRMED",
+        "live_preflight_gate_PENDING_CONFLICT_SAFE",
+        "live_preflight_gate_GAS_ESTIMATION_FAIL_CLOSED",
+        "live_preflight_gate_ATTESTOR_KEY_VERIFIED",
+        "live_preflight_gate_ONE_TRANSFER_BOUNDARY",
+        "live_preflight_gate_POLICY_STATE_VERIFIED",
+        "live_preflight_journal_not_ready",
+        "preview_alone_not_execution"
+      ],
+      "note": "Live preflight must pass immediately before authorized transfer; flags/files/previews are not success"
     }
   },
   "blockers": [
@@ -269,6 +364,6 @@
     "MAINNET_AUTONOMY_READY": "NO-GO"
   },
   "verdict": "NO-GO_PENDING_OWNER_PREREQS",
-  "approval_package_md": "# J17.2 — One-transfer approval package (PRE-SIGN)\n\n**Scenario:** `DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS`  \n**Not Intents settlement.** This package does **not** authorize quote-signer registration, MPC `request_signature`, or EVM broadcast.\n\n## Verdict: **NO-GO_PENDING_OWNER_PREREQS**\n\n## Funding (already complete — do not re-fund)\n\n| Item | Value |\n|------|-------|\n| MPC | [`0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55`](https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55) |\n| ETH | 20000000000000000 wei |\n| Tidepool USDC | 2000000 raw |\n| Evidence | `docs/evidence/J17_CLAIM_AND_FUND_MPC.json` |\n\n## Unresolved pending (DO NOT CLEAR without authority)\n\n| Field | Value |\n|-------|-------|\n| operation_id | `j16-mpc-6890` |\n| amount_in | `1000000` |\n| destination | `nio-owner-02b7cf.testnet` |\n| signing_state | `Signed` |\n| settlement_state | `None` |\n| reserved | `1000000` / max `2000000` |\n| headroom for next 1e6 | `1000000` (fits=true) |\n| conflict | No ID/exposure conflict with next EVM transfer |\n| action | **LEAVE IN PLACE** until reconcile or explicit owner clear |\n\nExisting pending destination differs from next EVM recipient (no dest collision)\n\n## One-transfer envelope (exactly one attempt)\n\n| Field | Approved maximum |\n|-------|------------------|\n| chain_id | `11155111` (Sepolia) |\n| token | `0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2` |\n| destination | `0x70997970c51812dc3a010c7d01b50e0d17dc79c8` |\n| amount | ≤ `1000000` raw (1.0 Tidepool USDC) |\n| gas | fresh `eth_estimateGas` + 20% headroom; abs max 400000; policy `max_gas_budget` |\n| attempts | **exactly 1** |\n\nFresh gas this check: estimate 141972 → limit 170366  \nHistorical 142k fallback: **REFUSED** (`historical_gas_estimate_never_satisfies_readiness`).\n\n## Attestor\n\n| Check | Result |\n|-------|--------|\n| Expected pk | `ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh` |\n| Local seed derives expected | **PASS** |\n| On-policy trusted | **false** |\n| Seed gitignored | yes (`.gate-i-data/`, `**/attestor*.seed.json`) |\n\n### Post-test signer revocation plan\n\n1. Owner call clear/unset trusted quote signer on j16f6890.testnet (or set_trusted_quote_signer to a new rotated key)\n1. Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed\n1. Confirm is_trusted_quote_signer(old_pk) === false before discarding revocation evidence\n1. Do not reuse the disposable J16 attestor key on mainnet\n\n## Dual owner authorizations (separate)\n\n1. **Register quote signer** (not this run): set `J17_QUOTE_SIGNER_REGISTER_AUTHORIZED=1` then owner calls `set_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" })` on `j16f6890.testnet`.\n2. **MPC sign + broadcast** (not this run): after journal secret is provisioned and signer registered, set `J17_MPC_SIGN_BROADCAST_AUTHORIZED=1` and run `npm run j17:mpc-broadcast`.  \n   `J17_SEPOLIA_FUNDING_AUTHORIZED` alone **does not** authorize signing.\n\n## Journal secret\n\n- Provision once per `docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md`\n- Never print, commit, or regenerate on crash recovery\n- Status this run: **MISSING — NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback**\n\n## Pre-sign persistence (required before MPC)\n\nBefore `request_signature`, durable record must lock: operation_id, epoch, amount, destination, nonce, digest, signing_intent. Recovery resumes that operation — never duplicates propose.\n\n## Gates\n\n```\n{\n  \"FUNDING_CONFIRMED\": \"PASS\",\n  \"PENDING_CONFLICT_SAFE\": \"PASS\",\n  \"CONTRACT_ABI_MATCH\": \"PASS\",\n  \"GAS_ESTIMATION_FAIL_CLOSED\": \"PASS\",\n  \"ATTESTOR_KEY_VERIFIED\": \"PASS\",\n  \"JOURNAL_PROVISION_DOCUMENTED\": \"PASS\",\n  \"JOURNAL_AND_REPLAY_SAFE\": \"FAIL\",\n  \"ONE_TRANSFER_BOUNDARY\": \"PASS\",\n  \"POLICY_STATE_VERIFIED\": \"PASS\",\n  \"DUAL_AUTH_GATES_DEFINED\": \"PASS\",\n  \"PRE_SIGN_SAFE\": \"NO-GO_PENDING_OWNER_PREREQS\",\n  \"MAINNET_AUTONOMY_READY\": \"NO-GO\"\n}\n```\n\n## HARD STOP\n\nNo signer registration, MPC signing, broadcast, funding, or mainnet mutations were performed in J17.2.\n",
-  "finished_at": "2026-11-14T12:21:38.741Z"
+  "approval_package_md": "# J17.2 — One-transfer approval package (PRE-SIGN)\n\n**Scenario:** `DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS`  \n**Not Intents settlement.** This package does **not** authorize quote-signer registration, MPC `request_signature`, or EVM broadcast.\n\n## Verdict: **NO-GO_PENDING_OWNER_PREREQS**\n\n## Funding (already complete — do not re-fund)\n\n| Item | Value |\n|------|-------|\n| MPC | [`0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55`](https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55) |\n| ETH | 20000000000000000 wei |\n| Tidepool USDC | 2000000 raw |\n| Evidence | `docs/evidence/J17_CLAIM_AND_FUND_MPC.json` |\n\n## Unresolved pending (DO NOT CLEAR without authority)\n\n| Field | Value |\n|-------|-------|\n| operation_id | `j16-mpc-6890` |\n| amount_in | `1000000` |\n| destination | `nio-owner-02b7cf.testnet` |\n| signing_state | `Signed` |\n| settlement_state | `None` |\n| reserved | `1000000` / max `2000000` |\n| headroom for next 1e6 | `1000000` (fits=true) |\n| conflict | No ID/exposure conflict with next EVM transfer |\n| action | **LEAVE IN PLACE** until reconcile or explicit owner clear |\n\nExisting pending destination differs from next EVM recipient (no dest collision)\n\n## One-transfer envelope (exactly one attempt)\n\n| Field | Approved maximum |\n|-------|------------------|\n| chain_id | `11155111` (Sepolia) |\n| token | `0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2` |\n| destination | `0x70997970c51812dc3a010c7d01b50e0d17dc79c8` |\n| amount | ≤ `1000000` raw (1.0 Tidepool USDC) |\n| gas | fresh `eth_estimateGas` + 20% headroom; abs max 400000; policy `max_gas_budget` |\n| attempts | **exactly 1** |\n\nFresh gas this check: estimate 141972 → limit 170366  \nHistorical 142k fallback: **REFUSED** (`historical_gas_estimate_never_satisfies_readiness`).\n\n## Attestor\n\n| Check | Result |\n|-------|--------|\n| Expected pk | `ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh` |\n| Local seed derives expected | **PASS** |\n| On-policy trusted | **false** |\n| Seed gitignored | yes (`.gate-i-data/`, `**/attestor*.seed.json`) |\n\n### Post-test signer revocation plan\n\n1. Owner-authorized call remove_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" }) on j16f6890.testnet\n1. Independently verify is_trusted_quote_signer(pk) === false via view + receipt logs\n1. Rotate local .gate-i-data/attestor.seed.json offline; never commit the seed\n1. Do not reuse the disposable J16 attestor key on mainnet\n\n## Dual owner authorizations (separate)\n\n1. **Register quote signer** (not this run): set `J17_QUOTE_SIGNER_REGISTER_AUTHORIZED=1` then owner calls `set_trusted_quote_signer({ public_key: \"ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh\" })` on `j16f6890.testnet`.\n2. **MPC sign + broadcast** (not this run): after journal secret is provisioned and signer registered, set `J17_MPC_SIGN_BROADCAST_AUTHORIZED=1` and run `npm run j17:mpc-broadcast`.  \n   `J17_SEPOLIA_FUNDING_AUTHORIZED` alone **does not** authorize signing.\n\n## Journal secret\n\n- Provision once per `docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md`\n- Never print, commit, or regenerate on crash recovery\n- Status this run: **MISSING — NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback**\n\n## Pre-sign persistence (required before MPC)\n\nBefore `request_signature`, durable record must lock: operation_id, epoch, amount, destination, nonce, digest, signing_intent. Recovery resumes that operation — never duplicates propose.\n\n## Gates\n\n```\n{\n  \"FUNDING_CONFIRMED\": \"PASS\",\n  \"PENDING_CONFLICT_SAFE\": \"PASS\",\n  \"CONTRACT_ABI_MATCH\": \"PASS\",\n  \"GAS_ESTIMATION_FAIL_CLOSED\": \"PASS\",\n  \"ATTESTOR_KEY_VERIFIED\": \"PASS\",\n  \"JOURNAL_PROVISION_DOCUMENTED\": \"PASS\",\n  \"JOURNAL_AND_REPLAY_SAFE\": \"FAIL\",\n  \"ONE_TRANSFER_BOUNDARY\": \"PASS\",\n  \"POLICY_STATE_VERIFIED\": \"PASS\",\n  \"DUAL_AUTH_GATES_DEFINED\": \"PASS\",\n  \"PRE_SIGN_SAFE\": \"NO-GO_PENDING_OWNER_PREREQS\",\n  \"MAINNET_AUTONOMY_READY\": \"NO-GO\"\n}\n```\n\n## HARD STOP\n\nNo signer registration, MPC signing, broadcast, funding, or mainnet mutations were performed in J17.2.\n",
+  "finished_at": "2026-11-14T12:31:47.325Z"
 }

@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * J17.2 — Explicit one-time journal secret provision.
+ * J17.3 — Explicit one-time journal secret provision.
  * Refuses if secret already exists. Never run as part of crash recovery.
  * Does not print the secret.
+ *
+ * After provision, financial writers resolve via:
+ *   NIO_TX_JOURNAL_SECRET | NIO_TX_JOURNAL_SECRET_PATH | default file
  */
 import { existsSync, mkdirSync, writeFileSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -10,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import {
   journalSecretFilePath,
+  journalSecretFingerprint,
   requireJournalSecret,
 } from "../../packages/autonomous/j17.sepoliaPath.mjs";
 
@@ -22,6 +26,7 @@ if (process.env.NIO_TX_JOURNAL_SECRET && String(process.env.NIO_TX_JOURNAL_SECRE
       ok: true,
       action: "noop",
       reason: "NIO_TX_JOURNAL_SECRET_already_set_in_env",
+      fingerprint: journalSecretFingerprint(process.env.NIO_TX_JOURNAL_SECRET),
       note: "File not written; env takes precedence. Secret not printed.",
     })
   );
@@ -35,6 +40,8 @@ if (existsSync(path)) {
       ok: check.ok,
       action: "refuse_regenerate",
       path: ".nio-secure/j17/journal.secret",
+      NIO_TX_JOURNAL_SECRET_PATH: path,
+      fingerprint: check.fingerprint || null,
       note: "Existing durable secret preserved — never regenerate on recovery",
     })
   );
@@ -52,7 +59,9 @@ console.log(
     ok: true,
     action: "provisioned_once",
     path: ".nio-secure/j17/journal.secret",
+    NIO_TX_JOURNAL_SECRET_PATH: path,
     length: secret.length,
-    note: "Secret written; value not printed. Do not commit. Do not regenerate on crash.",
+    fingerprint: journalSecretFingerprint(secret),
+    note: "Secret written; value not printed. Set NIO_TX_JOURNAL_SECRET_PATH to this file for writers. Do not regenerate on crash.",
   })
 );

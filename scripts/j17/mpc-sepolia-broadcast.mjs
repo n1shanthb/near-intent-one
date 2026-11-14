@@ -55,14 +55,21 @@ import {
   requireFreshGasEstimate,
   verifyPolicyViews,
   requireJournalSecret,
+  hydrateJournalSecretEnv,
+  journalSecretFilePath,
   requireMpcSignBroadcastAuth,
-  persistPreSignIntent,
-  loadPreSignIntent,
+  createOperationIntent,
+  advanceOperationIntent,
+  findOpenOperationIntents,
+  planNearMutation,
+  evaluateNearMutationOutcome,
+  requireLivePreflightForExecution,
   verifyAttestorKeyCorrespondence,
   EXPECTED_ATTESTOR_PK,
   analyzePendingConflict,
   verifyOneTransferBoundary,
   AUTH_MPC_SIGN_BROADCAST,
+  OP_INTENT_STATUS,
 } from "../../packages/autonomous/j17.sepoliaPath.mjs";
 
 const { connect, keyStores, KeyPair, transactions } = nearAPI;
@@ -220,10 +227,51 @@ if (!authGate.ok) {
 // -------- EXECUTE path (only with explicit J17_MPC_SIGN_BROADCAST_AUTHORIZED) --------
 try {
   assertNotDemo();
+
+  // Live preflight immediately before transfer — auth/secret/preview alone ≠ success
+  const livePre = spawnSync(
+    process.execPath,
+    [join(ROOT, "scripts/j17/mpc-sepolia-presign-check.mjs")],
+    { cwd: ROOT, encoding: "utf8", env: process.env }
+  );
+  report.live_preflight_exit = livePre.status;
+  let liveEvidence = null;
+  try {
+    liveEvidence = JSON.parse(
+      readFileSync(join(EVIDENCE, "J17_2_PRE_SIGN_SAFETY.json"), "utf8")
+    );
+    liveEvidence.kind = liveEvidence.kind || "J17_2_PRE_SIGN_SAFETY";
+  } catch {
+    liveEvidence = null;
+  }
+  const hydrated = hydrateJournalSecretEnv({ rootDir: ROOT });
   const journalOk = requireJournalSecret({ rootDir: ROOT, allowGenerate: false });
+  const liveGate = requireLivePreflightForExecution({
+    evidence: liveEvidence,
+    authEnabled: true,
+    secretConfigured: journalOk.ok,
+    previewPresent: Boolean(liveEvidence?.transfer_preview),
+  });
+  report.live_preflight_gate = liveGate;
+  report.journal_hydrate = {
+    ok: hydrated.ok,
+    source: hydrated.source || null,
+    path: hydrated.path || null,
+    fingerprint: hydrated.fingerprint || null,
+    reason: hydrated.reason || null,
+  };
   if (!journalOk.ok) {
     report.verdict = "NO_GO";
     report.blocker = journalOk.reason;
+    finish(1);
+  }
+  if (!liveGate.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = {
+      reason: "live_preflight_required_before_authorized_transfer",
+      blockers: liveGate.blockers,
+      note: "Auth flag / secret file / preview alone are not successful execution",
+    };
     finish(1);
   }
 
@@ -352,35 +400,65 @@ try {
     maxGasPrice: gasPrice.toString(),
     gasLimit: fitted.gas_limit,
   });
-  const opId = `j17-exec-${randomBytes(3).toString("hex")}`;
   const preSignDir = join(ROOT, ".nio-secure", "j17", "presign");
-  const existingIntent = loadPreSignIntent({ storeDir: preSignDir, operationId: opId });
-  if (existingIntent.ok) {
-    report.verdict = "NO_GO";
-    report.blocker = {
-      reason: "presign_intent_already_exists_for_new_op_id_unexpected",
-      note: "Recovery must resume the existing operation_id — do not mint a parallel propose",
-      path: existingIntent.path,
+  const openIntents = findOpenOperationIntents(preSignDir);
+  let opId;
+  let intentRecord;
+  let intentPath;
+  if (openIntents.length) {
+    // Crash recovery: resume existing operation — never mint a parallel id
+    intentRecord = openIntents[0].record;
+    intentPath = openIntents[0].path;
+    opId = intentRecord.operation_id;
+    report.recovery = {
+      resumed: true,
+      operation_id: opId,
+      status: intentRecord.status,
+      path: intentPath,
+      note: "Resumed open intent from durable store + will cross-check NEAR receipts/pending",
     };
-    finish(1);
+    if (
+      String(intentRecord.nonce) !== String(nonce) ||
+      String(intentRecord.amount) !== AMOUNT_RAW
+    ) {
+      report.verdict = "NO_GO";
+      report.blocker = {
+        reason: "recovered_intent_nonce_or_amount_drift",
+        intent: { nonce: intentRecord.nonce, amount: intentRecord.amount },
+        live: { nonce, amount: AMOUNT_RAW },
+      };
+      finish(1);
+    }
+  } else {
+    opId = `j17-exec-${randomBytes(3).toString("hex")}`;
   }
+
   const tx = {
-    nonce: String(nonce),
-    gas_price: gasPrice.toString(),
-    gas_limit: fitted.gas_limit,
+    nonce: String(openIntents.length ? intentRecord.nonce : nonce),
+    gas_price: String(openIntents.length ? intentRecord.gas_price : gasPrice.toString()),
+    gas_limit: String(openIntents.length ? intentRecord.gas_limit : fitted.gas_limit),
     chain_id: String(CHAIN_ID),
     token_contract: USDC_SEPOLIA.toLowerCase(),
     to: TEST_RECIPIENT.toLowerCase(),
     amount: AMOUNT_RAW,
   };
   const bind = bindEip155DigestFromQuotedTx({
-    nonce,
+    nonce: Number(tx.nonce),
     gasPrice: tx.gas_price,
     gasLimit: tx.gas_limit,
     tokenContract: tx.token_contract,
     depositAddress: tx.to,
     amount: tx.amount,
   });
+  if (openIntents.length && intentRecord.digest_hex !== bind.digest_hex) {
+    report.verdict = "NO_GO";
+    report.blocker = {
+      reason: "recovered_digest_mismatch",
+      locked: intentRecord.digest_hex,
+      recomputed: bind.digest_hex,
+    };
+    finish(1);
+  }
   const vAtt = validateQuotedTxAgainstAttestation({
     attestation: built.attestation,
     tx,
@@ -390,6 +468,43 @@ try {
     report.blocker = vAtt.blockers;
     finish(1);
   }
+
+  // Persist immutable intent BEFORE propose
+  if (!openIntents.length) {
+    const created = createOperationIntent({
+      storeDir: preSignDir,
+      operationId: opId,
+      epoch: views.get_mandate_epoch,
+      amount: AMOUNT_RAW,
+      destination: TEST_RECIPIENT,
+      nonce: tx.nonce,
+      digestHex: bind.digest_hex,
+      gasLimit: tx.gas_limit,
+      gasPrice: tx.gas_price,
+      secretFingerprint: hydrated.fingerprint,
+    });
+    if (!created.ok) {
+      report.verdict = "NO_GO";
+      report.blocker = created;
+      finish(1);
+    }
+    if (created.resumed) {
+      report.verdict = "NO_GO";
+      report.blocker = {
+        reason: "race_open_intent_appeared_recover_instead",
+        path: created.path,
+      };
+      finish(1);
+    }
+    intentRecord = created.record;
+    intentPath = created.path;
+  }
+  report.operation_intent = {
+    path: intentPath,
+    operation_id: opId,
+    status: intentRecord.status,
+    digest_hex: intentRecord.digest_hex,
+  };
 
   const proposeArgs = {
     operation_id: opId,
@@ -425,60 +540,112 @@ try {
   const beforeSender = tokenBal;
   const beforeDest = await erc20Balance(USDC_SEPOLIA, TEST_RECIPIENT);
 
-  // Single authorization method — no fallback
-  let proposeOutcome;
-  try {
-    proposeOutcome = await callOnce(agent, J16_POLICY, {
-      methodName: "propose_quoted_evm_transfer",
-      args: proposeArgs,
-      gas: BigInt("100000000000000"),
-      deposit: 0n,
-    });
-  } catch (e) {
-    report.verdict = "NO_GO";
-    report.blocker = {
-      propose_failed: String(e.message || e).slice(0, 500),
-      note: "No propose_trade fallback — fix attestation/policy and retry as new operation",
-    };
-    finish(1);
-  }
-  report.propose = {
-    tx: proposeOutcome.transaction.hash,
-    explorer: `https://testnet.nearblocks.io/txns/${proposeOutcome.transaction.hash}`,
-  };
-
-  // Persist immutable pre-sign intent BEFORE MPC request_signature
-  const preSign = persistPreSignIntent({
-    storeDir: preSignDir,
-    operationId: opId,
-    epoch: views.get_mandate_epoch,
-    amount: AMOUNT_RAW,
-    destination: TEST_RECIPIENT,
-    nonce,
-    digestHex: bind.digest_hex,
-    gasLimit: fitted.gas_limit,
-    gasPrice: gasPrice.toString(),
-    proposeNearTx: proposeOutcome.transaction.hash,
-    status: "PRE_SIGN_LOCKED",
+  // Propose only when plan allows — never duplicate after ambiguous/proposed
+  const proposePlan = planNearMutation({
+    record: intentRecord,
+    method: "propose_quoted_evm_transfer",
   });
-  report.presign_intent = {
-    path: preSign.path,
-    resumed: preSign.resumed,
-    operation_id: opId,
-    digest_hex: bind.digest_hex,
-  };
-  if (!preSign.ok) {
+  let proposeOutcome = null;
+  if (proposePlan.allowed) {
+    try {
+      proposeOutcome = await callOnce(agent, J16_POLICY, {
+        methodName: "propose_quoted_evm_transfer",
+        args: proposeArgs,
+        gas: BigInt("100000000000000"),
+        deposit: 0n,
+      });
+    } catch (e) {
+      const msg = String(e.message || e);
+      const ambiguous = /timeout|Unknown|Expired|doesn't exist|Status\{\}|ECONNRESET|fetch failed/i.test(
+        msg
+      );
+      const evalP = evaluateNearMutationOutcome({
+        method: "propose_quoted_evm_transfer",
+        priorStatus: intentRecord.status,
+        ambiguous,
+        hardFailure: !ambiguous,
+      });
+      advanceOperationIntent({
+        storeDir: preSignDir,
+        operationId: opId,
+        status: evalP.next_status,
+        patch: { last_error: msg.slice(0, 400) },
+      });
+      report.verdict = ambiguous ? "UNKNOWN_QUARANTINE_NO_NEW_OP" : "NO_GO";
+      report.blocker = {
+        propose_failed: msg.slice(0, 500),
+        eval: evalP,
+        note: "No propose_trade fallback; no silent new operation_id",
+      };
+      finish(ambiguous ? 0 : 1);
+    }
+    if (proposeOutcome?.status?.Failure) {
+      const evalP = evaluateNearMutationOutcome({
+        method: "propose_quoted_evm_transfer",
+        priorStatus: intentRecord.status,
+        hardFailure: true,
+      });
+      advanceOperationIntent({
+        storeDir: preSignDir,
+        operationId: opId,
+        status: evalP.next_status,
+      });
+      report.verdict = "NO_GO";
+      report.blocker = proposeOutcome.status.Failure;
+      finish(1);
+    }
+    const evalOk = evaluateNearMutationOutcome({
+      method: "propose_quoted_evm_transfer",
+      priorStatus: intentRecord.status,
+      confirmedReceipt: true,
+    });
+    const adv = advanceOperationIntent({
+      storeDir: preSignDir,
+      operationId: opId,
+      status: OP_INTENT_STATUS.PROPOSED,
+      patch: {
+        propose_near_tx: proposeOutcome.transaction.hash,
+      },
+    });
+    intentRecord = adv.record;
+    report.propose = {
+      tx: proposeOutcome.transaction.hash,
+      explorer: `https://testnet.nearblocks.io/txns/${proposeOutcome.transaction.hash}`,
+      eval: evalOk,
+    };
+  } else if (
+    intentRecord.status === OP_INTENT_STATUS.PROPOSED ||
+    intentRecord.status === OP_INTENT_STATUS.PRE_SIGN_LOCKED
+  ) {
+    report.propose = {
+      skipped: true,
+      reason: proposePlan.reason || "already_proposed",
+      prior_tx: intentRecord.propose_near_tx,
+    };
+  } else {
     report.verdict = "NO_GO";
-    report.blocker = preSign;
+    report.blocker = proposePlan;
     finish(1);
   }
-  if (preSign.resumed) {
+
+  // Advance to PRE_SIGN_LOCKED after confirmed propose, before MPC
+  if (intentRecord.status === OP_INTENT_STATUS.PROPOSED) {
+    const locked = advanceOperationIntent({
+      storeDir: preSignDir,
+      operationId: opId,
+      status: OP_INTENT_STATUS.PRE_SIGN_LOCKED,
+    });
+    intentRecord = locked.record;
+  }
+
+  const signPlan = planNearMutation({
+    record: intentRecord,
+    method: "request_signature",
+  });
+  if (!signPlan.allowed) {
     report.verdict = "NO_GO";
-    report.blocker = {
-      reason: "presign_intent_exists_recover_instead_of_duplicate_mpc",
-      path: preSign.path,
-    };
-    finish(1);
+    report.blocker = signPlan;
+    finish(signPlan.reason?.includes("ambiguous") ? 0 : 1);
   }
 
   let signOutcome;
@@ -490,14 +657,37 @@ try {
       deposit: 1n, // 1 yoctoNEAR — ABI-required
     });
   } catch (e) {
-    report.verdict = "NO_GO";
+    const msg = String(e.message || e);
+    const ambiguous = /timeout|Unknown|Expired|doesn't exist|Status\{\}|ECONNRESET|fetch failed/i.test(
+      msg
+    );
+    const evalS = evaluateNearMutationOutcome({
+      method: "request_signature",
+      priorStatus: intentRecord.status,
+      ambiguous,
+      hardFailure: !ambiguous,
+    });
+    advanceOperationIntent({
+      storeDir: preSignDir,
+      operationId: opId,
+      status: evalS.next_status,
+      patch: { last_error: msg.slice(0, 400) },
+    });
+    report.verdict = ambiguous ? "UNKNOWN_QUARANTINE_NO_NEW_OP" : "NO_GO";
     report.blocker = {
-      request_signature_failed: String(e.message || e).slice(0, 500),
-      note: "No resign — quarantine; inspect pending via get_pending / resume presign intent",
-      presign_path: preSign.path,
+      request_signature_failed: msg.slice(0, 500),
+      eval: evalS,
+      note: "No resign — recover via NEAR receipt / get_pending",
+      presign_path: intentPath,
     };
-    finish(1);
+    finish(ambiguous ? 0 : 1);
   }
+  advanceOperationIntent({
+    storeDir: preSignDir,
+    operationId: opId,
+    status: OP_INTENT_STATUS.MPC_SIGNED,
+    patch: { mpc_near_tx: signOutcome.transaction.hash },
+  });
   const nearTx = signOutcome.transaction.hash;
   report.mpc_request = {
     near_tx: nearTx,
@@ -515,7 +705,7 @@ try {
 
   const assembled = assembleSignedEvmFromMpc({
     nearTxFull: full,
-    nonce,
+    nonce: Number(tx.nonce),
     gasPrice: tx.gas_price,
     gasLimit: tx.gas_limit,
     token: USDC_SEPOLIA,
@@ -535,7 +725,7 @@ try {
     signedRawHex: assembled.rawHex,
     expected: {
       chainId: CHAIN_ID,
-      nonce,
+      nonce: Number(tx.nonce),
       token: USDC_SEPOLIA,
       mpc: J16_MPC,
       depositAddress: TEST_RECIPIENT,
@@ -554,10 +744,11 @@ try {
     journalPath,
     operationId: opId,
     signedRaw: assembled.rawHex,
-    nonce: String(nonce),
+    nonce: String(tx.nonce),
     decisionHash: bind.digest_hex,
     network: "sepolia",
     mode: EXEC_MODE.TESTNET,
+    defaultSecretPath: journalSecretFilePath(ROOT),
   });
 
   let first;

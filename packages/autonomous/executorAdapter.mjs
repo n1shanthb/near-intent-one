@@ -251,13 +251,27 @@ export function planAutonomousExecution({
   };
 }
 
-function requireJournalSecret({ allowShadowFallback = false, operationId }) {
-  const fromEnv = process.env.NIO_TX_JOURNAL_SECRET;
+/**
+ * Financial journal secret — env value, NIO_TX_JOURNAL_SECRET_PATH, or optional defaultPath.
+ * Never uses a predictable production fallback.
+ */
+export function requireJournalSecret({
+  allowShadowFallback = false,
+  operationId,
+  defaultPath = null,
+  env = process.env,
+} = {}) {
+  const fromEnv = env.NIO_TX_JOURNAL_SECRET;
   if (fromEnv && fromEnv.length >= 32) return fromEnv;
-  const path = process.env.NIO_TX_JOURNAL_SECRET_PATH;
+  const path = env.NIO_TX_JOURNAL_SECRET_PATH || defaultPath;
   if (path && existsSync(path)) {
     const raw = readFileSync(path, "utf8").trim();
     if (raw.length >= 32) return raw;
+    if (raw.length > 0) {
+      const err = new Error("NIO_TX_JOURNAL_SECRET_PATH_too_short");
+      err.code = "JOURNAL_SECRET_TOO_SHORT";
+      throw err;
+    }
   }
   if (allowShadowFallback) {
     // Shadow/sim only — never for TESTNET/MAINNET financial persistence
@@ -281,6 +295,7 @@ export async function persistPreBroadcast({
   decisionHash,
   network,
   mode = EXEC_MODE.SHADOW,
+  defaultSecretPath = null,
 }) {
   assert(operationId, "operation_id_required");
   assert(signedRaw, "signed_raw_required");
@@ -289,6 +304,7 @@ export async function persistPreBroadcast({
   const secret = requireJournalSecret({
     allowShadowFallback: mode === EXEC_MODE.SHADOW,
     operationId,
+    defaultPath: defaultSecretPath,
   });
   const journal = openTxJournal({ path: journalPath, secret });
   const localHash = createHash("sha256").update(String(signedRaw)).digest("hex");
@@ -313,6 +329,9 @@ export async function persistPreBroadcast({
       signedRawHex: hex,
       meta: { nonce: String(nonce), local_tx_hash: localHash },
     });
+  }
+  if (typeof journal.close === "function") {
+    journal.close();
   }
 
   return {

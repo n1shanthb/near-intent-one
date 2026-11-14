@@ -223,7 +223,10 @@ describe("J17.2 dual auth + pre-sign persist + journal", () => {
         operationId: "j17-test-op",
       });
       assert.equal(loaded.ok, true);
-      assert.equal(loaded.record.signing_intent, "request_signature");
+      assert.equal(
+        loaded.record.signing_intent,
+        "propose_then_request_signature"
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
