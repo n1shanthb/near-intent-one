@@ -37,7 +37,7 @@ import {
   buildDeterministicErc20Attestation,
   bindEip155DigestFromQuotedTx,
   validateQuotedTxAgainstAttestation,
-  fitGasLimit,
+  requireFreshGasEstimate,
   verifyPolicyViews,
   requireJournalSecret,
 } from "../../packages/autonomous/j17.sepoliaPath.mjs";
@@ -203,9 +203,10 @@ try {
     depositAddress: TEST_RECIPIENT,
     amount: AMOUNT_RAW,
   });
-  let estimated;
+  let estHex = null;
+  let estimateError = null;
   try {
-    const estHex = await eth("eth_estimateGas", [
+    estHex = await eth("eth_estimateGas", [
       {
         from: J16_MPC,
         to: USDC_SEPOLIA,
@@ -213,25 +214,23 @@ try {
         value: "0x0",
       },
     ]);
-    estimated = BigInt(estHex);
   } catch (e) {
-    estimated = 142000n; // observed prior Tidepool transfer
-    report.gas_estimate_fallback = {
-      used: true,
-      reason: String(e.message || e).slice(0, 300),
-      assumed: "142000",
-    };
+    estimateError = String(e.message || e).slice(0, 300);
   }
   const limits = views.get_limits;
-  const fitted = fitGasLimit({
-    estimated,
+  const fitted = requireFreshGasEstimate({
+    estimateHexOrBigInt: estHex,
+    estimateError,
     gasPrice,
     maxGasBudget: limits.max_gas_budget,
+    usedHistoricalFallback: false,
   });
+  const estimated = fitted.ok ? BigInt(fitted.estimated) : 0n;
   report.gas = {
     gas_price_wei: gasPrice.toString(),
     estimate: fitted,
     policy_max_gas_budget: limits.max_gas_budget,
+    historical_fallback_forbidden: true,
   };
 
   // Cap max_gas_price in attestation to fitted gas_price (and policy budget)

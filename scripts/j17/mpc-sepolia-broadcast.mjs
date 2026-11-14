@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * J17.1 — Authentic NEAR MPC → Sepolia ERC-20 transfer.
+ * J17.1/J17.2 — Authentic NEAR MPC → Sepolia ERC-20 transfer.
  *
- * Without J17_SEPOLIA_FUNDING_AUTHORIZED=1 → preflight only (PRE_BROADCAST_READY).
- * With auth + NIO_TX_JOURNAL_SECRET → propose_quoted_evm_transfer → request_signature
- * (1 yocto) → assemble → journal → broadcast once → independent settle.
+ * Without J17_MPC_SIGN_BROADCAST_AUTHORIZED=1 → preflight / pre-sign check only.
+ * Funding auth (J17_SEPOLIA_FUNDING_AUTHORIZED) alone does NOT unlock signing.
+ * With auth + NIO_TX_JOURNAL_SECRET → propose_quoted_evm_transfer → persist pre-sign
+ * intent → request_signature (1 yocto) → assemble → journal → broadcast once → settle.
  *
  * Never propose_trade fallback. Never blind retry/resign. ERC-20 ≠ Intents.
  * HARD STOP: no mainnet.
@@ -51,9 +52,17 @@ import {
   buildDeterministicErc20Attestation,
   bindEip155DigestFromQuotedTx,
   validateQuotedTxAgainstAttestation,
-  fitGasLimit,
+  requireFreshGasEstimate,
   verifyPolicyViews,
   requireJournalSecret,
+  requireMpcSignBroadcastAuth,
+  persistPreSignIntent,
+  loadPreSignIntent,
+  verifyAttestorKeyCorrespondence,
+  EXPECTED_ATTESTOR_PK,
+  analyzePendingConflict,
+  verifyOneTransferBoundary,
+  AUTH_MPC_SIGN_BROADCAST,
 } from "../../packages/autonomous/j17.sepoliaPath.mjs";
 
 const { connect, keyStores, KeyPair, transactions } = nearAPI;
@@ -177,38 +186,41 @@ function finish(code = 0) {
   process.exit(code);
 }
 
-const authorized = process.env.J17_SEPOLIA_FUNDING_AUTHORIZED === "1";
+const authGate = requireMpcSignBroadcastAuth();
 report.authorization = {
-  J17_SEPOLIA_FUNDING_AUTHORIZED: authorized,
-  note: "Funding confirmation ≠ broadcast approval.",
+  [AUTH_MPC_SIGN_BROADCAST]: process.env[AUTH_MPC_SIGN_BROADCAST] === "1",
+  J17_SEPOLIA_FUNDING_AUTHORIZED:
+    process.env.J17_SEPOLIA_FUNDING_AUTHORIZED === "1",
+  gate: authGate,
+  note: "Funding confirmation ≠ MPC sign/broadcast approval. Quote-signer register is a separate auth.",
 };
 
-if (!authorized) {
-  report.verdict = "PREFLIGHT_ONLY";
+if (!authGate.ok) {
+  report.verdict = "PRE_SIGN_CHECK_ONLY";
   const pre = spawnSync(
     process.execPath,
-    [join(ROOT, "scripts/j17/mpc-sepolia-preflight.mjs")],
+    [join(ROOT, "scripts/j17/mpc-sepolia-presign-check.mjs")],
     { cwd: ROOT, encoding: "utf8", env: process.env }
   );
-  report.preflight_exit = pre.status;
+  report.presign_exit = pre.status;
   try {
-    report.preflight = JSON.parse(
-      readFileSync(join(EVIDENCE, "J17_1_PRE_BROADCAST_READY.json"), "utf8")
+    report.presign = JSON.parse(
+      readFileSync(join(EVIDENCE, "J17_2_PRE_SIGN_SAFETY.json"), "utf8")
     ).gates;
   } catch {
-    report.preflight = { error: "preflight_evidence_missing" };
+    report.presign = { error: "presign_evidence_missing" };
   }
   report.gates = {
     AUTHENTIC_MPC_TO_EVM_BROADCAST: "BLOCKED_NO_AUTH",
-    PRE_BROADCAST: report.preflight,
+    PRE_SIGN: report.presign,
   };
   finish(0);
 }
 
-// -------- EXECUTE path (only with explicit auth) --------
+// -------- EXECUTE path (only with explicit J17_MPC_SIGN_BROADCAST_AUTHORIZED) --------
 try {
   assertNotDemo();
-  const journalOk = requireJournalSecret();
+  const journalOk = requireJournalSecret({ rootDir: ROOT, allowGenerate: false });
   if (!journalOk.ok) {
     report.verdict = "NO_GO";
     report.blocker = journalOk.reason;
@@ -222,6 +234,26 @@ try {
   if (!policyCheck.ok) {
     report.verdict = "NO_GO";
     report.blocker = policyCheck.blockers;
+    finish(1);
+  }
+
+  let pendingList = [];
+  try {
+    pendingList = await nearView(nearRpc, J16_POLICY, "list_pending");
+  } catch {
+    /* listed best-effort */
+  }
+  const pendingAnalysis = analyzePendingConflict({
+    pendingList,
+    reservedExposure: views.get_reserved_pending_exposure,
+    maxPendingExposure: views.get_limits?.max_pending_exposure,
+    nextAmount: AMOUNT_RAW,
+    nextDestination: TEST_RECIPIENT,
+  });
+  report.pending_conflict = pendingAnalysis;
+  if (!pendingAnalysis.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = pendingAnalysis.blockers;
     finish(1);
   }
 
@@ -247,18 +279,26 @@ try {
     depositAddress: TEST_RECIPIENT,
     amount: AMOUNT_RAW,
   });
-  const estHex = await eth("eth_estimateGas", [
-    {
-      from: J16_MPC,
-      to: USDC_SEPOLIA,
-      data: previewBind.data_hex,
-      value: "0x0",
-    },
-  ]);
-  const fitted = fitGasLimit({
-    estimated: BigInt(estHex),
+  let estHex = null;
+  let estimateError = null;
+  try {
+    estHex = await eth("eth_estimateGas", [
+      {
+        from: J16_MPC,
+        to: USDC_SEPOLIA,
+        data: previewBind.data_hex,
+        value: "0x0",
+      },
+    ]);
+  } catch (e) {
+    estimateError = e.message || e;
+  }
+  const fitted = requireFreshGasEstimate({
+    estimateHexOrBigInt: estHex,
+    estimateError,
     gasPrice,
     maxGasBudget: views.get_limits.max_gas_budget,
+    usedHistoricalFallback: false,
   });
   if (!fitted.ok) {
     report.verdict = "NO_GO";
@@ -266,9 +306,33 @@ try {
     finish(1);
   }
 
+  const boundary = verifyOneTransferBoundary({
+    chainId: CHAIN_ID,
+    token: USDC_SEPOLIA,
+    destination: TEST_RECIPIENT,
+    amountRaw: AMOUNT_RAW,
+    gasLimit: fitted.gas_limit,
+    attemptedTransfers: 1,
+  });
+  if (!boundary.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = boundary.blockers;
+    finish(1);
+  }
+
   const attestor = loadOrCreateAttestor(
     join(ROOT, ".gate-i-data", "attestor.seed.json")
   );
+  const keyCheck = verifyAttestorKeyCorrespondence({
+    secretKey64: attestor.secretKey64,
+    storedPublicKey: attestor.publicKey,
+    expectedPublicKey: EXPECTED_ATTESTOR_PK,
+  });
+  if (!keyCheck.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = keyCheck;
+    finish(1);
+  }
   const trusted = await nearView(nearRpc, J16_POLICY, "is_trusted_quote_signer", {
     public_key: attestor.publicKey,
   });
@@ -289,6 +353,17 @@ try {
     gasLimit: fitted.gas_limit,
   });
   const opId = `j17-exec-${randomBytes(3).toString("hex")}`;
+  const preSignDir = join(ROOT, ".nio-secure", "j17", "presign");
+  const existingIntent = loadPreSignIntent({ storeDir: preSignDir, operationId: opId });
+  if (existingIntent.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = {
+      reason: "presign_intent_already_exists_for_new_op_id_unexpected",
+      note: "Recovery must resume the existing operation_id — do not mint a parallel propose",
+      path: existingIntent.path,
+    };
+    finish(1);
+  }
   const tx = {
     nonce: String(nonce),
     gas_price: gasPrice.toString(),
@@ -372,6 +447,40 @@ try {
     explorer: `https://testnet.nearblocks.io/txns/${proposeOutcome.transaction.hash}`,
   };
 
+  // Persist immutable pre-sign intent BEFORE MPC request_signature
+  const preSign = persistPreSignIntent({
+    storeDir: preSignDir,
+    operationId: opId,
+    epoch: views.get_mandate_epoch,
+    amount: AMOUNT_RAW,
+    destination: TEST_RECIPIENT,
+    nonce,
+    digestHex: bind.digest_hex,
+    gasLimit: fitted.gas_limit,
+    gasPrice: gasPrice.toString(),
+    proposeNearTx: proposeOutcome.transaction.hash,
+    status: "PRE_SIGN_LOCKED",
+  });
+  report.presign_intent = {
+    path: preSign.path,
+    resumed: preSign.resumed,
+    operation_id: opId,
+    digest_hex: bind.digest_hex,
+  };
+  if (!preSign.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = preSign;
+    finish(1);
+  }
+  if (preSign.resumed) {
+    report.verdict = "NO_GO";
+    report.blocker = {
+      reason: "presign_intent_exists_recover_instead_of_duplicate_mpc",
+      path: preSign.path,
+    };
+    finish(1);
+  }
+
   let signOutcome;
   try {
     signOutcome = await callOnce(agent, J16_POLICY, {
@@ -384,7 +493,8 @@ try {
     report.verdict = "NO_GO";
     report.blocker = {
       request_signature_failed: String(e.message || e).slice(0, 500),
-      note: "No resign — quarantine; inspect pending via get_pending",
+      note: "No resign — quarantine; inspect pending via get_pending / resume presign intent",
+      presign_path: preSign.path,
     };
     finish(1);
   }

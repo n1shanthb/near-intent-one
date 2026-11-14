@@ -1,0 +1,37 @@
+{
+  "kind": "J17_2_FINAL_VERDICTS",
+  "baseline": "0cb57a6",
+  "finished_at": "2026-11-14T12:21:38.741Z",
+  "gates": {
+    "FUNDING_CONFIRMED": "PASS",
+    "PENDING_CONFLICT_SAFE": "PASS",
+    "CONTRACT_ABI_MATCH": "PASS",
+    "GAS_ESTIMATION_FAIL_CLOSED": "PASS",
+    "ATTESTOR_KEY_VERIFIED": "PASS",
+    "JOURNAL_PROVISION_DOCUMENTED": "PASS",
+    "JOURNAL_AND_REPLAY_SAFE": "FAIL",
+    "ONE_TRANSFER_BOUNDARY": "PASS",
+    "POLICY_STATE_VERIFIED": "PASS",
+    "DUAL_AUTH_GATES_DEFINED": "PASS",
+    "PRE_SIGN_SAFE": "NO-GO_PENDING_OWNER_PREREQS",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
+  "verdict": "NO-GO_PENDING_OWNER_PREREQS",
+  "blockers": [
+    "NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback",
+    "trusted_quote_signer_not_registered"
+  ],
+  "hard_stop": {
+    "no_signer_register": true,
+    "no_mpc_sign": true,
+    "no_broadcast": true,
+    "no_funding": true,
+    "no_mainnet": true
+  },
+  "evidence": [
+    "docs/evidence/J17_2_PRE_SIGN_SAFETY.json",
+    "docs/evidence/J17_2_ONE_TRANSFER_APPROVAL.md",
+    "docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md",
+    "docs/evidence/J17_CLAIM_AND_FUND_MPC.json"
+  ]
+}
