@@ -40,6 +40,14 @@ import { SEPOLIA_TIDEPOOL } from "../execution/chainProfiles.mjs";
 import { nearRpc } from "../../scripts/lib/near-live.mjs";
 import { loadServicesEnv } from "../gate-j/llm.mjs";
 import {
+  getLiveAgentSnapshot,
+  getLiveMandateSnapshot,
+  listDecisions,
+  getDecision,
+  getProof,
+  listTransactions,
+} from "./mainnetPublicAudit.mjs";
+import {
   assertNotDemo,
   connectWithAccounts,
   eth,
@@ -442,6 +450,15 @@ async function handle(req, res) {
   const isGateJDemoStatus =
     req.method === "GET" && path === "/gate-j/demo-status";
   const isGateKPublicHealth = req.method === "GET" && path === "/gate-k/health";
+  const isPublicMainnetRead =
+    req.method === "GET" &&
+    (path === "/mainnet/agent" ||
+      path === "/mainnet/mandate" ||
+      path === "/mainnet/decisions" ||
+      path.startsWith("/mainnet/decisions/") ||
+      path.startsWith("/mainnet/proof/") ||
+      path === "/mainnet/transactions" ||
+      path === "/mainnet/health");
   const isOwnerAuthPublic =
     (req.method === "POST" &&
       (path === "/owner/challenge" || path === "/owner/verify")) ||
@@ -464,7 +481,8 @@ async function handle(req, res) {
     !isGateJPublicHealth &&
     !isGateJDemoStatus &&
     !isGateKPublicHealth &&
-    !isOwnerAuthPublic
+    !isOwnerAuthPublic &&
+    !isPublicMainnetRead
   ) {
     const auth = authorize(req, {
       mutating: mutating || gateJPrivilegedGet || gateKPrivilegedGet,
@@ -473,6 +491,42 @@ async function handle(req, res) {
   }
 
   try {
+    // Public mainnet observation (RPC + local audit store). No signing.
+    if (isPublicMainnetRead) {
+      if (path === "/mainnet/health") {
+        return json(req, res, 200, {
+          ok: true,
+          network: "mainnet",
+          service: "nio-mainnet-public-reads",
+          cohosted_on: "testnet_api_server",
+          note: "Read-only NEAR mainnet views + decision audit index",
+        });
+      }
+      if (path === "/mainnet/agent") {
+        return json(req, res, 200, await getLiveAgentSnapshot());
+      }
+      if (path === "/mainnet/mandate") {
+        return json(req, res, 200, await getLiveMandateSnapshot());
+      }
+      if (path === "/mainnet/decisions") {
+        const limit = Number(url.searchParams.get("limit") || 40);
+        return json(req, res, 200, await listDecisions(Math.min(100, limit)));
+      }
+      if (path.startsWith("/mainnet/decisions/")) {
+        const cycle_id = decodeURIComponent(path.slice("/mainnet/decisions/".length));
+        const detail = await getDecision(cycle_id);
+        return json(req, res, detail.ok ? 200 : 404, detail);
+      }
+      if (path.startsWith("/mainnet/proof/")) {
+        const cycle_id = decodeURIComponent(path.slice("/mainnet/proof/".length));
+        const proof = await getProof(cycle_id);
+        return json(req, res, proof.ok ? 200 : 404, proof);
+      }
+      if (path === "/mainnet/transactions") {
+        return json(req, res, 200, await listTransactions());
+      }
+    }
+
     if (isHealth) {
       return json(req, res, 200, {
         ok: true,

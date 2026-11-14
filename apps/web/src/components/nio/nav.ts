@@ -6,6 +6,8 @@ export type NavId =
   | "owner"
   | "agent"
   | "mandate"
+  | "verify"
+  | "inspect"
   | "activity"
   | "security"
   | "evidence"
@@ -26,6 +28,8 @@ export const WORKSPACE_PATH: Partial<Record<NavId, string>> = {
   owner: "/owner",
   agent: "/agent",
   mandate: "/mandate",
+  verify: "/verify",
+  inspect: "/inspect/nishanthb.near",
   activity: "/transactions",
   evidence: "/evidence",
   mainnet: "/mainnet",
@@ -40,6 +44,7 @@ export const WORKSPACE_PATH: Partial<Record<NavId, string>> = {
 };
 
 export function pathToNav(pathname: string): NavId {
+  if (pathname.startsWith("/inspect/")) return "inspect";
   const map: Record<string, NavId> = {
     "/": "landing",
     "/overview": "overview",
@@ -49,6 +54,8 @@ export function pathToNav(pathname: string): NavId {
     "/agent": "agent",
     "/mandate": "mandate",
     "/policies": "mandate",
+    "/verify": "verify",
+    "/inspect/nishanthb.near": "inspect",
     "/transactions": "activity",
     "/activity": "activity",
     "/evidence": "evidence",

@@ -1,93 +1,166 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  fetchMainnetMandate,
+  usdcLabel,
+  chainBadge,
+  type MainnetMandate,
+} from "../../adapters/mainnetPublic";
 
 /**
- * Mainnet review-only Mandate V1 preview.
- * Does NOT sign, submit, or call policy methods.
+ * Live on-chain mandate panel (read-only). Falls back to last-known evidence
+ * labels when API is unreachable — never claims PASS without live/on-chain data.
  */
-
-type Enforcement = "ON_CHAIN_ENFORCED" | "PLANNED" | "OFF_CHAIN_ONLY";
-
-const DEMO_FIELDS: { label: string; value: string; enforcement: Enforcement }[] = [
-  { label: "Network", value: "mainnet (preview only)", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Policy", value: "policy.nishanthb.near", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Owner", value: "nishanthb.near", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Agent", value: "agent.nishanthb.near", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Max trade (raw)", value: "5000000", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Daily turnover (raw)", value: "25000000", enforcement: "ON_CHAIN_ENFORCED" },
-  { label: "Autonomous trading flag", value: "false (live)", enforcement: "OFF_CHAIN_ONLY" },
-  {
-    label: "Enforce autonomous on agent",
-    value: "false until WASM upgrade + owner toggle",
-    enforcement: "PLANNED",
-  },
-  { label: "Commerce / Agent Market", value: "mocked only", enforcement: "OFF_CHAIN_ONLY" },
-  { label: "OpenRouter spend cap", value: "shadow kill-switch", enforcement: "OFF_CHAIN_ONLY" },
-  { label: "Min trade interval", value: "not in contract yet", enforcement: "PLANNED" },
-];
-
-const badge: Record<Enforcement, string> = {
-  ON_CHAIN_ENFORCED: "LIVE ONCHAIN (when deployed)",
-  PLANNED: "PLANNED / NOT ENFORCED",
-  OFF_CHAIN_ONLY: "OFF-CHAIN ONLY",
-};
-
 export function AutonomousMandatePreview() {
-  const [wallet, setWallet] = useState<"ledger" | "meteor">("ledger");
-  const preview = useMemo(
-    () => ({
-      mode: "MAINNET_REVIEW_ONLY",
-      wallet,
-      signing_enabled: false,
-      mainnet_mutations: false,
-      note: "Identical mandate hash semantics for Ledger and Meteor; physical confirm only after separate owner approval on testnet/mainnet activation.",
-    }),
-    [wallet]
-  );
+  const [mandate, setMandate] = useState<MainnetMandate | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMainnetMandate()
+      .then((m) => {
+        if (!cancelled) setMandate(m);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String((e as Error).message || e));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const expiry =
+    mandate?.expiry?.expires_in_ms != null
+      ? `${Math.floor(mandate.expiry.expires_in_ms / 3600_000)}h remaining`
+      : "—";
 
   return (
     <section className="nio-card" style={{ marginTop: "1.5rem" }}>
-      <h2 style={{ marginTop: 0 }}>Autonomous Mandate V1 — review only</h2>
+      <h2 style={{ marginTop: 0 }}>Live on-chain mandate</h2>
       <p style={{ opacity: 0.85 }}>
-        Owner signs a bounded mandate once (Ledger or Meteor). This panel never submits a
-        transaction. Live policy remains paused with autonomous funded trading disabled.
+        Sourced from <code>policy.nishanthb.near</code> views via the hosted API. Read-only —
+        this panel never signs or mutates policy.
       </p>
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
-        <button type="button" onClick={() => setWallet("ledger")} aria-pressed={wallet === "ledger"}>
-          Ledger NEAR preview
-        </button>
-        <button type="button" onClick={() => setWallet("meteor")} aria-pressed={wallet === "meteor"}>
-          Meteor Wallet preview
-        </button>
-      </div>
-      <p>
-        <strong>Mode:</strong> {preview.mode} · <strong>Wallet:</strong> {preview.wallet} ·{" "}
-        <strong>signing_enabled:</strong> {String(preview.signing_enabled)}
-      </p>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-        <thead>
-          <tr>
-            <th align="left">Field</th>
-            <th align="left">Value</th>
-            <th align="left">Enforcement</th>
-          </tr>
-        </thead>
-        <tbody>
-          {DEMO_FIELDS.map((row) => (
-            <tr key={row.label}>
-              <td>{row.label}</td>
-              <td>
-                <code>{row.value}</code>
-              </td>
-              <td>{badge[row.enforcement]}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p style={{ marginTop: "1rem", fontSize: "0.85rem", opacity: 0.8 }}>{preview.note}</p>
-      <p style={{ fontSize: "0.85rem" }}>
-        Future entries: <em>Inspect Nishanth&apos;s live mainnet agent</em> ·{" "}
-        <em>Set your own mandate</em>
-      </p>
+
+      {loading && <p className="axis-supporting">Loading live mandate…</p>}
+      {error && (
+        <p className="axis-supporting">
+          Live API error: {error}. Open Proof &amp; Verify for static Nearblocks links.
+        </p>
+      )}
+
+      {mandate?.ok && (
+        <>
+          <p>
+            <span className="nio-badge nio-badge-success">MAINNET</span>{" "}
+            <span className="nio-badge nio-badge-running">
+              {mandate.paused ? "PAUSED" : "UNPAUSED"}
+            </span>{" "}
+            <span className="nio-badge nio-badge-recorded">
+              {mandate.autonomous_trading ? "AUTONOMOUS" : "AUTONOMY_OFF"}
+            </span>{" "}
+            <span className="nio-badge nio-badge-idle">
+              enforce={String(mandate.enforce_autonomous_on_agent)}
+            </span>
+          </p>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+            <tbody>
+              <tr>
+                <td>Owner / Agent</td>
+                <td className="mono">
+                  {mandate.owner} / {mandate.agent}
+                </td>
+              </tr>
+              <tr>
+                <td>Epoch</td>
+                <td>{mandate.mandate_epoch}</td>
+              </tr>
+              <tr>
+                <td>Max trade</td>
+                <td>
+                  {usdcLabel(mandate.limits.max_trade_value)} (
+                  {mandate.limits.max_trade_value} raw)
+                </td>
+              </tr>
+              <tr>
+                <td>Daily turnover</td>
+                <td>
+                  {usdcLabel(mandate.limits.daily_turnover_limit)} · spent{" "}
+                  {usdcLabel(
+                    typeof mandate.usage.daily_turnover === "object"
+                      ? String(
+                          (mandate.usage.daily_turnover as { toString?: () => string }) || "0"
+                        )
+                      : mandate.usage.daily_turnover
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td>Pending exposure</td>
+                <td>
+                  cap {usdcLabel(mandate.limits.max_pending_exposure)} · reserved{" "}
+                  {usdcLabel(String(mandate.usage.reserved_pending_exposure))}
+                </td>
+              </tr>
+              <tr>
+                <td>Slippage / gas</td>
+                <td>
+                  {mandate.limits.max_slippage_bps} bps · {mandate.limits.max_gas_budget}
+                </td>
+              </tr>
+              <tr>
+                <td>Expiry</td>
+                <td>{expiry}</td>
+              </tr>
+              <tr>
+                <td>Venues</td>
+                <td>{(mandate.limits.allowed_venues || []).join(", ")}</td>
+              </tr>
+              <tr>
+                <td>Destinations</td>
+                <td className="mono">
+                  {(mandate.limits.allowed_destinations || []).join(", ")}
+                </td>
+              </tr>
+              <tr>
+                <td>Chains (PERMITTED BY POLICY)</td>
+                <td>
+                  <div className="nio-chain-badges">
+                    {(mandate.limits.allowed_chains || []).map((c) => {
+                      const b = chainBadge(c);
+                      return (
+                        <span key={c} className={`nio-badge nio-badge-${b.tone}`}>
+                          {b.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Assets (canonical)</td>
+                <td>
+                  <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.8rem" }}>
+                    {(mandate.limits.allowed_assets || []).map((a) => (
+                      <li key={a} className="mono">
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p style={{ marginTop: "1rem", fontSize: "0.85rem", opacity: 0.8 }}>
+            Fetched {mandate.fetched_at}
+            {mandate.fresh ? " (fresh)" : " (cached)"}. Allowlists are PERMITTED BY POLICY —
+            not VERIFIED EXECUTION.
+          </p>
+        </>
+      )}
     </section>
   );
 }

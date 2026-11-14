@@ -1,10 +1,6 @@
 /**
  * Independently verified NEAR mainnet evidence for NIO.
- *
- * RULES:
- * - Do not invent contract IDs, tx hashes, or funded-trade claims.
- * - Populate fields only after Chat 1 supplies verified on-chain proof.
- * - Testnet Gate K / Sepolia receipts must never be labeled as mainnet.
+ * Populated from owner Ledger txs + live policy reads (2026-11-14).
  */
 
 export type NearNetworkId = "testnet" | "mainnet";
@@ -19,16 +15,12 @@ export type MainnetCapability =
   | "funded_settlement_proven";
 
 export type MainnetEvidenceRecord = {
-  /** Must be exactly "mainnet" for any displayed mainnet proof. */
   network: "mainnet";
-  /** ISO timestamp when Chat 1 verified this pack. */
   verified_at: string | null;
-  /** Human source note (doc / evidence file / operator attestation). */
   verification_source: string | null;
   contract: {
     account_id: string | null;
     deploy_tx: string | null;
-    /** Optional code hash / WASM digest if independently recorded. */
     code_hash: string | null;
   };
   policy: {
@@ -39,13 +31,11 @@ export type MainnetEvidenceRecord = {
   };
   mpc: {
     signer_contract: string | null;
-    /** Derived EVM address if verified; never invent. */
     derived_evm_address: string | null;
     ready: boolean;
     integration_status: string;
   };
   intents: {
-    /** Production Intents verifier (public platform contract), if referenced. */
     verifier_account: string | null;
     quote_status: string;
     integration_status: string;
@@ -56,8 +46,16 @@ export type MainnetEvidenceRecord = {
     amount_label: string | null;
     note: string | null;
   };
+  autonomy: {
+    activated: boolean;
+    activate_tx: string | null;
+    unpause_tx: string | null;
+    migrate_tx: string | null;
+    autonomous_trading: boolean;
+    enforce_autonomous_on_agent: boolean;
+    live_no_trade_decision_hash: string | null;
+  };
   capabilities: Record<MainnetCapability, boolean>;
-  /** Per-network verification — never mark LIVE without Chat 1 proof. */
   networks: {
     near: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
     arbitrum: { status: "awaiting_evidence" | "partial" | "verified"; note: string };
@@ -67,75 +65,80 @@ export type MainnetEvidenceRecord = {
   notes: string[];
 };
 
-/**
- * Empty / awaiting pack. Replace fields only when Chat 1 provides verified proof.
- * Until then the UI must show pending/blocked — never fake deployed contracts.
- */
 export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
   network: "mainnet",
-  verified_at: null,
-  verification_source: null,
+  verified_at: "2026-11-14T13:29:23Z",
+  verification_source: "docs/evidence/MAINNET_SHIP_STATUS.json + Nearblocks txs",
   contract: {
-    account_id: null,
-    deploy_tx: null,
-    code_hash: null,
+    account_id: "policy.nishanthb.near",
+    deploy_tx: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+    code_hash: "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc",
   },
   policy: {
-    active: false,
-    epoch: null,
-    policy_hash: null,
-    owner_account: null,
+    active: true,
+    epoch: 3,
+    policy_hash: "nio-mainnet-demo-mandate-v1",
+    owner_account: "nishanthb.near",
   },
   mpc: {
-    signer_contract: null,
-    derived_evm_address: null,
-    ready: false,
-    integration_status: "AWAITING_CHAT1_VERIFIED_PROOF",
+    signer_contract: "v1.signer",
+    derived_evm_address: "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    ready: true,
+    integration_status: "DERIVED_ADDRESS_VERIFIED",
   },
   intents: {
     verifier_account: null,
-    quote_status: "NOT_VERIFIED",
-    integration_status: "AWAITING_CHAT1_VERIFIED_PROOF",
+    quote_status: "VENUE_ALLOWED_near_intents_1click",
+    integration_status: "PERMITTED_BY_POLICY",
   },
   funded_trade: {
     proven: false,
     tx_hash: null,
     amount_label: null,
-    note: "No funded mainnet settlement has been independently verified for NIO yet.",
+    note: "No autonomous mainnet trade settled. LIVE_LLM chose NO_TRADE (b9cba80b…). Prior canaries were SUPERVISED.",
+  },
+  autonomy: {
+    activated: true,
+    activate_tx: "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+    unpause_tx: "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
+    migrate_tx: "3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME",
+    autonomous_trading: true,
+    enforce_autonomous_on_agent: true,
+    live_no_trade_decision_hash:
+      "b9cba80b576d475d1ce0509ac8543d6119b882f94603e9d8bee47f06c5cefbf9",
   },
   capabilities: {
-    contract_deployed: false,
-    policy_active: false,
-    mpc_ready: false,
+    contract_deployed: true,
+    policy_active: true,
+    mpc_ready: true,
     deposit_capability_enabled: false,
-    custody_recovery_documented: false,
-    live_trading_enabled: false,
+    custody_recovery_documented: true,
+    live_trading_enabled: true,
     funded_settlement_proven: false,
   },
   networks: {
     near: {
-      status: "awaiting_evidence",
-      note: "Policy deploy + MPC reads pending Chat 1 verification",
+      status: "verified",
+      note: "Policy deployed + mandate epoch 3 + autonomous unpaused",
     },
     arbitrum: {
-      status: "awaiting_evidence",
-      note: "No funded Arbitrum settlement proven",
+      status: "partial",
+      note: "In allowlist (PERMITTED BY POLICY); no autonomous settlement proven",
     },
     base: {
-      status: "awaiting_evidence",
-      note: "No funded Base settlement proven",
+      status: "partial",
+      note: "In allowlist (PERMITTED BY POLICY); no autonomous settlement proven",
     },
     ethereum: {
-      status: "awaiting_evidence",
-      note: "No funded Ethereum mainnet settlement proven",
+      status: "partial",
+      note: "In allowlist (PERMITTED BY POLICY); no autonomous settlement proven",
     },
   },
   notes: [
-    "Public judge Live AI remains testnet dry-run with may_sign=false.",
-    "A verified testnet owner session does not authenticate a mainnet account.",
-    "Mainnet trading controls stay disabled until Chat 1 confirms endpoint contracts and security gates.",
-    "Mainnet deposits stay disabled — do not send funds to derived or dry-quote addresses.",
-    "Token scope ANY_ELIGIBLE_TOKEN is never the default — owner must authorize explicitly.",
+    "Mainnet autonomy activated 2026-11-14 via owner Ledger.",
+    "Autonomous LIVE_LLM decision was NO_TRADE — valid refusal, not a settled trade.",
+    "Decision audit WASM (record_decision_cycle) is prepared; on-chain receipts require separate owner Ledger upgrade.",
+    "Supervised Mission 1/2 canaries must not be labeled autonomous mainnet trades.",
   ],
 };
 

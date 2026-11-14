@@ -322,6 +322,39 @@ body,
 .nio-badge-idle { color: #475467; background: #f2f4f7; border-color: #d0d5dd; }
 .nio-badge-running { color: #175cd3; background: #eff4ff; border-color: #b2ccff; }
 .nio-badge-recorded { color: #344054; background: #eef2ff; border-color: #c7d2fe; }
+.nio-badge-mainnet, .nio-badge-ok, .nio-badge-autonomous { color: #067647; background: #eef9f2; border-color: #cfe9d9; }
+.nio-badge-near { color: #000; background: #f3f4f6; border-color: #d1d5db; }
+.nio-badge-eth { color: #1e3a8a; background: #eff6ff; border-color: #bfdbfe; }
+.nio-badge-arb { color: #9f1239; background: #fff1f2; border-color: #fecdd3; }
+.nio-badge-base { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+.nio-badge-notrade, .nio-badge-fitter, .nio-badge-status, .nio-badge-trade, .nio-badge-enforce {
+  color: #344054; background: #f8f9fc; border-color: #d0d5dd;
+}
+.nio-chain-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.nio-proof-grid, .nio-inspect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.nio-tx-list, .nio-kv { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.nio-decision-list { display: grid; gap: 8px; margin: 12px 0; }
+.nio-decision-row {
+  text-align: left;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+.nio-decision-row.active { border-color: #175cd3; background: #f5f8ff; }
+.nio-decision-timeline { padding-left: 1.2rem; display: grid; gap: 8px; }
+.nio-inspect-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.nio-proof-detail { margin-top: 16px; padding-top: 12px; border-top: 1px solid #eaecf0; }
 
 .nio-pipeline {
   display: grid;

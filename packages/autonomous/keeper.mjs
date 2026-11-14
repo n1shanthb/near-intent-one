@@ -29,6 +29,7 @@ import {
   EXEC_MODE,
 } from "./executorAdapter.mjs";
 import { runAutonomousExecution } from "./executionService.mjs";
+import { recordAndMaybeAnchorDecision } from "./decisionAudit.mjs";
 
 /**
  * Run N keeper cycles.
@@ -48,6 +49,8 @@ import { runAutonomousExecution } from "./executionService.mjs";
  * @param {object} [opts.lockedTx]
  * @param {string} [opts.txJournalPath]
  * @param {function} [opts.getQuote] — async ({decision,plan})=>quote
+ * @param {function} [opts.auditPublishFn] — async (contractArgs)=> {ok,tx_hash,logs}
+ * @param {boolean} [opts.auditOnChain] — force on/off decision audit anchoring
  */
 export async function runKeeperCycles(opts) {
   const {
@@ -65,6 +68,8 @@ export async function runKeeperCycles(opts) {
     lockedTx = null,
     txJournalPath = null,
     getQuote = null,
+    auditPublishFn = null,
+    auditOnChain = undefined,
   } = opts;
 
   if (
@@ -232,6 +237,46 @@ export async function runKeeperCycles(opts) {
         worker.budget.openrouter_spent_usd = agent.state.openrouter_spent_usd;
         worker.budget.openrouter_requests_today = agent.state.openrouter_requests_today;
         await persistBudget(worker);
+
+        // Decision audit: persist canonical record; optionally anchor on NEAR.
+        try {
+          const audit = await recordAndMaybeAnchorDecision({
+            decision,
+            mandate,
+            onChain: onChain || {
+              mandate_epoch: mandate.mandate_epoch ?? mandate.epoch,
+              portfolio_id,
+            },
+            policy: mandate.policy_contract || process.env.NIO_POLICY || "policy.nishanthb.near",
+            publishFn: auditPublishFn,
+            enabled:
+              auditOnChain !== undefined
+                ? auditOnChain
+                : process.env.NIO_DECISION_AUDIT_ON_CHAIN === "1",
+          });
+          cycle.audit = {
+            cycle_id: audit.record.cycle_id,
+            evidence_hash: audit.record.evidence_hash,
+            status: audit.meta.status,
+            near_tx: audit.meta.near_tx,
+            explorer: audit.meta.explorer,
+            fitter_verdict: audit.record.fitter_verdict,
+            final_action: audit.record.final_action,
+          };
+          await appendJournalEntry(worker, {
+            kind: "decision_audit",
+            cycle_id: audit.record.cycle_id,
+            evidence_hash: audit.record.evidence_hash,
+            status: audit.meta.status,
+            near_tx: audit.meta.near_tx || null,
+            decision_hash: decision.decision_hash,
+          });
+        } catch (auditErr) {
+          cycle.audit = {
+            status: "ANCHOR_FAILED",
+            error: String(auditErr.message || auditErr).slice(0, 200),
+          };
+        }
 
         const chainSnap = onChain || {
           paused: false,

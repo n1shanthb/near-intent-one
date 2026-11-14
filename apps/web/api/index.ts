@@ -26,7 +26,17 @@ const ALLOWED_EXACT = new Set([
   "POST /gate-j/decide",
   "POST /gate-j/demo-decide",
   "POST /gate-j/fit",
+  "GET /mainnet/health",
+  "GET /mainnet/agent",
+  "GET /mainnet/mandate",
+  "GET /mainnet/decisions",
+  "GET /mainnet/transactions",
 ]);
+
+const ALLOWED_PREFIX = [
+  "GET /mainnet/decisions/",
+  "GET /mainnet/proof/",
+];
 
 function apiBase(): string {
   const raw = process.env.NIO_API_BASE || process.env.GATE_I_UPSTREAM || "";
@@ -135,6 +145,10 @@ function pathAllowed(method: string, apiPath: string): boolean {
   }
   const key = `${method.toUpperCase()} ${apiPath}`;
   if (ALLOWED_EXACT.has(key)) return true;
+  for (const prefix of ALLOWED_PREFIX) {
+    const [m, p] = prefix.split(" ");
+    if (method.toUpperCase() === m && apiPath.startsWith(p)) return true;
+  }
   if (method === "GET" && /^\/portfolios\/[^/]+$/.test(apiPath)) {
     return DEMO_PORTFOLIOS.has(apiPath.split("/")[2]);
   }

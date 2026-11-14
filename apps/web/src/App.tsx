@@ -12,6 +12,8 @@ import { EvidencePage } from "./components/nio/EvidencePage";
 import { MainnetEvidencePage } from "./components/nio/MainnetEvidencePage";
 import { TransactionsPage } from "./components/nio/TransactionsPage";
 import { MandatePage } from "./components/nio/MandatePage";
+import { ProofVerifyPage } from "./components/nio/ProofVerifyPage";
+import { AgentInspectorPage } from "./components/nio/AgentInspectorPage";
 import { SecurityPage } from "./components/nio/SecurityPage";
 import { WorkspaceShell, WalletControl } from "./components/nio/WorkspaceShell";
 import { pathToNav, WORKSPACE_PATH, type NavId } from "./components/nio/nav";
@@ -120,6 +122,8 @@ function AppInner() {
       )}
       {nav === "agent" && <AgentWorkspace onNav={onNav} />}
       {(nav === "mandate" || nav === "policies") && <MandatePage onNav={onNav} />}
+      {nav === "verify" && <ProofVerifyPage onNav={onNav} />}
+      {nav === "inspect" && <AgentInspectorPage onNav={onNav} />}
       {nav === "activity" && <TransactionsPage onNav={onNav} />}
       {nav === "evidence" && <EvidencePage onNav={onNav} />}
       {nav === "mainnet" && <MainnetEvidencePage onNav={onNav} />}

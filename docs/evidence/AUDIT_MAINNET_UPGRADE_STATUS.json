@@ -1,0 +1,42 @@
+{
+  "kind": "AUDIT_MAINNET_UPGRADE_STATUS",
+  "as_of": "2026-11-14T13:58:19.067Z",
+  "verdict": "PREVIEW_ONLY_STOP_BEFORE_DEPLOY",
+  "policy": "policy.nishanthb.near",
+  "owner": "nishanthb.near",
+  "method_added": "record_decision_cycle",
+  "migrate_method": "migrate_state_v2_decision_audit",
+  "nep297": {
+    "standard": "nio_agent_audit",
+    "version": "1.0.0"
+  },
+  "events": [
+    "research_completed",
+    "strategy_proposed",
+    "fitter_evaluated",
+    "critic_evaluated",
+    "decision_finalized"
+  ],
+  "layout": "additive side-storage dec:<cycle_id>; PolicyContract Borsh unchanged",
+  "current_live": {
+    "code_hash": "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc",
+    "state_version": 1,
+    "mandate_epoch": 3,
+    "note": "Live WASM lacks record_decision_cycle until this upgrade"
+  },
+  "requires_owner_ledger": true,
+  "financial_guardrails": "No mandate widen, no unpause change required, audit works while paused; does not authorize trades",
+  "deploy_when_authorized": [
+    "Rebuild policy.wasm",
+    "Confirm new SHA256 in this file",
+    "near contract deploy policy.nishanthb.near use-file <wasm> without-init-call … sign-with-ledger",
+    "near … migrate_state_v2_decision_audit … sign-with-ledger",
+    "Set NIO_DECISION_AUDIT_ON_CHAIN=1 and run autonomous-demo-cycle"
+  ],
+  "local_wasm": {
+    "path": "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm",
+    "bytes": 638108,
+    "sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+    "note": "May be stale until cargo build --release after audit methods; rebuild before Ledger deploy"
+  }
+}

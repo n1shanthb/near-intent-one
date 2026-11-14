@@ -14,6 +14,11 @@ import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { DecisionJourney } from "../DecisionJourney";
 import { MandateFitterPanel } from "../MandateFitter";
 import { NIO_CHAINS, VERIFIED_TOKEN_OPTIONS } from "../../lib/chains";
+import {
+  fetchMainnetDecisions,
+  type MainnetDecisionSummary,
+} from "../../adapters/mainnetPublic";
+import { MAINNET_EVIDENCE } from "../../data/mainnetEvidence";
 import type { NavId } from "./nav";
 
 const SCENARIOS: {
@@ -63,17 +68,27 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
   const [liveBusy, setLiveBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState<GateJScenarioId | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [mainnetDecisions, setMainnetDecisions] = useState<MainnetDecisionSummary[]>([]);
 
   useEffect(() => {
     void gateJHealth().then(setGateJ);
     void fetchGateJHistory(12).then(setHistory);
     if (publicLiveAi) void fetchDemoStatus().then(setDemoStatus);
+    void fetchMainnetDecisions(20)
+      .then((d) => setMainnetDecisions(d.decisions || []))
+      .catch(() => setMainnetDecisions([]));
   }, [publicLiveAi]);
 
   const refresh = async () => {
     setGateJ(await gateJHealth());
     setHistory(await fetchGateJHistory(12));
     if (publicLiveAi) setDemoStatus(await fetchDemoStatus());
+    try {
+      const d = await fetchMainnetDecisions(20);
+      setMainnetDecisions(d.decisions || []);
+    } catch {
+      /* keep prior */
+    }
   };
 
   const runLive = async () => {
@@ -161,8 +176,53 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
           <button type="button" className="axis-button secondary" onClick={() => void refresh()}>
             Refresh status
           </button>
+          <button type="button" className="axis-button secondary" onClick={() => onNav("verify")}>
+            Proof &amp; Verify
+          </button>
         </div>
       </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Live autonomous agent (mainnet)</h2>
+          <span className="nio-badge nio-badge-success">MAINNET</span>
+        </div>
+        <p className="axis-supporting">
+          Mandate epoch {MAINNET_EVIDENCE.policy.epoch} · autonomous=
+          {String(MAINNET_EVIDENCE.autonomy.autonomous_trading)} · Last LIVE_LLM decision{" "}
+          <span className="mono">
+            {MAINNET_EVIDENCE.autonomy.live_no_trade_decision_hash?.slice(0, 16)}…
+          </span>{" "}
+          = <strong>NO_TRADE</strong> (not SETTLED).
+        </p>
+        <ol className="nio-decision-timeline">
+          {mainnetDecisions.length === 0 && (
+            <li className="axis-supporting">
+              No OCI-indexed audit cycles yet. After <code>record_decision_cycle</code> WASM
+              upgrade, each keeper wake anchors a NEAR receipt here.
+            </li>
+          )}
+          {mainnetDecisions.map((d) => (
+            <li key={d.cycle_id}>
+              <span className="mono">{new Date(d.timestamp_ms).toISOString()}</span> ·{" "}
+              <span className="nio-badge nio-badge-idle">PROPOSED</span>{" "}
+              <span className="nio-badge nio-badge-warn">FITTER {d.fitter_verdict}</span>{" "}
+              <span className="nio-badge nio-badge-idle">CRITIC {d.critic_verdict}</span>{" "}
+              <span className="nio-badge nio-badge-danger">{d.final_action}</span> · epoch{" "}
+              {d.mandate_epoch} · {d.reason_code} · status {d.status}
+              {d.explorer ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a href={d.explorer} target="_blank" rel="noreferrer">
+                    audit tx
+                  </a>
+                </>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <section className="axis-panel">
         <div className="axis-panel-heading">

@@ -1485,6 +1485,248 @@ impl PolicyContract {
     pub fn eip191_digest(&self, payload_json: String) -> String {
         Self::eip191_digest_hex(payload_json.as_bytes())
     }
+
+    /// Agent-only AI decision audit (additive). Does NOT authorize trades, mutate
+    /// mandate/limits, or require unpaused state. Idempotent on cycle_id.
+    /// Emits NEP-297-shaped EVENT_JSON logs (standard=nio_agent_audit v1.0.0).
+    pub fn record_decision_cycle(&mut self, input: DecisionCycleInput) -> DecisionCycleView {
+        self.assert_agent();
+        Self::assert_audit_id(&input.cycle_id, "cycle_id");
+        require!(
+            input.cycle_id.len() >= 8 && input.cycle_id.len() <= 96,
+            "cycle_id length"
+        );
+        Self::assert_hex64(&input.evidence_hash, "evidence_hash");
+        require!(
+            input.mandate_epoch == self.mandate_epoch,
+            "mandate_epoch mismatch"
+        );
+        require!(
+            input.portfolio_id == self.portfolio_id,
+            "portfolio_id mismatch"
+        );
+        require!(
+            input.final_action == "NO_TRADE" || input.final_action == "TRADE",
+            "final_action must be NO_TRADE|TRADE"
+        );
+        require!(
+            input.fitter_verdict == "ACCEPTED"
+                || input.fitter_verdict == "ADAPTED"
+                || input.fitter_verdict == "REJECTED",
+            "fitter_verdict must be ACCEPTED|ADAPTED|REJECTED"
+        );
+        require!(
+            input.critic_verdict == "APPROVED"
+                || input.critic_verdict == "VETOED"
+                || input.critic_verdict == "SKIPPED",
+            "critic_verdict must be APPROVED|VETOED|SKIPPED"
+        );
+        require!(input.reason_code.len() <= 64, "reason_code too long");
+        require!(input.proposal_id.len() <= 96, "proposal_id too long");
+        require!(input.chain_id.len() <= 64, "chain_id too long");
+        require!(input.asset_in.len() <= 128, "asset_in too long");
+        require!(input.asset_out.len() <= 128, "asset_out too long");
+
+        let key = Self::decision_cycle_storage_key(&input.cycle_id);
+        if let Some(existing) = env::storage_read(&key) {
+            let prev = String::from_utf8(existing).unwrap_or_default();
+            require!(
+                prev == input.evidence_hash,
+                "cycle_id collision: different evidence_hash"
+            );
+            // Idempotent replay — re-emit nothing; return stored view.
+            return DecisionCycleView {
+                cycle_id: input.cycle_id,
+                portfolio_id: self.portfolio_id.clone(),
+                policy: env::current_account_id().to_string(),
+                agent: self.agent.to_string(),
+                mandate_epoch: self.mandate_epoch,
+                evidence_hash: input.evidence_hash,
+                final_action: input.final_action,
+                fitter_verdict: input.fitter_verdict,
+                already_recorded: true,
+            };
+        }
+
+        // Persist only the evidence hash under cycle_id (bounded).
+        env::storage_write(&key, input.evidence_hash.as_bytes());
+
+        let policy = env::current_account_id().to_string();
+        let agent = self.agent.to_string();
+        let epoch = self.mandate_epoch;
+        let proposed = input.proposed_amount_raw.0.to_string();
+        let fitted = input.fitted_amount_raw.map(|u| u.0.to_string()).unwrap_or_default();
+
+        // Distinct structured events within one receipt (NEP-297 envelope).
+        Self::emit_audit_event(
+            "research_completed",
+            &format!(
+                "{{\"cycle_id\":\"{}\",\"portfolio_id\":\"{}\",\"policy\":\"{}\",\"agent\":\"{}\",\"mandate_epoch\":{},\"proposal_id\":\"{}\",\"evidence_hash\":\"{}\"}}",
+                input.cycle_id,
+                self.portfolio_id,
+                policy,
+                agent,
+                epoch,
+                input.proposal_id,
+                input.evidence_hash
+            ),
+        );
+        Self::emit_audit_event(
+            "strategy_proposed",
+            &format!(
+                "{{\"cycle_id\":\"{}\",\"portfolio_id\":\"{}\",\"policy\":\"{}\",\"agent\":\"{}\",\"mandate_epoch\":{},\"proposal_id\":\"{}\",\"chain_id\":\"{}\",\"asset_in\":\"{}\",\"asset_out\":\"{}\",\"proposed_amount_raw\":\"{}\",\"evidence_hash\":\"{}\"}}",
+                input.cycle_id,
+                self.portfolio_id,
+                policy,
+                agent,
+                epoch,
+                input.proposal_id,
+                input.chain_id,
+                input.asset_in,
+                input.asset_out,
+                proposed,
+                input.evidence_hash
+            ),
+        );
+        Self::emit_audit_event(
+            "fitter_evaluated",
+            &format!(
+                "{{\"cycle_id\":\"{}\",\"portfolio_id\":\"{}\",\"policy\":\"{}\",\"agent\":\"{}\",\"mandate_epoch\":{},\"proposal_id\":\"{}\",\"fitted_amount_raw\":\"{}\",\"verdict\":\"{}\",\"evidence_hash\":\"{}\"}}",
+                input.cycle_id,
+                self.portfolio_id,
+                policy,
+                agent,
+                epoch,
+                input.proposal_id,
+                fitted,
+                input.fitter_verdict,
+                input.evidence_hash
+            ),
+        );
+        Self::emit_audit_event(
+            "critic_evaluated",
+            &format!(
+                "{{\"cycle_id\":\"{}\",\"portfolio_id\":\"{}\",\"policy\":\"{}\",\"agent\":\"{}\",\"mandate_epoch\":{},\"proposal_id\":\"{}\",\"verdict\":\"{}\",\"evidence_hash\":\"{}\"}}",
+                input.cycle_id,
+                self.portfolio_id,
+                policy,
+                agent,
+                epoch,
+                input.proposal_id,
+                input.critic_verdict,
+                input.evidence_hash
+            ),
+        );
+        Self::emit_audit_event(
+            "decision_finalized",
+            &format!(
+                "{{\"cycle_id\":\"{}\",\"portfolio_id\":\"{}\",\"policy\":\"{}\",\"agent\":\"{}\",\"mandate_epoch\":{},\"proposal_id\":\"{}\",\"final_action\":\"{}\",\"reason_code\":\"{}\",\"fitter_verdict\":\"{}\",\"evidence_hash\":\"{}\"}}",
+                input.cycle_id,
+                self.portfolio_id,
+                policy,
+                agent,
+                epoch,
+                input.proposal_id,
+                input.final_action,
+                input.reason_code,
+                input.fitter_verdict,
+                input.evidence_hash
+            ),
+        );
+
+        DecisionCycleView {
+            cycle_id: input.cycle_id,
+            portfolio_id: self.portfolio_id.clone(),
+            policy,
+            agent,
+            mandate_epoch: epoch,
+            evidence_hash: input.evidence_hash,
+            final_action: input.final_action,
+            fitter_verdict: input.fitter_verdict,
+            already_recorded: false,
+        }
+    }
+
+    pub fn get_decision_cycle(&self, cycle_id: String) -> Option<DecisionCycleLookup> {
+        if cycle_id.is_empty() || cycle_id.len() > 96 {
+            return None;
+        }
+        let key = Self::decision_cycle_storage_key(&cycle_id);
+        env::storage_read(&key).map(|b| DecisionCycleLookup {
+            cycle_id,
+            evidence_hash: String::from_utf8(b).unwrap_or_default(),
+            portfolio_id: self.portfolio_id.clone(),
+            mandate_epoch: self.mandate_epoch,
+            policy: env::current_account_id().to_string(),
+            agent: self.agent.to_string(),
+        })
+    }
+
+    /// Optional stamp after deploying decision-audit methods. Side-storage only —
+    /// does not rewrite Borsh financial layout.
+    pub fn migrate_state_v2_decision_audit(&mut self) -> u32 {
+        self.assert_owner();
+        const TARGET: u32 = 2;
+        let cur = self.get_state_version();
+        if cur >= TARGET {
+            env::log_str(&format!(
+                "EVENT_JSON:{{\"event\":\"migrate_state_v2_decision_audit\",\"status\":\"already\",\"version\":{}}}",
+                cur
+            ));
+            return cur;
+        }
+        env::storage_write(&Self::state_version_key(), &TARGET.to_le_bytes());
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"migrate_state_v2_decision_audit\",\"status\":\"applied\",\"version\":{}}}",
+            TARGET
+        ));
+        TARGET
+    }
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct DecisionCycleInput {
+    pub cycle_id: String,
+    pub portfolio_id: String,
+    pub mandate_epoch: u64,
+    pub proposal_id: String,
+    pub chain_id: String,
+    pub asset_in: String,
+    pub asset_out: String,
+    pub proposed_amount_raw: U128,
+    pub fitted_amount_raw: Option<U128>,
+    pub fitter_verdict: String,
+    pub critic_verdict: String,
+    pub final_action: String,
+    pub reason_code: String,
+    /// Canonical sha256 hex of the off-chain redacted evidence record.
+    pub evidence_hash: String,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct DecisionCycleView {
+    pub cycle_id: String,
+    pub portfolio_id: String,
+    pub policy: String,
+    pub agent: String,
+    pub mandate_epoch: u64,
+    pub evidence_hash: String,
+    pub final_action: String,
+    pub fitter_verdict: String,
+    pub already_recorded: bool,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct DecisionCycleLookup {
+    pub cycle_id: String,
+    pub evidence_hash: String,
+    pub portfolio_id: String,
+    pub mandate_epoch: u64,
+    pub policy: String,
+    pub agent: String,
 }
 
 #[near(serializers = [json])]
@@ -1551,6 +1793,35 @@ impl PolicyContract {
         let mut key = b"evh:".to_vec();
         key.extend_from_slice(operation_id.as_bytes());
         key
+    }
+
+    fn decision_cycle_storage_key(cycle_id: &str) -> Vec<u8> {
+        let mut key = b"dec:".to_vec();
+        key.extend_from_slice(cycle_id.as_bytes());
+        key
+    }
+
+    fn emit_audit_event(event: &str, data_json_object: &str) {
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"standard\":\"nio_agent_audit\",\"version\":\"1.0.0\",\"event\":\"{}\",\"data\":{}}}",
+            event, data_json_object
+        ));
+    }
+
+    fn assert_audit_id(id: &str, label: &str) {
+        require!(
+            id.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == ':'),
+            format!("{} charset", label)
+        );
+    }
+
+    fn assert_hex64(hex: &str, label: &str) {
+        require!(hex.len() == 64, format!("{} must be 64 hex chars", label));
+        require!(
+            hex.chars().all(|c| c.is_ascii_hexdigit()),
+            format!("{} must be hex", label)
+        );
     }
 
     fn is_reconciler(&self, account: &AccountId) -> bool {
@@ -2884,5 +3155,77 @@ mod tests {
         c.activate_autonomous_mandate(lim, "h".into(), "s".into(), true, true, true);
         testing_env!(context(agent(), 0).build());
         c.propose_trade(proposal("op-over", 11));
+    }
+
+    fn audit_input(cycle_id: &str) -> DecisionCycleInput {
+        DecisionCycleInput {
+            cycle_id: cycle_id.into(),
+            portfolio_id: "nio-mainnet-v1".into(),
+            mandate_epoch: 1,
+            proposal_id: "prop-1".into(),
+            chain_id: "eip155:1".into(),
+            asset_in: "nep141:usdc".into(),
+            asset_out: "native:near".into(),
+            proposed_amount_raw: U128(1_000_000),
+            fitted_amount_raw: None,
+            fitter_verdict: "REJECTED".into(),
+            critic_verdict: "SKIPPED".into(),
+            final_action: "NO_TRADE".into(),
+            reason_code: "NO_OPPORTUNITY".into(),
+            evidence_hash: "a".repeat(64),
+        }
+    }
+
+    #[test]
+    fn record_decision_cycle_works_while_paused() {
+        let mut c = deploy_inert();
+        assert!(c.get_paused());
+        testing_env!(context(agent(), 0).build());
+        let mut input = audit_input("cycle-paused-001");
+        input.portfolio_id = c.get_portfolio_id();
+        input.mandate_epoch = c.get_mandate_epoch();
+        let view = c.record_decision_cycle(input.clone());
+        assert!(!view.already_recorded);
+        assert_eq!(view.final_action, "NO_TRADE");
+        assert_eq!(view.fitter_verdict, "REJECTED");
+        let got = c.get_decision_cycle("cycle-paused-001".into()).unwrap();
+        assert_eq!(got.evidence_hash, input.evidence_hash);
+        // Idempotent same hash
+        let again = c.record_decision_cycle(input);
+        assert!(again.already_recorded);
+    }
+
+    #[test]
+    #[should_panic(expected = "agent only")]
+    fn record_decision_cycle_rejects_non_agent() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut input = audit_input("cycle-owner-fail");
+        input.portfolio_id = c.get_portfolio_id();
+        input.mandate_epoch = c.get_mandate_epoch();
+        c.record_decision_cycle(input);
+    }
+
+    #[test]
+    #[should_panic(expected = "cycle_id collision")]
+    fn record_decision_cycle_collision_rejects() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        let mut a = audit_input("cycle-collide-1");
+        a.portfolio_id = c.get_portfolio_id();
+        a.mandate_epoch = c.get_mandate_epoch();
+        c.record_decision_cycle(a.clone());
+        a.evidence_hash = "b".repeat(64);
+        c.record_decision_cycle(a);
+    }
+
+    #[test]
+    fn migrate_state_v2_decision_audit_idempotent() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let v = c.migrate_state_v2_decision_audit();
+        assert_eq!(v, 2);
+        assert_eq!(c.migrate_state_v2_decision_audit(), 2);
+        assert_eq!(c.get_state_version(), 2);
     }
 }

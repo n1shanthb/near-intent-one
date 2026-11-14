@@ -1,0 +1,29 @@
+{
+  "kind": "AUDIT_SHIP_STATUS",
+  "as_of": "2026-11-14T14:03:30Z",
+  "gates": {
+    "AUDIT_CONTRACT_IMPLEMENTED": "PASS",
+    "AUDIT_MAINNET_UPGRADE_STATUS": "PREVIEW_ONLY_STOP_BEFORE_DEPLOY",
+    "NO_TRADE_ONCHAIN_RECEIPT": "BLOCKED_AWAITING_WASM_UPGRADE",
+    "FITTER_VERDICT_ONCHAIN_RECEIPT": "BLOCKED_AWAITING_WASM_UPGRADE",
+    "OCI_LIVE_API": "PASS",
+    "FRONTEND_LIVE_DEPLOYED": "PENDING",
+    "PUBLIC_PROOF_VERIFY_PAGE": "PASS_CODE",
+    "MANDATE_AND_CHAIN_DISPLAY": "PASS_CODE",
+    "AGENT_INSPECTOR": "PASS_CODE",
+    "END_TO_END_DEMO_VERIFIED": "PARTIAL"
+  },
+  "notes": [
+    "record_decision_cycle + NEP-297 nio_agent_audit events implemented and unit-tested",
+    "Owner Ledger audit WASM upgrade prepared but NOT deployed (explicit stop)",
+    "OCI public GET /v1/mainnet/{agent,mandate,decisions,proof,transactions} live on 129.225.72.169:8787",
+    "Seeded OFFCHAIN_ONLY decision cyc-mainnet-demo-b9cba80b-20261114 (LIVE_LLM NO_TRADE)",
+    "ONCHAIN_VERIFIED receipts require separate DeployContract of audit WASM"
+  ],
+  "oci_checks": {
+    "mainnet_health": true,
+    "mandate_epoch": 3,
+    "autonomous_trading": true,
+    "decision_status": "OFFCHAIN_ONLY"
+  }
+}

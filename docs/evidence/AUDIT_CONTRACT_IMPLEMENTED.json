@@ -1,0 +1,7 @@
+{
+  "kind": "AUDIT_CONTRACT_IMPLEMENTED",
+  "verdict": "PASS",
+  "method": "record_decision_cycle",
+  "nep297": "nio_agent_audit/1.0.0",
+  "borsh_unchanged": true
+}

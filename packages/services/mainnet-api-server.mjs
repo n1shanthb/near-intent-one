@@ -21,6 +21,14 @@ import { runMainnetObservation } from "../mainnet/observe.mjs";
 import { assertMainnetBroadcastAllowed, mainnetExecutionGates } from "../mainnet/safetyGates.mjs";
 import { MAINNET_IDENTITIES } from "../mainnet/identities.mjs";
 import { redactSecrets } from "../mainnet/agentCredentials.mjs";
+import {
+  getLiveAgentSnapshot,
+  getLiveMandateSnapshot,
+  listDecisions,
+  getDecision,
+  getProof,
+  listTransactions,
+} from "./mainnetPublicAudit.mjs";
 
 loadServicesEnv();
 
@@ -91,7 +99,7 @@ async function boot() {
   runtime = await createMainnetAgentRuntime({ env: process.env });
   if (!runtime.ok) {
     console.error(
-      "mainnet agent startup validation FAILED:",
+      "mainnet agent startup validation FAILED (public reads still served):",
       runtime.validation?.reason || "unknown"
     );
     writeFileSync(
@@ -101,12 +109,15 @@ async function boot() {
           at: new Date().toISOString(),
           reason: runtime.validation?.reason,
           failures: runtime.validation?.failures,
+          public_reads: true,
         },
         null,
         2
       )
     );
-    process.exit(1);
+    // Do not exit — Always Free OCI can serve public mandate/decision reads
+    // without local ops-key signing. Privileged observe routes still no-op.
+    runtime = { ok: false, policy: null, gates: {}, local_sign: null };
   }
 
   writeFileSync(
@@ -155,7 +166,14 @@ async function handle(req, res) {
     req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
   const isPublicGet =
     req.method === "GET" &&
-    (path === "/health" || path === "/mainnet/health");
+    (path === "/health" ||
+      path === "/mainnet/health" ||
+      path === "/mainnet/agent" ||
+      path === "/mainnet/mandate" ||
+      path === "/mainnet/decisions" ||
+      path.startsWith("/mainnet/decisions/") ||
+      path.startsWith("/mainnet/proof/") ||
+      path === "/mainnet/transactions");
 
   // Privileged routes (including read-only observe) require service auth when configured.
   // Execution routes always require auth and are still hard-blocked by broadcast gates.
@@ -223,6 +241,30 @@ async function handle(req, res) {
         identities: runtime.identities,
         gates: runtime.gates,
       });
+    }
+
+    if (req.method === "GET" && path === "/mainnet/agent") {
+      return json(req, res, 200, await getLiveAgentSnapshot());
+    }
+    if (req.method === "GET" && path === "/mainnet/mandate") {
+      return json(req, res, 200, await getLiveMandateSnapshot());
+    }
+    if (req.method === "GET" && path === "/mainnet/decisions") {
+      const limit = Number(url.searchParams.get("limit") || 40);
+      return json(req, res, 200, await listDecisions(Math.min(100, limit)));
+    }
+    if (req.method === "GET" && path.startsWith("/mainnet/decisions/")) {
+      const cycle_id = decodeURIComponent(path.slice("/mainnet/decisions/".length));
+      const detail = await getDecision(cycle_id);
+      return json(req, res, detail.ok ? 200 : 404, detail);
+    }
+    if (req.method === "GET" && path.startsWith("/mainnet/proof/")) {
+      const cycle_id = decodeURIComponent(path.slice("/mainnet/proof/".length));
+      const proof = await getProof(cycle_id);
+      return json(req, res, proof.ok ? 200 : 404, proof);
+    }
+    if (req.method === "GET" && path === "/mainnet/transactions") {
+      return json(req, res, 200, await listTransactions());
     }
 
     if (req.method === "GET" && path === "/mainnet/local-sign-check") {
