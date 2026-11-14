@@ -1,0 +1,46 @@
+{
+  "kind": "MAINNET_SHIP_STATUS",
+  "as_of": "2026-11-14T13:21:00Z",
+  "policy": "policy.nishanthb.near",
+  "owner": "nishanthb.near",
+  "ledger_hd": "m/44'/397'/0'/0'/1'",
+  "gates": {
+    "MAINNET_WASM_DEPLOYED": "BLOCKED",
+    "MAINNET_MIGRATED": "BLOCKED",
+    "MAINNET_MANDATE_ACTIVE": "BLOCKED",
+    "MAINNET_UNPAUSED": "BLOCKED",
+    "AUTONOMOUS_KEEPER_RUNNING": "PASS",
+    "AUTONOMOUS_MAINNET_TRADE_SETTLED": "N/A_NO_TRADE",
+    "DEMO_READY": "BLOCKED"
+  },
+  "exact_blocker": {
+    "code": "LedgerHidError(DeviceNotFound)",
+    "meaning": "Owner Ledger not visible over USB / NEAR app not open",
+    "last_attempt": "DeployContract without-init-call to policy.nishanthb.near",
+    "code_hash_unchanged": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "candidate_wasm_sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+    "sha_match": true,
+    "balance_near": "7.9952",
+    "storage_cost_est_near": "0.087640"
+  },
+  "keeper_live_cycle": {
+    "decision_hash": "f9d7df6976a6520662e56d1500fad72d78a23c064850819139ba9f4cdb47cd5b",
+    "action": "NO_TRADE",
+    "reason": "NO_OPPORTUNITY",
+    "fitter": "REJECTED",
+    "models": {
+      "researcher": "google/gemini-2.5-flash",
+      "strategist": "anthropic/claude-sonnet-4.6",
+      "critic": "openai/gpt-5.2"
+    },
+    "note": "Valid LIVE_LLM autonomous refusal; funded path not eligible until WASM+mandate+unpause"
+  },
+  "resume_when_ledger_usb_ready": [
+    "node scripts/mainnet/j18-deploy-upgrade.mjs --execute-deploy",
+    "node scripts/mainnet/j18-deploy-upgrade.mjs --execute-migrate",
+    "node scripts/mainnet/activate-mandate.mjs --activate",
+    "node scripts/mainnet/activate-mandate.mjs --unpause",
+    "$env:NIO_MAINNET_AUTONOMOUS_EXEC='1'; node scripts/mainnet/autonomous-demo-cycle.mjs"
+  ],
+  "or_powershell": "powershell -ExecutionPolicy Bypass -File scripts\\mainnet\\ship-autonomy-today.ps1"
+}

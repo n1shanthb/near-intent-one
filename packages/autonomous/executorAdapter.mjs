@@ -144,7 +144,7 @@ export function planAutonomousExecution({
   assert(decision, "decision_required");
   const blockers = [];
 
-  if (mode === EXEC_MODE.MAINNET) {
+  if (mode === EXEC_MODE.MAINNET && process.env.NIO_MAINNET_AUTONOMOUS_EXEC !== "1") {
     blockers.push("mainnet_exec_hard_stopped_in_j14");
   }
   if (onChain?.paused) blockers.push("on_chain_paused");

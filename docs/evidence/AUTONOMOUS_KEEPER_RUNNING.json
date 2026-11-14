@@ -1,0 +1,114 @@
+{
+  "kind": "AUTONOMOUS_DEMO_CYCLE",
+  "started_at": "2026-11-14T13:20:56.549Z",
+  "policy": "policy.nishanthb.near",
+  "code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+  "upgraded": false,
+  "expected_upgrade": "J14 autonomy WASM (sha 8BF2AEAF…)",
+  "chain": {
+    "paused": true,
+    "autonomous_trading": false,
+    "enforce_autonomous_on_agent": false,
+    "mandate_epoch": 2,
+    "state_version": {
+      "error": "wasm execution failed with error: MethodResolveError(MethodNotFound)"
+    },
+    "limits": {
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 100,
+      "allowed_assets": [
+        "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "nep141:usdt.tether-token.near",
+        "nep141:wrap.near",
+        "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+        "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+        "nep141:base-0x4200000000000000000000000000000000000006.omft.near"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "valid_until": "1798761600000000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "2500000000000000"
+    }
+  },
+  "llm_configured": true,
+  "llm_models": {
+    "researcher": "google/gemini-2.5-flash",
+    "strategist": "anthropic/claude-sonnet-4.6",
+    "critic": "openai/gpt-5.2",
+    "copilot": "google/gemini-2.5-flash"
+  },
+  "journal_secret_path_set": true,
+  "journal_secret_fingerprint": "3ce1bbbea93ca924",
+  "unlock_env": false,
+  "funded_exec_eligible": false,
+  "mandate_hash": "2c76085a1a2cbdc14bc774ad04bdfd0d00dcfababc72ce8e867625471ff4c597",
+  "decision": {
+    "action": "NO_TRADE",
+    "reason": "NO_OPPORTUNITY",
+    "decision_hash": "f9d7df6976a6520662e56d1500fad72d78a23c064850819139ba9f4cdb47cd5b",
+    "mandate_hash": "2c76085a1a2cbdc14bc774ad04bdfd0d00dcfababc72ce8e867625471ff4c597",
+    "fitter_outcome": "REJECTED",
+    "models": {
+      "researcher": "google/gemini-2.5-flash",
+      "strategist": "anthropic/claude-sonnet-4.6",
+      "critic": "openai/gpt-5.2"
+    },
+    "spend": {
+      "delta_usd": 0.034444,
+      "session_usd": 0.034444050000000004,
+      "session_calls": 3,
+      "openrouter_spent_usd": 0.034444,
+      "openrouter_requests_today": 3
+    },
+    "enforcement": "NO_TRADE"
+  },
+  "execution_plan": {
+    "execute": false,
+    "reason": "NO_OPPORTUNITY",
+    "blockers": null,
+    "amount_raw": null,
+    "execution_binding": null,
+    "requires_owner_ledger_per_trade": null,
+    "exec_mode": "SHADOW"
+  },
+  "execution_service": null,
+  "keeper": {
+    "ok": true,
+    "verdict": "PASS",
+    "journal_path": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-keeper\\nio-mainnet-v1-demo-1794662417017\\nio-mainnet-v1-demo-1794662417017.jsonl"
+  },
+  "labels": {
+    "supervised_prior_trades_separate": true,
+    "prior_ops_note": "j8b/m1/m2 canaries were owner-supervised — not autonomous mainnet trades",
+    "no_trade_is_valid": true
+  },
+  "gates": {
+    "AUTONOMOUS_KEEPER_RUNNING": "PASS",
+    "AUTONOMOUS_MAINNET_TRADE_SETTLED": "N/A_NO_TRADE",
+    "DEMO_READY": "BLOCKED"
+  },
+  "blockers": [
+    "MAINNET_WASM_NOT_UPGRADED",
+    "POLICY_PAUSED",
+    "AUTONOMOUS_TRADING_FALSE",
+    "ENFORCE_AUTONOMOUS_FALSE",
+    "NIO_MAINNET_AUTONOMOUS_EXEC_NOT_SET"
+  ]
+}

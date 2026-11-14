@@ -168,7 +168,7 @@ export async function runAutonomousExecution(opts) {
     return trace;
   }
 
-  if (mode === EXEC_MODE.MAINNET) {
+  if (mode === EXEC_MODE.MAINNET && process.env.NIO_MAINNET_AUTONOMOUS_EXEC !== "1") {
     trace.ok = false;
     trace.error = "mainnet_hard_stopped";
     return trace;

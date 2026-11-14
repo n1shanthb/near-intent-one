@@ -2,7 +2,7 @@
  * Unattended autonomous keeper.
  * Cross-process lock, durable journal, real OpenRouter pipeline, restart recovery.
  * Default: SHADOW execution. Optional execAdapters enable LOCAL_FORK/TESTNET path.
- * HARD STOP: MAINNET mode refused; no mainnet mutations from this module.
+ * MAINNET mode requires NIO_MAINNET_AUTONOMOUS_EXEC=1 (owner-gated live demo).
  */
 
 import { strict as assert } from "node:assert";
@@ -42,7 +42,7 @@ import { runAutonomousExecution } from "./executionService.mjs";
  * @param {"fixture"|"LIVE_LLM"} [opts.llmMode]
  * @param {boolean} [opts.liveMarket=true] — fetch live market when LIVE_LLM
  * @param {string} [opts.evidence_dir]
- * @param {string} [opts.execMode=SHADOW] — SHADOW | LOCAL_FORK | TESTNET (MAINNET refused)
+ * @param {string} [opts.execMode=SHADOW] — SHADOW | LOCAL_FORK | TESTNET | MAINNET (MAINNET needs env unlock)
  * @param {object} [opts.execAdapters] — required for non-SHADOW financial execution
  * @param {object} [opts.onChain] — live policy snapshot for revalidation
  * @param {object} [opts.lockedTx]
@@ -67,7 +67,10 @@ export async function runKeeperCycles(opts) {
     getQuote = null,
   } = opts;
 
-  if (execMode === EXEC_MODE.MAINNET) {
+  if (
+    execMode === EXEC_MODE.MAINNET &&
+    process.env.NIO_MAINNET_AUTONOMOUS_EXEC !== "1"
+  ) {
     return {
       ok: false,
       verdict: "FAIL",

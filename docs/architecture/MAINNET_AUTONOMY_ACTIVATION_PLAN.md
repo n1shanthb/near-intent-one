@@ -1,6 +1,6 @@
 # Mainnet Autonomy Activation Plan (J12)
 
-**Status:** PLAN ONLY — HARD STOP. No mainnet WASM upgrade, policy change, key mutation, unpause, autonomy enablement, Ledger signing, MPC `request_signature`, EVM broadcast, or funded operation in this milestone.
+**Status:** SHIP IN PROGRESS (2026-11-14). Plan READY; DeployContract blocked on Ledger USB (`DeviceNotFound`). Local WASM SHA matches J14 `8BF2AEAF…`. LIVE_LLM keeper cycle evidence recorded (`NO_TRADE`). Resume: `scripts/mainnet/ship-autonomy-today.ps1` with Ledger unlocked.
 
 ## Goal
 

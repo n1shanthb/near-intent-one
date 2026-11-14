@@ -1,0 +1,158 @@
+{
+  "kind": "MAINNET_WASM_DEPLOY_UPGRADE",
+  "started_at": "2026-11-14T13:17:40.700Z",
+  "policy": "policy.nishanthb.near",
+  "owner": "nishanthb.near",
+  "ledger_hd": "m/44'/397'/0'/0'/1'",
+  "ledger_pk_expected": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+  "wasm": {
+    "path": "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm",
+    "bytes": 638108,
+    "sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931"
+  },
+  "expected_sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+  "sha_match": true,
+  "without_init_call": true,
+  "rpc": "https://rpc.mainnet.fastnear.com",
+  "pre": {
+    "account_id": "policy.nishanthb.near",
+    "amount_yocto": "7995189049648321200000000",
+    "code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "storage_usage": 629344,
+    "views": {
+      "get_paused": true,
+      "get_mandate_epoch": 2,
+      "get_owner": "nishanthb.near",
+      "get_agent": "agent.nishanthb.near",
+      "get_portfolio_id": "nio-mainnet-v1",
+      "get_derivation_path": "trading/v1/portfolio/nio-mainnet-v1",
+      "get_intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "get_autonomous_trading": false,
+      "get_enforce_autonomous_on_agent": {
+        "error": "wasm execution failed with error: MethodResolveError(MethodNotFound)"
+      },
+      "get_limits": {
+        "max_trade_value": "5000000",
+        "daily_turnover_limit": "25000000",
+        "max_pending_exposure": "10000000",
+        "max_slippage_bps": 100,
+        "allowed_assets": [
+          "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+          "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+          "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+          "nep141:usdt.tether-token.near",
+          "nep141:wrap.near",
+          "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+          "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+          "nep141:base-0x4200000000000000000000000000000000000006.omft.near"
+        ],
+        "allowed_destinations": [
+          "nishanthb.near",
+          "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        ],
+        "valid_until": "1798761600000000000",
+        "token_scope": "allowlist",
+        "allowed_chains": [
+          "near",
+          "eip155:1",
+          "eip155:42161",
+          "eip155:8453"
+        ],
+        "allowed_venues": [
+          "near_intents_1click"
+        ],
+        "max_gas_budget": "2500000000000000"
+      },
+      "get_revocation_status": {
+        "revoked": false,
+        "mandate_epoch": 2,
+        "active_signing_requests": 0,
+        "unresolved_pending": 0,
+        "fully_revoked": false
+      },
+      "get_reserved_pending_exposure": "0",
+      "get_state_version": {
+        "error": "wasm execution failed with error: MethodResolveError(MethodNotFound)"
+      },
+      "list_pending": [
+        {
+          "operation_id": "j8b-canary-1794572720062-8db4f42a",
+          "epoch": 2,
+          "amount_in": "1000000",
+          "destination": "0xcaa3dc3d6d2bb72ade403c614949e66d5ed37f1e",
+          "signing_state": "Signed",
+          "settlement_state": "Success",
+          "payload_commitment": "b1811f74b1c61a67a9f0d80dfabbdd14e46904d5585f847b80c49801ea0640ed",
+          "intent_payload": "7727d9c3-90db-4d35-826a-5b6a5a7d92b2",
+          "evidence_hash": "6bb8b4703e374411285eb3eaecea0fc180ce3494bcbd485f26b976653bb88cf7"
+        },
+        {
+          "operation_id": "m1-canary-1794631150799-fe3b430a",
+          "epoch": 2,
+          "amount_in": "1000000",
+          "destination": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+          "signing_state": "Signed",
+          "settlement_state": "Success",
+          "payload_commitment": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+          "intent_payload": "a61b53cf-b5b1-4213-a90e-e7dfd83389cd",
+          "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31"
+        },
+        {
+          "operation_id": "m2-canary-1794636150765-ed31a108",
+          "epoch": 2,
+          "amount_in": "997398",
+          "destination": "0x16ec400b6dfd911c419305b4954fcee6ed33f4af",
+          "signing_state": "Signed",
+          "settlement_state": "Success",
+          "payload_commitment": "93aa532ca82c2a1bae6fb7be78b5d1c02b16a54e250e5d0dafc751640df7e958",
+          "intent_payload": "88878b07-1ec8-4ce6-b0bf-7f544a4504b8",
+          "evidence_hash": "4650691cb08cfdc69b31e4bb3777dab94d3ab6eab57d308edc7a972ff285fc18"
+        }
+      ]
+    }
+  },
+  "pre_code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+  "balance_near": "7.9952",
+  "storage_delta_bytes_est": 8764,
+  "storage_cost_near_est": "0.087640",
+  "deploy_cmd": [
+    "contract",
+    "deploy",
+    "policy.nishanthb.near",
+    "use-file",
+    "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm",
+    "without-init-call",
+    "network-config",
+    "mainnet",
+    "sign-with-ledger",
+    "--seed-phrase-hd-path",
+    "m/44'/397'/0'/0'/1'",
+    "usb",
+    "send"
+  ],
+  "migrate_cmd": [
+    "contract",
+    "call-function",
+    "as-transaction",
+    "policy.nishanthb.near",
+    "migrate_state_v1_autonomy",
+    "json-args",
+    "{}",
+    "prepaid-gas",
+    "50.0 Tgas",
+    "attached-deposit",
+    "0 NEAR",
+    "sign-as",
+    "nishanthb.near",
+    "network-config",
+    "mainnet",
+    "sign-with-ledger",
+    "--seed-phrase-hd-path",
+    "m/44'/397'/0'/0'/1'",
+    "usb",
+    "send"
+  ],
+  "verdict": "PLAN_READY",
+  "next": "Connect Ledger, unlock, open NEAR app → --execute-deploy → --execute-migrate → --verify"
+}
