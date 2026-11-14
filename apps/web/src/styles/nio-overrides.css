@@ -1061,9 +1061,16 @@ body,
   display: block;
   margin-top: 2px;
 }
+/* Keep active workspace visible on mobile (do not hide topbar switcher). */
 @media (max-width: 900px) {
   .nio-topbar-switcher {
-    display: none;
+    display: flex;
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .nio-topbar-switcher .nio-workspace-switcher {
+    width: min(100%, 320px);
   }
 }
 @media (min-width: 901px) {

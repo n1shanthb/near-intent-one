@@ -168,15 +168,23 @@ export function SecurityPage({
           <section className="axis-panel">
             <div className="axis-panel-heading">
               <h2>Ledger owner authority</h2>
-              <span className="nio-badge nio-badge-recorded">RECORDED</span>
+              <span className="nio-badge nio-badge-recorded">MAINNET OWNER</span>
             </div>
             <dl className="nio-kv nio-kv-compact">
               <div>
-                <dt>Recorded owner</dt>
-                <dd className="mono">{HARDWARE_OWNERSHIP.ownerAccount}</dd>
+                <dt>Mainnet owner</dt>
+                <dd className="mono">
+                  {safeText(mandate?.owner, identities.owner ?? "nishanthb.near")}
+                </dd>
               </div>
               <div>
-                <dt>Ledger key</dt>
+                <dt>Policy</dt>
+                <dd className="mono">
+                  {safeText(mandate?.policy, identities.policy ?? "policy.nishanthb.near")}
+                </dd>
+              </div>
+              <div>
+                <dt>Ledger key (recorded)</dt>
                 <dd className="mono">
                   {HARDWARE_OWNERSHIP.ledgerPublicKey.slice(0, 28)}…
                 </dd>
@@ -186,7 +194,10 @@ export function SecurityPage({
                 <dd>{String(GATE_G_ACCOUNTING.ledger.softwareFullAccessRemaining)}</dd>
               </div>
             </dl>
-            <p className="axis-supporting">{HARDWARE_OWNERSHIP.note}</p>
+            <p className="axis-supporting">
+              Mainnet owner is {identities.owner}. Ledger key metadata is recorded
+              ownership evidence — not a testnet Gate I health signal.
+            </p>
           </section>
         </div>
 

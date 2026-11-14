@@ -202,18 +202,29 @@ export async function getLiveAgentSnapshot() {
         : await viewFnResilient("get_mandate_epoch"),
       null
     );
+    // Prefer composite gate_j fields to avoid fan-out / 429 / Vercel timeouts.
     const autonomous_trading = asTriBool(
-      await viewFnResilient("get_autonomous_trading")
+      hasGj && gj.autonomous_trading != null
+        ? gj.autonomous_trading
+        : await viewFnResilient("get_autonomous_trading")
     );
     const enforce_autonomous_on_agent = asTriBool(
-      await viewFnResilient("get_enforce_autonomous_on_agent")
+      hasGj && gj.enforce_autonomous_on_agent != null
+        ? gj.enforce_autonomous_on_agent
+        : await viewFnResilient("get_enforce_autonomous_on_agent")
     );
     const state_version = unwrapView(
-      await viewFnResilient("get_state_version"),
+      hasGj && gj.state_version != null
+        ? gj.state_version
+        : await viewFnResilient("get_state_version"),
       null
     );
     const revocation = unwrapView(
-      await viewFnResilient("get_revocation_status"),
+      hasGj && gj.revocation != null
+        ? gj.revocation
+        : hasGj
+          ? { revoked: Boolean(gj.revoked) }
+          : await viewFnResilient("get_revocation_status"),
       null
     );
     const limitsRaw =

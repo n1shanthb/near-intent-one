@@ -25,6 +25,7 @@ if (!existsSync("/home/opc/near-intent-one/packages/autonomous/decisionAudit.mjs
 const importBlock = `import {
   getLiveAgentSnapshot,
   getLiveMandateSnapshot,
+  getLiveBalancesSnapshot,
   listDecisions,
   getDecision,
   getProof,
@@ -51,6 +52,7 @@ const publicFlag = `
       path.startsWith("/mainnet/decisions/") ||
       path.startsWith("/mainnet/proof/") ||
       path === "/mainnet/transactions" ||
+      path === "/mainnet/balances" ||
       path === "/mainnet/health");
 `;
 
@@ -98,6 +100,7 @@ const handler = `
         return json(req, res, proof.ok ? 200 : 404, proof);
       }
       if (path === "/mainnet/transactions") return json(req, res, 200, await listTransactions());
+      if (path === "/mainnet/balances") return json(req, res, 200, await getLiveBalancesSnapshot());
     }
 `;
 
