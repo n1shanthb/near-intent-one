@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "confirm": {
+    "ok": true
+  },
+  "sign": {
+    "ok": true,
+    "stage": "MPC_SIGNED",
+    "near_sign_tx": "Aq1Hht1oJ5Rzm6tU21Q5W2WNr3uNXRxTmBtcMXTH484g",
+    "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "observed_digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+    "may_repeat_request_signature": false
+  },
+  "persist": {
+    "ok": true,
+    "stage": "READY_TO_BROADCAST",
+    "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+    "may_resign": false,
+    "reason": null
+  },
+  "pending_post": {
+    "epoch": 2,
+    "amount_in": "1000000",
+    "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destination": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+    "min_amount_out": "994799",
+    "requested_at": 1794631528360673000,
+    "intent_deadline": 1794891253799000000,
+    "payload_commitment": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "intent_payload": "a61b53cf-b5b1-4213-a90e-e7dfd83389cd",
+    "signing_state": "Signed",
+    "settlement_state": "None"
+  },
+  "lifecycle": "READY_TO_BROADCAST",
+  "locked": {
+    "nonce": 0,
+    "gas_price": "196999377",
+    "gas_limit": "75679",
+    "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+    "deposit": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+    "amount": "1000000",
+    "chain_id": 1,
+    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+  },
+  "broadcast_preview": {
+    "operation_id": "m1-canary-1794631150799-fe3b430a",
+    "chain_id": 1,
+    "from": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "to_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "deposit_address": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+    "amount": "1000000",
+    "nonce": 0,
+    "gas_price": "196999377",
+    "gas_limit": "75679",
+    "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+    "raw_bytes_locked": true,
+    "raw_len": 344,
+    "note": "EXPLICIT broadcast approval required before eth_sendRawTransaction"
+  },
+  "auth_expires_at": "2026-11-14T04:59:10.801Z",
+  "remain_ms": 753305,
+  "next": "STOP — await explicit broadcast approval"
+}

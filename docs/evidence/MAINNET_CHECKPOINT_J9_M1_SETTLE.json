@@ -1,0 +1,139 @@
+{
+  "settle": {
+    "ok": true,
+    "stage": "SETTLED",
+    "source": {
+      "ok": true,
+      "status": "CONFIRMED",
+      "tx_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "transfer": {
+        "from": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "to": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+        "value": "1000000"
+      },
+      "gas_used": "62236"
+    },
+    "settlement": {
+      "ok": true,
+      "terminal": true,
+      "normalized": "SUCCESS",
+      "deposit_address": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+      "raw": {
+        "ok": true,
+        "deposit_address": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+        "status": "SUCCESS",
+        "normalized": "SUCCESS",
+        "body": {
+          "status": "SUCCESS",
+          "updatedAt": "2026-11-14T04:49:36.000Z",
+          "correlationId": "2c96cbbe-6270-496a-9f44-c972e36b9fd7",
+          "swapDetails": {
+            "depositedAmount": "1000000",
+            "depositedAmountUsd": "0.999572000000",
+            "depositedAmountFormatted": "1.0",
+            "intentHashes": [
+              "62GP4kTSe6qqqfLRdXYrg2x3fR2NZtv9fMZMXNuhBnBx",
+              "ExVfoZr63SZn2vxQzs9ZhFDr5YbXTSvAEMxVTFwVNduV"
+            ],
+            "nearTxHashes": [
+              "JCxFd8P783ykNr8YManu2NWBcUcEWSS6A9AbxFkZBJbD",
+              "9iTfyZqMq4v7a9AScPJswQXJreHjFfZH1HN49bb92XmA",
+              "4pTseH1NVaA67FiFiVd64oC4MELiPfoTm1mYfxvuFqHj",
+              "4BB35RGWKzXjXYcfweSSDCt7MVcQszSophiy5qm9PNGH"
+            ],
+            "amountIn": "1000000",
+            "amountInFormatted": "1.0",
+            "amountInUsd": "0.999572000000",
+            "amountOut": "999798",
+            "amountOutFormatted": "0.999798",
+            "amountOutUsd": "0.999370086456",
+            "slippage": 0,
+            "refundedAmount": "0",
+            "refundedAmountFormatted": "0",
+            "refundedAmountUsd": "0",
+            "refundReason": null,
+            "refundFee": "300000",
+            "withdrawFee": "0",
+            "originChainTxHashes": [
+              {
+                "hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+                "explorerUrl": ""
+              }
+            ],
+            "destinationChainTxHashes": [
+              {
+                "hash": "4BB35RGWKzXjXYcfweSSDCt7MVcQszSophiy5qm9PNGH",
+                "explorerUrl": ""
+              }
+            ]
+          },
+          "quoteResponse": {
+            "timestamp": "2026-11-14T04:39:14.062Z",
+            "signature": "ed25519:FjdgdoKiK6JfjEe1wzU9UghJNDJjizUZCSzi4a7C1L7wfTMGd8MCTHca6zHo4QkVykNr4cYcDenPfW6pkpQ5aHE",
+            "quoteRequest": {
+              "dry": false,
+              "swapType": "EXACT_INPUT",
+              "depositMode": "SIMPLE",
+              "slippageTolerance": 50,
+              "originAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+              "depositType": "ORIGIN_CHAIN",
+              "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+              "amount": "1000000",
+              "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+              "refundType": "ORIGIN_CHAIN",
+              "recipient": "nishanthb.near",
+              "recipientType": "DESTINATION_CHAIN",
+              "deadline": "2026-11-14T04:54:13.799Z",
+              "appFees": [
+                {
+                  "limitOrderId": null,
+                  "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+                  "fee": 1
+                }
+              ],
+              "virtualChainRecipient": null,
+              "virtualChainRefundRecipient": null,
+              "referral": null,
+              "confidentiality": "public"
+            },
+            "quote": {
+              "amountIn": "1000000",
+              "amountInFormatted": "1.0",
+              "amountInUsd": "0.999582000000",
+              "minAmountIn": "1000000",
+              "amountOut": "999798",
+              "amountOutFormatted": "0.999798",
+              "amountOutUsd": "0.999380084436",
+              "minAmountOut": "994799",
+              "timeWhenInactive": "2026-11-17T04:54:13.799Z",
+              "depositAddress": "0x407a7C4013EEbd3e5D398a76B8d943C4F49C7100",
+              "deadline": "2026-11-17T04:54:13.799Z",
+              "timeEstimate": 45,
+              "refundFee": "300000",
+              "withdrawFee": "0"
+            }
+          }
+        }
+      }
+    },
+    "destination": {
+      "ok": true,
+      "before_raw": "0",
+      "after_raw": "999798",
+      "delta": "999798",
+      "min_amount_out": "994799",
+      "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "account_id": "nishanthb.near",
+      "kind": "nep141"
+    },
+    "note": "reconcile_pending is a separate owner-Ledger confirmation",
+    "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31"
+  },
+  "lifecycle": "SETTLED",
+  "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31",
+  "paused": true,
+  "pending_settlement": "None",
+  "near_delta": "999798",
+  "at": "2026-11-14T04:49:53.866Z"
+}

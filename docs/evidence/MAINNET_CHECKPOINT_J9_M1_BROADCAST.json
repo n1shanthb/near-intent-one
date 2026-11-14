@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "broadcast_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+  "eth_explorer": "https://etherscan.io/tx/0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+  "pause_tx": "ChzpRZGWXnqrZdD3AkkUvcG2knXdP7hhwxL1a375opsG",
+  "source": {
+    "ok": true,
+    "status": "CONFIRMED",
+    "tx_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "transfer": {
+      "from": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "to": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+      "value": "1000000"
+    },
+    "gas_used": "62236"
+  },
+  "oneClick": {
+    "ok": true,
+    "terminal": true,
+    "normalized": "SUCCESS",
+    "reason": null
+  },
+  "near": {
+    "ok": true,
+    "before_raw": "0",
+    "after_raw": "999798",
+    "delta": "999798",
+    "min_amount_out": "994799",
+    "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "account_id": "nishanthb.near",
+    "kind": "nep141"
+  },
+  "settle": {
+    "ok": false,
+    "reason": "fixture_injection_requires_testHarness",
+    "evidence_hash": null
+  },
+  "lifecycle": "SETTLEMENT_PENDING",
+  "paused": true,
+  "pending_settlement": "None",
+  "next": "continue_settlement_monitor",
+  "at": "2026-11-14T04:49:39.106Z"
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "mission1_propose_v1",
+  "operation_id": "m1-canary-1794631150799-fe3b430a",
+  "near_tx": "FqgtwT3huJN3DCsDftDMJkrdrE8F7EBCYkChk6ugCTsU",
+  "explorer": "https://explorer.near.org/transactions/FqgtwT3huJN3DCsDftDMJkrdrE8F7EBCYkChk6ugCTsU",
+  "lifecycle": "PROPOSED",
+  "signing_state": "Reserved",
+  "payload_commitment": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+  "deposit": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+  "amount_in": "1000000",
+  "min_amount_out": "994799",
+  "next": "awaiting_explicit_sign_approval",
+  "at": "2026-11-14T04:45:41.278Z"
+}

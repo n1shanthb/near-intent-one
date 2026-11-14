@@ -1,0 +1,211 @@
+{
+  "ok": true,
+  "reconcile_tx": "7mCCRb7YtdZewy6G4zksfMaycc3bo3MTWtDN7KHdSRZ3",
+  "explorer": "https://explorer.near.org/transactions/7mCCRb7YtdZewy6G4zksfMaycc3bo3MTWtDN7KHdSRZ3",
+  "confirm": {
+    "ok": true,
+    "phase": "reconcile",
+    "record": {
+      "version": 2,
+      "created_at": "2026-11-14T04:39:10.803Z",
+      "payload": {
+        "operation_id": "m1-canary-1794631150799-fe3b430a",
+        "owner": "nishanthb.near",
+        "policy": "policy.nishanthb.near",
+        "agent": "agent.nishanthb.near",
+        "mandate_epoch": 2,
+        "chain_id": 1,
+        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "amount": "1000000",
+        "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "recipient": "nishanthb.near",
+        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "attestor_public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+        "max_gas_price": "5000000000",
+        "max_slippage_bps": 50,
+        "quote_hash": "AzyVaFFfjNcFfwJt5AnHwFVwVpidTx5jfJjUtFdZKWHj",
+        "deposit_address": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+        "route_id": "m1_eth_usdc_to_near_usdc",
+        "destination_kind": "nep141",
+        "destination_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "kind": "one_shot_mainnet_mission1_v1",
+        "expires_at": "2026-11-14T04:59:10.801Z"
+      },
+      "mac": "928e15f34d2e6370d07c14702cdf6caaed9ee9dc73740fe8d3bb778f1832e516",
+      "fingerprint": "fde3df5b58dc3c0c55f4188eb072cf209734087b3f968523e700d4fb318c2367",
+      "used": true,
+      "used_at": "2026-11-14T04:49:53.241Z",
+      "lifecycle_state": "SETTLED",
+      "locked_nonce": 0,
+      "locked_digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+      "locked_local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+      "locked_broadcast_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa",
+      "near_usdc_before": "0",
+      "outcomes": {
+        "QUOTE_VERIFIED": {
+          "at": "2026-11-14T04:39:15.746Z",
+          "quote_hash": "AzyVaFFfjNcFfwJt5AnHwFVwVpidTx5jfJjUtFdZKWHj",
+          "deposit": "0x407a7C4013EEbd3e5D398a76B8d943C4F49C7100",
+          "min_out": "994799",
+          "quote_deadline_ms": 1794891253799,
+          "near_usdc_before": "0"
+        },
+        "ATTESTED": {
+          "at": "2026-11-14T04:39:15.751Z",
+          "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+          "nonce": 0,
+          "min_out": "994799",
+          "propose_args": {
+            "operation_id": "m1-canary-1794631150799-fe3b430a",
+            "attestation": {
+              "deposit_address": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+              "amount_in": "1000000",
+              "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+              "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+              "min_amount_out": "994799",
+              "quote_deadline_ns": "1794891253799000000",
+              "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+              "chain_id": "1",
+              "recipient": "nishanthb.near",
+              "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+              "correlation_id": "a61b53cf-b5b1-4213-a90e-e7dfd83389cd",
+              "quote_hash": "AzyVaFFfjNcFfwJt5AnHwFVwVpidTx5jfJjUtFdZKWHj",
+              "max_gas_price": "5000000000",
+              "gas_limit": "75679"
+            },
+            "attestation_signature": "ed25519:59Tnraot5q59svAmo3PP9rPCsWBsiSapgKVJWs6PQib6wj1vLxDGsYa8Lnpda9KGdgTjDbde1GWgGoy74M8G5ghE",
+            "signer_public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+            "tx": {
+              "nonce": "0",
+              "gas_price": "196999377",
+              "gas_limit": "75679",
+              "chain_id": "1",
+              "token_contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+              "to": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+              "amount": "1000000"
+            },
+            "expected_epoch": 2
+          },
+          "quote_deadline_ms": 1794891253799,
+          "near_usdc_before": "0"
+        },
+        "OWNER_UNPAUSED": {
+          "at": "2026-11-14T04:44:20.985Z",
+          "verified_unpaused": true
+        },
+        "PROPOSED": {
+          "at": "2026-11-14T04:45:31.573Z",
+          "near_tx": "FqgtwT3huJN3DCsDftDMJkrdrE8F7EBCYkChk6ugCTsU",
+          "payload_commitment": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+          "pending_source": "get_pending"
+        },
+        "MPC_SIGNED": {
+          "at": "2026-11-14T04:46:37.224Z",
+          "near_sign_tx": "Aq1Hht1oJ5Rzm6tU21Q5W2WNr3uNXRxTmBtcMXTH484g",
+          "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+          "observed_digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+          "recovered": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+          "signed_raw_hex": "0xf8a980840bbdf8d18301279f94a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4880b844a9059cbb000000000000000000000000407a7c4013eebd3e5d398a76b8d943c4f49c710000000000000000000000000000000000000000000000000000000000000f424026a0aedfb41737fce00000623a2d1494ecb4f7a796c729d2a11f1cdb0c81a38e074ba0194e4eb3fc32398f7a4be0c64dcaab285dfadcfff8af97503c52eb4bc5a72d98"
+        },
+        "READY_TO_BROADCAST": {
+          "at": "2026-11-14T04:46:37.251Z",
+          "local_tx_hash": "02415a7c9ed4e931f091678222269d40c0e70a9d4ec69a2aab79499179ae6e03",
+          "journal_id": "m1-canary-1794631150799-fe3b430a",
+          "signed_raw_locked": true,
+          "recovered": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        },
+        "BROADCASTED": {
+          "at": "2026-11-14T04:47:27.500Z",
+          "broadcast_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa"
+        },
+        "SETTLEMENT_PENDING": {
+          "at": "2026-11-14T04:47:27.502Z",
+          "broadcast_hash": "0x9bc11fc2869cce36fa1ea1e7cb2ed0cf99917241719a841215ebb5466d7567aa"
+        },
+        "SETTLED": {
+          "at": "2026-11-14T04:49:53.238Z",
+          "near_delta": "999798",
+          "min_out": "994799",
+          "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31"
+        }
+      },
+      "consumed_phases": {},
+      "operator_confirmations": {
+        "propose": {
+          "at": "2026-11-14T04:45:25.361Z",
+          "note": "owner_approved_propose_2026-11-14"
+        },
+        "sign": {
+          "at": "2026-11-14T04:46:28.893Z",
+          "note": "owner_approved_sign_2026-11-14"
+        },
+        "broadcast": {
+          "at": "2026-11-14T04:47:21.650Z",
+          "note": "owner_approved_broadcast_2026-11-14"
+        },
+        "reconcile": {
+          "at": "2026-11-14T04:52:06.638Z",
+          "note": "owner_ledger_reconcile_done_7mCCRb7YtdZewy6G4zksfMaycc3bo3MTWtDN7KHdSRZ3"
+        }
+      },
+      "locked_gas_price": "196999377",
+      "locked_gas_limit": "75679",
+      "execution_claim": null,
+      "consume_reason": "settled"
+    }
+  },
+  "recon": {
+    "ok": true,
+    "stage": "RECONCILED",
+    "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31",
+    "onchain": {
+      "ok": true,
+      "pending": {
+        "epoch": 2,
+        "amount_in": "1000000",
+        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "destination": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+        "min_amount_out": "994799",
+        "requested_at": 1794631528360673000,
+        "intent_deadline": 1794891253799000000,
+        "payload_commitment": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+        "intent_payload": "a61b53cf-b5b1-4213-a90e-e7dfd83389cd",
+        "signing_state": "Signed",
+        "settlement_state": "Success"
+      },
+      "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31",
+      "paused": true
+    }
+  },
+  "lifecycle": "RECONCILED",
+  "paused": true,
+  "verify_paused": {
+    "ok": true,
+    "paused": true,
+    "window": {
+      "policy_paused_onchain": true,
+      "owner_pause_required": false,
+      "mpc_signature_outstanding": false,
+      "broadcast_status": "done",
+      "lifecycle_state": "RECONCILED",
+      "note": "Never claim re-paused before on-chain get_paused===true"
+    }
+  },
+  "evidence_hash": "df557df5a4e1528c7a6b5d71f7b4078b94c22da68d9a12232c3126443f2e9d31",
+  "pending_after_list": [
+    {
+      "id": "j8b-canary-1794572720062-8db4f42a",
+      "settlement": "Success"
+    },
+    {
+      "id": "m1-canary-1794631150799-fe3b430a",
+      "settlement": "Success"
+    }
+  ],
+  "mission1_complete": true,
+  "at": "2026-11-14T04:52:06.899Z"
+}

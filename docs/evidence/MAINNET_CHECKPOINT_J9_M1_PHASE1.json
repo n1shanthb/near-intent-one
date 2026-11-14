@@ -1,0 +1,122 @@
+{
+  "ok": true,
+  "phase": "PHASE_2_AWAITING_OWNER_NEAR_MUTATION_APPROVAL",
+  "baseline": "f2f13daccdc7bea17ba7d3277ce8a1ff86e1344f",
+  "head": "f2f13daccdc7bea17ba7d3277ce8a1ff86e1344f",
+  "started_at": "2026-11-14T04:39:04.998Z",
+  "finished_at": "2026-11-14T04:39:15.753Z",
+  "hard_stop": true,
+  "mutations_invoked": false,
+  "near_mutations_pending_approval": true,
+  "checks": {
+    "git_head_match": true,
+    "runner_ok": true,
+    "tests_ok": true,
+    "tls": {
+      "ok": true,
+      "status": 200,
+      "bind": null,
+      "fortinet_mitm": false,
+      "tls_authorized": true,
+      "peer_issuer": {
+        "C": "US",
+        "O": "Google Trust Services",
+        "CN": "WE1"
+      },
+      "error": null
+    },
+    "disk": {
+      "ok": true,
+      "free_bytes": 3429023744,
+      "free_gb": 3.429023744
+    },
+    "journal_ok": true,
+    "paper_funded_disabled": true,
+    "live_adapters_kind": "mission1_live_adapters_v1",
+    "attestor_pk": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
+    "attestor_trusted_onchain": true
+  },
+  "network": {
+    "interfaces": {
+      "vEthernet (WSL (Hyper-V firewall))": [
+        "172.24.144.1"
+      ],
+      "Ethernet 5": [
+        "192.168.56.1"
+      ],
+      "Wi-Fi": [
+        "10.151.103.39"
+      ],
+      "Loopback Pseudo-Interface 1": [
+        "127.0.0.1"
+      ]
+    }
+  },
+  "policy": {
+    "paused": true,
+    "epoch": 2,
+    "max_slippage_bps": 100,
+    "max_trade_value": "5000000",
+    "max_gas_budget": "2500000000000000",
+    "pending_count": 1,
+    "pending_ids": [
+      "j8b-canary-1794572720062-8db4f42a"
+    ]
+  },
+  "transaction": {
+    "operation_id": "m1-canary-1794631150799-fe3b430a",
+    "authorization_expires_at": "2026-11-14T04:59:10.801Z",
+    "authorization_ttl_ms": 1200000,
+    "lifecycle": "ATTESTED",
+    "chain_id": 1,
+    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "amount": "1000000",
+    "amount_label": "1 USDC",
+    "mpc_signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "deposit_address": "0x407a7C4013EEbd3e5D398a76B8d943C4F49C7100",
+    "destination_asset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destination_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "recipient": "nishanthb.near",
+    "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "refund_route": "ORIGIN_CHAIN Ethereum MPC",
+    "min_amount_out": "994799",
+    "quote_deadline_ms": 1794891253799,
+    "quote_slippage_bps_requested": 50,
+    "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac",
+    "nonce": 0,
+    "gas_price": "196999377",
+    "gas_limit": "75679",
+    "max_fee_wei": "14908715851983",
+    "max_fee_eth": 0.000014908715851983,
+    "near_usdc_before": "0",
+    "eth_usdc_balance_raw": null,
+    "eth_balances_note": "Verified during quoteAttest via live RPC (USDC >= 1e6, ETH for gas)"
+  },
+  "required_next_mutations_after_approval": [
+    "1) Owner Ledger unpause() on policy.nishanthb.near",
+    "2) mission1-operator verify-unpaused --op <id>",
+    "3) confirm --phase propose; propose --invoke (exactly once)",
+    "4) confirm --phase sign; sign --invoke (exactly once)",
+    "5) persist signed raw; present broadcast preview; separate broadcast approval",
+    "6) broadcast --invoke (exactly once); verify Eth receipt + USDC transfer",
+    "7) Ledger pause() when safe",
+    "8) settle / monitor 1Click + NEAR NEP-141 delta",
+    "9) separate approval for Ledger reconcile_pending",
+    "10) verify Success + evidence + paused; finalize RECONCILED"
+  ],
+  "blockers": [],
+  "warnings": [
+    "existing_pending_ops:1:j8b-canary-1794572720062-8db4f42a"
+  ],
+  "approval_request": {
+    "ask": "EXPLICIT_APPROVAL_REQUIRED_BEFORE_FIRST_NEAR_MUTATION",
+    "specifically": "Owner Ledger unpause() for this Mission 1 operation only",
+    "not_authorized": [
+      "Mission 2",
+      "second transfer",
+      "policy limit changes",
+      "autonomous funded trading",
+      "propose/sign/broadcast without further separate approvals"
+    ]
+  }
+}
