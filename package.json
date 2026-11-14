@@ -60,6 +60,7 @@
     "j16:keeper": "node scripts/j16/unattended-keeper-testnet.mjs",
     "test:j16": "node --test packages/autonomous/j16.integrity.test.mjs packages/autonomous/j15.settlement.test.mjs",
     "j17:funding-boundary": "node scripts/j17/sepolia-funding-boundary.mjs",
+    "j17:claim-fund": "node scripts/j17/claim-and-fund-mpc.mjs",
     "j17:mpc-broadcast": "node scripts/j17/mpc-sepolia-broadcast.mjs",
     "test:j17": "node --test packages/autonomous/j17.safety.test.mjs packages/autonomous/j16.integrity.test.mjs",
     "mainnet:readiness": "node scripts/mainnet/readiness.mjs",

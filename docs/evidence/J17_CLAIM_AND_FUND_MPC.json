@@ -1,0 +1,41 @@
+{
+  "kind": "J17_CLAIM_AND_FUND_MPC",
+  "started_at": "2026-11-14T11:53:51.606Z",
+  "hard_stop_mainnet": true,
+  "authorization_note": "Owner instructed agent to claim testnet ETH and USDC",
+  "funder": "0x1b1efa11e65c290a8cff0d0c22be3d3e506a5fc4",
+  "mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+  "token": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+  "before": {
+    "funderEth": "0.047354947466062444",
+    "mpcEth": "0.0",
+    "mpcUsdc": "2000000"
+  },
+  "usdc_to_mpc": {
+    "tx_hash": "0x3549cf13e76122e228d9eda0fa2e7e770d09085daa59a492b800edf35f48a74f",
+    "status": 1,
+    "amount_raw": "2000000",
+    "explorer": "https://sepolia.etherscan.io/tx/0x3549cf13e76122e228d9eda0fa2e7e770d09085daa59a492b800edf35f48a74f",
+    "note": "Tidepool USDC already held by funder; transfer used gasLimit 300000 (est ~142k)"
+  },
+  "eth_to_mpc": {
+    "tx_hash": "0xfaac7139ce475e046fe851015c96426d42d0b29cd0ab3ab8c3c0b354df672103",
+    "status": 1,
+    "amount_eth": "0.02",
+    "gasUsed": "204600",
+    "explorer": "https://sepolia.etherscan.io/tx/0xfaac7139ce475e046fe851015c96426d42d0b29cd0ab3ab8c3c0b354df672103",
+    "note": "Native ETH to MPC required elevated gas (~207k estimate), not 21k"
+  },
+  "after": {
+    "funderEth": "0.026945747462993444",
+    "mpcEth": "0.02",
+    "mpcUsdc": "2000000"
+  },
+  "gates": {
+    "SEPOLIA_ETH_CLAIMED_OR_FORWARDED": "PASS",
+    "SEPOLIA_USDC_CLAIMED_OR_FORWARDED": "PASS",
+    "SEPOLIA_FUNDING_CONFIRMED": "PASS"
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-11-14T11:53:51.622Z"
+}

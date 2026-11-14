@@ -1,7 +1,7 @@
 {
   "kind": "J17_SEPOLIA_FUNDING_BOUNDARY",
   "baseline": "ed2bd79",
-  "started_at": "2026-11-14T11:35:06.949Z",
+  "started_at": "2026-11-14T11:54:03.854Z",
   "hard_stop_mainnet": true,
   "hard_stop_testnet_transfer_without_funding_auth": true,
   "note": "This prompt alone does not authorize Sepolia funding or transfers.",
@@ -17,10 +17,10 @@
     "chain_id": 11155111,
     "mpc_address": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
     "explorer": "https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
-    "eth_wei": "0",
-    "eth_ether": 0,
+    "eth_wei": "20000000000000000",
+    "eth_ether": 0.02,
     "nonce": 0,
-    "gas_price_wei": "18",
+    "gas_price_wei": "17",
     "derived_live": {
       "near_secp_key": "secp256k1:2pz2W4ZmSadFUBVVLUxPqXqh1mhqh5ytJ3Zc3vSFMqWogTYdF92Q6x8qpQwc5inv4WbKA5G9CgYnbWNLb1fksTK",
       "evm_address": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
@@ -35,7 +35,7 @@
         "name": "Tidepool Testnet USDC (no value)",
         "symbol": "USDC",
         "decimals": 6,
-        "mpc_balance_raw": "0",
+        "mpc_balance_raw": "2000000",
         "provenance": "Tidepool community testnet USDC (name on-chain). NOT Circle official USDC. Used by Gate-K / J16 allowlists.",
         "explorer": "https://sepolia.etherscan.io/token/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2"
       },
@@ -116,11 +116,11 @@
   },
   "authorization": {
     "env_J17_SEPOLIA_FUNDING_AUTHORIZED": false,
-    "balances_meet_preferred_thresholds": false,
+    "balances_meet_preferred_thresholds": true,
     "note": "Both env auth AND on-chain balances required before broadcast script may proceed."
   },
   "gates": {
-    "SEPOLIA_FUNDING_CONFIRMED": "WAITING_OWNER_FUNDING_AUTH",
+    "SEPOLIA_FUNDING_CONFIRMED": "PASS",
     "AUTHENTIC_MPC_TO_EVM_BROADCAST": "BLOCKED_AT_FUNDING_BOUNDARY",
     "REAL_SEPOLIA_TOKEN_SETTLEMENT": "BLOCKED_AT_FUNDING_BOUNDARY",
     "INDEPENDENT_RECONCILIATION": "BLOCKED_AT_FUNDING_BOUNDARY",
@@ -136,7 +136,7 @@
     "note": "Not an engineering failure. Mainnet Intents micro-canary requires separate owner approval."
   },
   "derived_matches_j16": true,
-  "verdict": "STOP_AT_FUNDING_AUTHORIZATION_BOUNDARY",
+  "verdict": "FUNDED_BUT_AWAITING_EXPLICIT_AUTH_ENV",
   "j16_cross_check": {
     "prior_mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
     "prior_path": "trading/v1/portfolio/j16-mpc-6890",
@@ -147,5 +147,5 @@
     },
     "prior_mpc_sig_gate": "PASS"
   },
-  "finished_at": "2026-11-14T11:35:08.352Z"
+  "finished_at": "2026-11-14T11:54:04.997Z"
 }

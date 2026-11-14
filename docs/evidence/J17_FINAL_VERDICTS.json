@@ -6,24 +6,29 @@
   "hard_stop_testnet_transfer_without_funding_auth": true,
   "gates": {
     "SEPOLIA_FUNDING_CONFIRMED": {
-      "verdict": "WAITING_OWNER_FUNDING_AUTH",
-      "eth_wei": "0",
-      "tidepool_usdc_raw": "0",
+      "verdict": "PASS",
+      "eth_wei": "20000000000000000",
+      "tidepool_usdc_raw": "2000000",
       "mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
       "explorer": "https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
-      "evidence": "docs/evidence/J17_SEPOLIA_FUNDING_BOUNDARY.json"
+      "eth_tx": "https://sepolia.etherscan.io/tx/0xfaac7139ce475e046fe851015c96426d42d0b29cd0ab3ab8c3c0b354df672103",
+      "usdc_tx": "https://sepolia.etherscan.io/tx/0x3549cf13e76122e228d9eda0fa2e7e770d09085daa59a492b800edf35f48a74f",
+      "evidence": [
+        "docs/evidence/J17_CLAIM_AND_FUND_MPC.json",
+        "docs/evidence/J17_SEPOLIA_FUNDING_BOUNDARY.json"
+      ]
     },
     "AUTHENTIC_MPC_TO_EVM_BROADCAST": {
-      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY",
-      "note": "Broadcast script refuses without J17_SEPOLIA_FUNDING_AUTHORIZED=1 and funded balances"
+      "verdict": "READY_AWAITING_AUTH_ENV",
+      "note": "Balances PASS; set J17_SEPOLIA_FUNDING_AUTHORIZED=1 then npm run j17:mpc-broadcast"
     },
     "REAL_SEPOLIA_TOKEN_SETTLEMENT": {
-      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY"
+      "verdict": "READY_AWAITING_AUTH_ENV"
     },
     "INDEPENDENT_RECONCILIATION": {
-      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY",
+      "verdict": "READY_AWAITING_AUTH_ENV",
       "anvil_prior": "PASS (J16)",
-      "sepolia": "pending funding"
+      "sepolia_funding": "PASS"
     },
     "UNATTENDED_KEEPER_READINESS": {
       "verdict": "PASS_SHADOW_FROM_J16",
@@ -66,9 +71,8 @@
     "circle_official_sepolia_usdc": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
   },
   "next_owner_step": [
-    "Explicitly authorize TESTNET Sepolia funding (this package is not authorization)",
-    "Fund MPC 0x9a82c26b… with ≥0.05 Sepolia ETH + ≥2 Tidepool USDC (or authorize Circle USDC + allowlist change)",
-    "Re-run: npm run j17:funding-boundary",
-    "Then: $env:J17_SEPOLIA_FUNDING_AUTHORIZED=1; npm run j17:mpc-broadcast"
+    "SEPOLIA_FUNDING_CONFIRMED=PASS (0.02 ETH + 2 Tidepool USDC on MPC)",
+    "Authorize broadcast: $env:J17_SEPOLIA_FUNDING_AUTHORIZED=1; npm run j17:mpc-broadcast",
+    "Mainnet remains HARD STOP — separate owner approvals still required"
   ]
 }
