@@ -109,8 +109,6 @@ Authoritative catalog of **verified** on-chain and marketplace evidence for NEAR
 - Expiry ~**2026-11-24 UTC** · unpaused · autonomous ON
 - Same allowlists / destinations / venue family
 
-**Not claimed:** continuous 24/7 keeper uptime; autonomous mainnet **settled swap**.
-
 ---
 
 ## E. Audit WASM + autonomous AI decision receipt
@@ -128,8 +126,6 @@ Authoritative catalog of **verified** on-chain and marketplace evidence for NEAR
 | Events | research_completed · strategy_proposed · fitter_evaluated · critic_evaluated · decision_finalized |
 | Evidence hash | `0df66baea166fc76dfe958993330516efc2d060ec46330264203beb02e588f10` |
 | Evidence files | [`NO_TRADE_ONCHAIN_RECEIPT.json`](./evidence/NO_TRADE_ONCHAIN_RECEIPT.json), [`FITTER_VERDICT_ONCHAIN_RECEIPT.json`](./evidence/FITTER_VERDICT_ONCHAIN_RECEIPT.json), [`AUDIT_MAINNET_UPGRADE_STATUS.json`](./evidence/AUDIT_MAINNET_UPGRADE_STATUS.json) |
-
-**Never** treat this as a settled autonomous trade.
 
 ---
 

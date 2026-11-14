@@ -244,7 +244,7 @@ scripts/judge-verify.mjs
 
 **Nishanth B** · `nishanthb.near` · solo (`size: 1`)
 
-Also building **Floorline** (separate Monad submission). Disclose per hackathon Q-015.
+Also building **Floorline** (https://github.com/n1shanthb/floorline) (separate submission). Disclose per hackathon Q-015.
 
 ---
 
