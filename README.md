@@ -4,16 +4,6 @@
 
 Hardware sets the rules. The policy contract—not the agent—owns the multichain signing path. AI can refuse to trade, and that refusal is still a NEAR receipt.
 
-### Watch 2:17 demo
-
-[![NIO 2:17 demo thumbnail](docs/submission/NIO_VIDEO_THUMBNAIL.png)](./NIO_NEAR_HACKATHON_X_FINAL.mp4)
-
-**Duration:** 137 seconds · **File:** [`NIO_NEAR_HACKATHON_X_FINAL.mp4`](./NIO_NEAR_HACKATHON_X_FINAL.mp4) (local / release asset)  
-**X post URL:** *publish after owner review — do not invent a link*  
-Script / shotlist / verification: [`docs/submission/VIDEO_SCRIPT.md`](docs/submission/VIDEO_SCRIPT.md) · [`VIDEO_SHOTLIST.md`](docs/submission/VIDEO_SHOTLIST.md) · [`VIDEO_VERIFICATION.md`](docs/submission/VIDEO_VERIFICATION.md)
-
-### What judges should see first
-
 1. **FOUR CHAINS** — NEAR, Ethereum, Arbitrum, Base  
 2. **HARDWARE OWNER** — real Ledger authority (`nishanthb.near`)  
 3. **ON-CHAIN MANDATE** — epoch **4**: **$5** / trade · **$25** / day · **$10** pending · **200** bps  
@@ -57,8 +47,6 @@ https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s
 - **Independent settlement reconcile** or an on-chain **NO_TRADE** audit receipt.
 - **Limitation:** signatures already produced cannot necessarily be recalled by later revocation.
 
-Do not overclaim “full hardware isolation of every signing path” beyond what the current deployment proves.
-
 ---
 
 ## Hackathon track
@@ -66,7 +54,7 @@ Do not overclaim “full hardware isolation of every signing path” beyond what
 Primary: **Unstoppable DeFi** (`defi`) — Chain Signatures + NEAR Intents trading agent.  
 Also fits: **AI Security & Defense** (`security`), **Agent Economy** (`agents`).
 
-**Cross-project disclosure (Q-015):** The same author also submits **Floorline** (Monad track / separate repository). NIO and Floorline are independent products and codebases.
+Also building **Floorline** (https://github.com/n1shanthb/floorline) (separate submission). Disclose per hackathon Q-015.
 
 ---
 
@@ -84,10 +72,8 @@ Judges browse the public UI **without connecting a wallet**.
 ---
 
 ## Demo UI
-
-![NIO overview](docs/screenshots/judge-polish/nio-repair-overview-1440.png)
-
-![NIO agent workspace](docs/screenshots/judge-polish/nio-repair-agent-1440.png)
+<img width="1896" height="907" alt="Screenshot 2026-11-15 004725" src="https://github.com/user-attachments/assets/dc71938b-defc-4045-b8d4-fe26b3b3bb5b" />
+<img width="1917" height="1062" alt="Screenshot 2026-11-15 004918" src="https://github.com/user-attachments/assets/f984d8d6-b858-4920-860d-48c69da54471" />
 
 ---
 
@@ -161,13 +147,11 @@ Original activate: [6zQs6C…](https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T
 | Reason | NO_OPPORTUNITY |
 | Status | ONCHAIN_VERIFIED |
 
-This is the currently proven autonomous outcome under an active mandate. **Not** a settled autonomous swap.
-
 ---
 
 ## Owner-supervised mainnet Intents settlements
 
-Three funded, reconciled canaries. Label: **OWNER-SUPERVISED MAINNET INTENTS SETTLEMENTS**.
+Three funded, reconciled canaries. 
 
 | Mission | Route | EVM transaction | NEAR reconciliation |
 | --- | --- | --- | --- |
@@ -279,8 +263,6 @@ scripts/judge-verify.mjs
 
 **Nishanth B** · `nishanthb.near` · solo (`size: 1`)
 
-Also building **Floorline** (https://github.com/n1shanthb/floorline) (separate submission). Disclose per hackathon Q-015.
-
 ---
 
 ## Hackathon submission
@@ -291,7 +273,7 @@ Also building **Floorline** (https://github.com/n1shanthb/floorline) (separate s
 | Deadline | 2026-11-14 23:59 UTC |
 | Form | https://nearhackathon.com/#apply |
 | Repo | https://github.com/n1shanthb/near-intent-one |
-| Demo X post | *human publishes — placeholder until posted* |
+| Demo X post | (https://x.com/n1shanthb/status/2121690411437797531?a=12YGOa6a5Is-7J6EO1Y&s=20) |
 | Pack | [`docs/submission/SUBMISSION.md`](docs/submission/SUBMISSION.md) |
 
 License: [MIT](LICENSE)
