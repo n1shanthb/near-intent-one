@@ -13,7 +13,12 @@ import {
   hasVerifiedMainnetContract,
 } from "../../data/mainnetEvidence";
 import { workspaceNetworkContext } from "../../lib/network";
-import { usdcLabel, chainBadge } from "../../adapters/mainnetPublic";
+import {
+  usdcLabel,
+  chainBadge,
+  safeText,
+  safeNumber,
+} from "../../adapters/mainnetPublic";
 import {
   formatLastUpdated,
   useWorkspace,
@@ -173,22 +178,27 @@ export function OverviewPage({
             <div>
               <dt>Owner</dt>
               <dd style={{ fontSize: 16 }} className="mono">
-                {mandate?.owner ?? identities.owner}
+                {safeText(mandate?.owner, identities.owner ?? "—")}
               </dd>
             </div>
             <div>
               <dt>Epoch</dt>
               <dd style={{ fontSize: 22 }}>
-                {mandate?.mandate_epoch ?? MAINNET_EVIDENCE.policy.epoch ?? "—"}
+                {safeText(
+                  safeNumber(mandate?.mandate_epoch, MAINNET_EVIDENCE.policy.epoch),
+                  "—"
+                )}
               </dd>
             </div>
             <div>
               <dt>Autonomous</dt>
               <dd style={{ fontSize: 18 }}>
                 {mandate
-                  ? mandate.autonomous_trading
-                    ? "ON"
-                    : "OFF"
+                  ? typeof mandate.autonomous_trading === "boolean"
+                    ? mandate.autonomous_trading
+                      ? "ON"
+                      : "OFF"
+                    : "—"
                   : live.status === "loading"
                     ? "…"
                     : "—"}
@@ -269,7 +279,7 @@ export function OverviewPage({
             <div className="axis-stat">
               <span>state_version</span>
               <strong style={{ fontSize: 18 }}>
-                {String(mandate.state_version)}
+                {safeText(mandate.state_version)}
               </strong>
             </div>
           </div>

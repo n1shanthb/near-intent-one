@@ -40,6 +40,17 @@ export async function pickMainnetRpc() {
   throw new Error("no_mainnet_rpc");
 }
 
+/** True when a view result is an RPC/contract error envelope — never render these in React. */
+export function isViewError(value) {
+  return Boolean(value && typeof value === "object" && "error" in value);
+}
+
+/** Unwrap a view result to a scalar/object, or `fallback` when the RPC failed. */
+export function unwrapView(value, fallback = null) {
+  if (value == null || isViewError(value)) return fallback;
+  return value;
+}
+
 export async function viewFn(url, methodName, args = {}) {
   const j = await rpc(url, "query", {
     request_type: "call_function",
@@ -57,6 +68,25 @@ export async function viewFn(url, methodName, args = {}) {
   }
 }
 
+/** Prefer a healthy RPC; on rate-limit / failure, try the next endpoint. */
+export async function viewFnResilient(methodName, args = {}) {
+  let lastErr = null;
+  for (const url of RPCS) {
+    try {
+      const out = await viewFn(url, methodName, args);
+      if (!isViewError(out)) return out;
+      lastErr = out.error;
+      const msg = JSON.stringify(out.error || "");
+      if (!/-320/i.test(msg) && !/rate limit/i.test(msg) && !/-429/i.test(msg)) {
+        return out;
+      }
+    } catch (e) {
+      lastErr = String(e.message || e);
+    }
+  }
+  return { error: lastErr || "all_rpcs_failed" };
+}
+
 export async function viewAccount(url) {
   const j = await rpc(url, "query", {
     request_type: "view_account",
@@ -68,15 +98,93 @@ export async function viewAccount(url) {
 }
 
 let cache = { at: 0, mandate: null, agent: null };
-const CACHE_MS = 15_000;
+const CACHE_MS = 20_000;
 
 export async function getLiveAgentSnapshot() {
   const now = Date.now();
   if (cache.agent && now - cache.at < CACHE_MS) {
     return { ...cache.agent, cache_age_ms: now - cache.at, fresh: false };
   }
-  const url = await pickMainnetRpc();
-  const acct = await viewAccount(url);
+  let url;
+  try {
+    url = await pickMainnetRpc();
+  } catch (e) {
+    if (cache.agent) {
+      return {
+        ...cache.agent,
+        fresh: false,
+        stale: true,
+        rpc_error: String(e.message || e),
+      };
+    }
+    throw e;
+  }
+  let acct;
+  try {
+    acct = await viewAccount(url);
+  } catch (e) {
+    if (cache.agent) {
+      return {
+        ...cache.agent,
+        fresh: false,
+        stale: true,
+        rpc_error: String(e.message || e),
+      };
+    }
+    throw e;
+  }
+
+  // Prefer composite + a few critical views. Never fan out 12+ sequential RPC calls
+  // (FastNear free tier returns -429 and {error} envelopes that crash React if rendered).
+  const gj = await viewFnResilient("get_gate_j_mandate");
+  const hasGj = !isViewError(gj);
+  const prior = cache.agent?.views || {};
+
+  const [pausedV, epochV, autoV, enforceV, stateV, revocationV, limitsV] =
+    await Promise.all([
+      hasGj && gj.paused != null
+        ? Promise.resolve(gj.paused)
+        : viewFnResilient("get_paused"),
+      hasGj && gj.mandate_epoch != null
+        ? Promise.resolve(gj.mandate_epoch)
+        : viewFnResilient("get_mandate_epoch"),
+      viewFnResilient("get_autonomous_trading"),
+      viewFnResilient("get_enforce_autonomous_on_agent"),
+      viewFnResilient("get_state_version"),
+      viewFnResilient("get_revocation_status"),
+      hasGj && gj.limits
+        ? Promise.resolve(gj.limits)
+        : viewFnResilient("get_limits"),
+    ]);
+
+  const owner = MAINNET_IDENTITIES.owner;
+  const agent = MAINNET_IDENTITIES.agent;
+  const portfolio_id = MAINNET_IDENTITIES.portfolio_id;
+  const paused = unwrapView(pausedV, unwrapView(prior.paused, null));
+  const mandate_epoch = unwrapView(
+    epochV,
+    unwrapView(prior.mandate_epoch, null)
+  );
+  const autonomous_trading = unwrapView(
+    autoV,
+    unwrapView(prior.autonomous_trading, null)
+  );
+  const enforce_autonomous_on_agent = unwrapView(
+    enforceV,
+    unwrapView(prior.enforce_autonomous_on_agent, null)
+  );
+  const state_version = unwrapView(stateV, unwrapView(prior.state_version, null));
+  const revocation = unwrapView(revocationV, unwrapView(prior.revocation, null));
+  const reserved_pending_exposure = unwrapView(
+    hasGj && gj.reserved_pending_exposure != null
+      ? gj.reserved_pending_exposure
+      : prior.reserved_pending_exposure,
+    "0"
+  );
+  const intents_signer_id = MAINNET_IDENTITIES.mpc_evm_address;
+  const derivation_path = MAINNET_IDENTITIES.derivation_path;
+  const limits = unwrapView(limitsV, unwrapView(prior.limits, {}));
+
   const snap = {
     ok: true,
     network: "mainnet",
@@ -93,18 +201,21 @@ export async function getLiveAgentSnapshot() {
     code_hash: acct.code_hash,
     storage_usage: acct.storage_usage,
     views: {
-      owner: await viewFn(url, "get_owner"),
-      agent: await viewFn(url, "get_agent"),
-      portfolio_id: await viewFn(url, "get_portfolio_id"),
-      paused: await viewFn(url, "get_paused"),
-      mandate_epoch: await viewFn(url, "get_mandate_epoch"),
-      autonomous_trading: await viewFn(url, "get_autonomous_trading"),
-      enforce_autonomous_on_agent: await viewFn(url, "get_enforce_autonomous_on_agent"),
-      state_version: await viewFn(url, "get_state_version"),
-      revocation: await viewFn(url, "get_revocation_status"),
-      reserved_pending_exposure: await viewFn(url, "get_reserved_pending_exposure"),
-      intents_signer_id: await viewFn(url, "get_intents_signer_id"),
-      derivation_path: await viewFn(url, "get_derivation_path"),
+      owner,
+      agent,
+      portfolio_id,
+      paused,
+      mandate_epoch,
+      autonomous_trading,
+      enforce_autonomous_on_agent,
+      state_version,
+      revocation,
+      reserved_pending_exposure,
+      intents_signer_id,
+      derivation_path,
+      limits: limits && typeof limits === "object" ? limits : {},
+      daily_turnover: hasGj ? unwrapView(gj.daily_turnover, null) : null,
+      realized_exposure: hasGj ? unwrapView(gj.realized_exposure, null) : null,
     },
     provenance: {
       deploy_tx: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
@@ -113,57 +224,70 @@ export async function getLiveAgentSnapshot() {
       unpause_tx: "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
     },
   };
-  const gj = await viewFn(url, "get_gate_j_mandate");
-  if (!gj?.error) {
-    snap.gate_j_mandate = gj;
-    snap.views.daily_turnover = gj.daily_turnover;
-    snap.views.realized_exposure = gj.realized_exposure;
-    snap.views.limits = gj.limits;
-  } else {
-    snap.views.limits = await viewFn(url, "get_limits");
-  }
+  if (hasGj) snap.gate_j_mandate = gj;
   cache = { at: now, agent: snap, mandate: null };
   return snap;
 }
 
 export async function getLiveMandateSnapshot() {
   const agent = await getLiveAgentSnapshot();
-  const limits = agent.views.limits || agent.gate_j_mandate?.limits || {};
+  const limitsRaw = agent.views.limits || agent.gate_j_mandate?.limits || {};
+  const limits = isViewError(limitsRaw) ? {} : limitsRaw;
   const validUntilNs = Number(limits.valid_until || 0);
   const nowMs = Date.now();
   const expiryMs = validUntilNs > 0 ? Math.floor(validUntilNs / 1e6) : null;
+  const epoch = unwrapView(agent.views.mandate_epoch, null);
+  const stateVersion = unwrapView(agent.views.state_version, null);
+  const reserved = unwrapView(agent.views.reserved_pending_exposure, "0");
   return {
     ok: true,
     network: "mainnet",
     fetched_at: agent.fetched_at,
     fresh: agent.fresh,
-    owner: agent.views.owner,
-    agent: agent.views.agent,
+    owner: unwrapView(agent.views.owner, MAINNET_IDENTITIES.owner),
+    agent: unwrapView(agent.views.agent, MAINNET_IDENTITIES.agent),
     policy: MAINNET_IDENTITIES.policy,
-    portfolio_id: agent.views.portfolio_id,
-    mandate_epoch: agent.views.mandate_epoch,
-    paused: agent.views.paused,
-    revoked: agent.views.revocation?.revoked ?? false,
-    autonomous_trading: agent.views.autonomous_trading,
-    enforce_autonomous_on_agent: agent.views.enforce_autonomous_on_agent,
-    state_version: agent.views.state_version,
+    portfolio_id: unwrapView(
+      agent.views.portfolio_id,
+      MAINNET_IDENTITIES.portfolio_id
+    ),
+    mandate_epoch: typeof epoch === "number" ? epoch : Number(epoch) || null,
+    paused: unwrapView(agent.views.paused, null),
+    revoked: Boolean(agent.views.revocation?.revoked),
+    autonomous_trading: Boolean(unwrapView(agent.views.autonomous_trading, false)),
+    enforce_autonomous_on_agent: Boolean(
+      unwrapView(agent.views.enforce_autonomous_on_agent, false)
+    ),
+    state_version:
+      typeof stateVersion === "number" || typeof stateVersion === "string"
+        ? stateVersion
+        : null,
     limits: {
-      max_trade_value: limits.max_trade_value,
-      daily_turnover_limit: limits.daily_turnover_limit,
-      max_pending_exposure: limits.max_pending_exposure,
-      max_slippage_bps: limits.max_slippage_bps,
-      max_gas_budget: limits.max_gas_budget,
-      token_scope: limits.token_scope,
-      allowed_chains: limits.allowed_chains || [],
-      allowed_assets: limits.allowed_assets || [],
-      allowed_venues: limits.allowed_venues || [],
-      allowed_destinations: limits.allowed_destinations || [],
-      valid_until: limits.valid_until,
+      max_trade_value: limits.max_trade_value ?? null,
+      daily_turnover_limit: limits.daily_turnover_limit ?? null,
+      max_pending_exposure: limits.max_pending_exposure ?? null,
+      max_slippage_bps: limits.max_slippage_bps ?? null,
+      max_gas_budget: limits.max_gas_budget ?? null,
+      token_scope: limits.token_scope ?? null,
+      allowed_chains: Array.isArray(limits.allowed_chains)
+        ? limits.allowed_chains
+        : [],
+      allowed_assets: Array.isArray(limits.allowed_assets)
+        ? limits.allowed_assets
+        : [],
+      allowed_venues: Array.isArray(limits.allowed_venues)
+        ? limits.allowed_venues
+        : [],
+      allowed_destinations: Array.isArray(limits.allowed_destinations)
+        ? limits.allowed_destinations
+        : [],
+      valid_until: limits.valid_until ?? null,
     },
     usage: {
-      reserved_pending_exposure: agent.views.reserved_pending_exposure,
-      daily_turnover: agent.views.daily_turnover,
-      realized_exposure: agent.views.realized_exposure,
+      reserved_pending_exposure:
+        typeof reserved === "object" ? "0" : String(reserved ?? "0"),
+      daily_turnover: unwrapView(agent.views.daily_turnover, null),
+      realized_exposure: unwrapView(agent.views.realized_exposure, null),
     },
     expiry: {
       valid_until_ns: limits.valid_until || null,

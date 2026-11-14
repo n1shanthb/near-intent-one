@@ -1,6 +1,8 @@
 import {
   usdcLabel,
   chainBadge,
+  safeText,
+  safeNumber,
 } from "../../adapters/mainnetPublic";
 import {
   formatLastUpdated,
@@ -69,7 +71,7 @@ export function AutonomousMandatePreview() {
               enforce={String(mandate.enforce_autonomous_on_agent)}
             </span>{" "}
             <span className="nio-badge nio-badge-idle">
-              state_version={String(mandate.state_version)}
+              state_version={safeText(mandate.state_version)}
             </span>
           </p>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
@@ -77,16 +79,16 @@ export function AutonomousMandatePreview() {
               <tr>
                 <td>Owner / Agent</td>
                 <td className="mono">
-                  {mandate.owner} / {mandate.agent}
+                  {safeText(mandate.owner)} / {safeText(mandate.agent)}
                 </td>
               </tr>
               <tr>
                 <td>Portfolio</td>
-                <td className="mono">{mandate.portfolio_id}</td>
+                <td className="mono">{safeText(mandate.portfolio_id)}</td>
               </tr>
               <tr>
                 <td>Epoch</td>
-                <td>{mandate.mandate_epoch}</td>
+                <td>{safeText(safeNumber(mandate.mandate_epoch))}</td>
               </tr>
               <tr>
                 <td>Max trade</td>

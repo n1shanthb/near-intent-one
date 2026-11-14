@@ -137,3 +137,49 @@ export function chainBadge(id: string): { label: string; tone: string } {
   if (id === "eip155:8453") return { label: "Base", tone: "base" };
   return { label: id, tone: "other" };
 }
+
+/**
+ * Never pass RPC `{error}` envelopes (or any object) into JSX children.
+ * React error #31 = blank white page when an object is rendered as text.
+ */
+export function safeText(value: unknown, fallback = "—"): string {
+  if (value == null) return fallback;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "object" && value !== null && "error" in value) {
+    return fallback;
+  }
+  return fallback;
+}
+
+export function safeNumber(value: unknown, fallback: number | null = null): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  return fallback;
+}
+
+/** Drop non-scalar / error-envelope fields from a mandate-like payload. */
+export function sanitizeMandate<T extends Record<string, unknown>>(raw: T): T {
+  const out: Record<string, unknown> = { ...raw };
+  for (const key of [
+    "owner",
+    "agent",
+    "policy",
+    "portfolio_id",
+    "mandate_epoch",
+    "paused",
+    "revoked",
+    "autonomous_trading",
+    "enforce_autonomous_on_agent",
+    "state_version",
+  ]) {
+    const v = out[key];
+    if (v && typeof v === "object") {
+      out[key] = null;
+    }
+  }
+  return out as T;
+}

@@ -20,6 +20,7 @@ import {
   fetchMainnetDecisions,
   fetchMainnetMandate,
   fetchMainnetTransactions,
+  sanitizeMandate,
   type MainnetBalances,
   type MainnetDecisionSummary,
   type MainnetMandate,
@@ -150,14 +151,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!isPublic) return;
     setLiveStatus((s) => (s === "ready" || s === "stale" ? s : "loading"));
     try {
-      const [m, a, d, t, b] = await Promise.all([
-        fetchMainnetMandate(),
+      // Mandate first so upstream can warm RPC cache before other reads.
+      const m = await fetchMainnetMandate();
+      setMandate(
+        m?.ok
+          ? (sanitizeMandate(
+              m as unknown as Record<string, unknown>
+            ) as unknown as MainnetMandate)
+          : m
+      );
+      const [a, d, t, b] = await Promise.all([
         fetchMainnetAgent().catch(() => null),
         fetchMainnetDecisions(40),
         fetchMainnetTransactions().catch(() => null),
         fetchMainnetBalances().catch(() => null),
       ]);
-      setMandate(m);
       setAgent(a);
       setDecisions(d.decisions || []);
       setTransactions(t);

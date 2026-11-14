@@ -91,9 +91,9 @@
 .axis-layout .axis-overview-catalog { display:flex; flex-direction:column; gap:16px; padding:21px; border:1px solid #ffffff4d; border-radius:12px; background:#ffffff12; min-width:0; }
 .axis-layout .axis-overview-catalog-label { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:550; }
 .axis-layout .axis-overview-catalog dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0; }
-.axis-layout .axis-overview-catalog dl > div { display:flex; flex-direction:column; gap:10px; padding:15px 13px; border-radius:9px; background:#fff; min-width:0; }
-.axis-layout .axis-overview-catalog dt { order:2; font-size:14px; line-height:1.4; }
-.axis-layout .axis-overview-catalog dd { order:1; font-size:36px; letter-spacing:-1.4px; font-weight:600; line-height:1; margin:0; font-variant-numeric:tabular-nums; }
+.axis-layout .axis-overview-catalog dl > div { display:flex; flex-direction:column; gap:10px; padding:15px 13px; border-radius:9px; background:#fff; color:#111827; min-width:0; }
+.axis-layout .axis-overview-catalog dt { order:2; font-size:14px; line-height:1.4; color:#5b6472; }
+.axis-layout .axis-overview-catalog dd { order:1; font-size:36px; letter-spacing:-1.4px; font-weight:600; line-height:1; margin:0; font-variant-numeric:tabular-nums; color:#111827; }
 .axis-layout .axis-overview-catalog-note { font-size:13px; }
 .axis-layout .axis-overview-actions { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
 .axis-layout .axis-overview-action { gap:13px; padding:20px; min-height:105px; border:1px solid var(--axis-box-border); border-radius:12px; background:#fff; box-shadow:var(--axis-elevation); transition:transform .18s,box-shadow .18s,border-color .18s; }
