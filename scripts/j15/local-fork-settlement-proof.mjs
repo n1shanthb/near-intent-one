@@ -159,7 +159,7 @@ const adapters = {
         depositAddress: DEPOSIT,
         amount: AMOUNT,
       },
-      allowLocalForkLabel: true,
+      allowSimulatorLabel: true,
     });
   },
   reconcile: async ({ independent_evidence, settle }) => {

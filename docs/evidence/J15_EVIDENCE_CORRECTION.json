@@ -1,0 +1,34 @@
+{
+  "kind": "J15_EVIDENCE_CORRECTION",
+  "corrected_at": "2026-11-14T09:25:00.000Z",
+  "baseline_corrected": "e8901f4",
+  "hard_stop_mainnet": true,
+  "correction": {
+    "createLocalForkRpc": {
+      "previous_label": "LOCAL_FORK",
+      "correct_classification": "IN_MEMORY_RPC_SIMULATOR",
+      "is_anvil": false,
+      "is_hardhat": false,
+      "is_real_evm_node": false,
+      "manufactures_receipts": true,
+      "manufactures_erc20_transfer_logs": true,
+      "independent_settlement_proof": false
+    },
+    "gates_corrected": {
+      "REAL_TESTNET_OR_LOCAL_FORK_BROADCAST": "RECLASSIFIED_NO_GO_SIMULATOR_NOT_FORK",
+      "INDEPENDENT_SETTLEMENT_VERIFICATION": "RECLASSIFIED_NO_GO_SYNTHETIC_RECEIPT",
+      "RECONCILIATION_PROOF": "RECLASSIFIED_NO_GO_ADAPTER_BOOLEAN_WITH_SYNTHETIC_SETTLE",
+      "MPC_SIGNATURE_RECOVERY": "PASS_LOCAL_KEY_ONLY_NOT_NEAR_MPC",
+      "REAL_SIGNED_EVM_TRANSACTION": "PASS_BYTES_VALID_BUT_NOT_CHAIN_SETTLED",
+      "AUTONOMOUS_KEEPER_TO_EXECUTOR": "PASS_WIRING_ONLY",
+      "MAINNET_READY_FOR_SEPARATE_OWNER_APPROVAL": "NO-GO"
+    }
+  },
+  "historic_evidence_preserved": [
+    "docs/evidence/J15_LOCAL_FORK_SETTLEMENT_PROOF.json",
+    "docs/evidence/J15_FINAL_VERDICTS.json",
+    "docs/evidence/J15_MAINNET_ACTIVATION_READINESS.md",
+    "docs/evidence/J15_KEEPER_TO_EXECUTOR.json"
+  ],
+  "note": "Historic J15 files retained; do not treat PASS_LOCAL_FORK as independent chain settlement. J16 supersedes readiness claims with real-node evidence."
+}

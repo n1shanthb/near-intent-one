@@ -89,7 +89,7 @@ describe("J15 signed tx pipeline", () => {
         depositAddress: DEPOSIT,
         amount: AMOUNT,
       },
-      allowLocalForkLabel: true,
+      allowSimulatorLabel: true,
     });
     assert.equal(settle.ok, true);
   });
@@ -170,6 +170,24 @@ describe("J15 fail-closed financial execution", () => {
     assert.equal(trace.error, "placeholder_signed_raw_forbidden");
   });
 
+  it("rejects synthetic receipt as financial settlement", () => {
+    const settle = verifySettlementFromReceipt({
+      receipt: {
+        status: "0x1",
+        from: "0xabc",
+        to: TOKEN,
+        transactionHash: "0x1",
+        logs: [],
+        label: "IN_MEMORY_RPC_SIMULATOR",
+        synthetic: true,
+      },
+      expected: { token: TOKEN, amount: AMOUNT },
+      requireRealNode: true,
+    });
+    assert.equal(settle.ok, false);
+    assert.equal(settle.financial_readiness, false);
+  });
+
   it("full LOCAL_FORK path PASS with real signed bytes", async () => {
     const signer = generateLocalForkSigner();
     const fork = createLocalForkRpc({
@@ -240,12 +258,14 @@ describe("J15 fail-closed financial execution", () => {
               depositAddress: DEPOSIT,
               amount: AMOUNT,
             },
-            allowLocalForkLabel: true,
+            allowSimulatorLabel: true,
           });
         },
-        reconcile: async ({ independent_evidence }) => {
-          assert.equal(independent_evidence, true);
-          return { ok: true, status: "RECONCILED" };
+        reconcile: async ({ independent_evidence, settle }) => {
+          // Simulator settle is labeled OK but not independent (J16 correction)
+          assert.equal(independent_evidence, false);
+          assert.equal(settle?.independently_verified, false);
+          return { ok: true, status: "RECONCILED_SIMULATOR_LABELED" };
         },
       },
     });

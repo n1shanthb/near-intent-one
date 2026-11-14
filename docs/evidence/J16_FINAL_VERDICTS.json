@@ -1,0 +1,65 @@
+{
+  "kind": "J16_FINAL_VERDICTS",
+  "baseline": "e8901f4",
+  "finished_at": "2026-11-14T11:25:00.000Z",
+  "hard_stop_mainnet": true,
+  "gates": {
+    "REAL_EVM_NODE_EXECUTION": {
+      "verdict": "PASS",
+      "evidence": "docs/evidence/J16_ANVIL_ERC20_PROOF.json",
+      "tx_hash": "0xb1da35507d4229db88e220a0b3ef9f05986d46275517f7c782cf3c86ff1ea880",
+      "explorer": null,
+      "note": "local Anvil — no public explorer URL"
+    },
+    "AUTHENTIC_NEAR_MPC_SIGNATURE": {
+      "verdict": "PASS",
+      "evidence": "docs/evidence/J16_MPC_EVM_TESTNET_ATTEMPT.json",
+      "near_tx": "9eaSHcVf1vCDHp9tntxFx4LvVLdzp7zxNfUs4uG362X",
+      "explorer": "https://testnet.nearblocks.io/txns/9eaSHcVf1vCDHp9tntxFx4LvVLdzp7zxNfUs4uG362X",
+      "recovered_mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55"
+    },
+    "REAL_EVM_TESTNET_BROADCAST": {
+      "verdict": "NO-GO",
+      "blocker": "MPC-derived Sepolia address unfunded (0 ETH / 0 USDC); no mock substitute",
+      "evidence": "docs/evidence/J16_MPC_EVM_TESTNET_ATTEMPT.json"
+    },
+    "TOKEN_TRANSFER_VERIFIED": {
+      "verdict": "PASS_ANVIL_ONLY",
+      "evidence": "docs/evidence/J16_ANVIL_ERC20_PROOF.json",
+      "testnet": "NO-GO (unfunded)"
+    },
+    "INTENTS_SETTLEMENT_VERIFIED": {
+      "verdict": "NO-GO",
+      "note": "Token transfer ≠ Intents swap; no funded compatible testnet Intents route in-session"
+    },
+    "INDEPENDENT_RECONCILIATION": {
+      "verdict": "PASS_ANVIL_NODE_RECEIPT_AND_BALANCES",
+      "tests": "npm run test:j16",
+      "note": "Synthetic/simulator receipts fail-closed for financial_readiness"
+    },
+    "UNATTENDED_AGENT_EXECUTION": {
+      "verdict": "PASS_SHADOW_LIVE_LLM",
+      "evidence": "docs/evidence/J16_UNATTENDED_KEEPER_TESTNET.json",
+      "pause_revoke": "PASS",
+      "restart_no_duplicate": "PASS",
+      "note": "TRADE not forced; live LLM returned NO_TRADE"
+    },
+    "MAINNET_READY_FOR_OWNER_REVIEW": {
+      "verdict": "NO-GO",
+      "blockers": [
+        "REAL_EVM_TESTNET_BROADCAST",
+        "INTENTS_SETTLEMENT_VERIFIED",
+        "mainnet remains paused — separate owner approval required"
+      ]
+    }
+  },
+  "j15_correction": "docs/evidence/J15_EVIDENCE_CORRECTION.json",
+  "readiness": "docs/evidence/J16_MAINNET_ACTIVATION_READINESS.md",
+  "notes": [
+    "J15 createLocalForkRpc reclassified as IN_MEMORY_RPC_SIMULATOR — not independent settlement",
+    "Anvil real-node ERC-20 transfer verified with mined receipt + balance deltas",
+    "NEAR MPC request_signature extracted on testnet; Sepolia MPC address unfunded → no EVM testnet broadcast",
+    "Token transfer ≠ Intents swap — Intents settlement remains NO-GO",
+    "Mainnet policy remains paused; no mainnet mutation"
+  ]
+}

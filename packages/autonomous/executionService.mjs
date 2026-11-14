@@ -342,6 +342,18 @@ export async function runAutonomousExecution(opts) {
       trace.error = "placeholder_signed_raw_forbidden";
       return trace;
     }
+    // TESTNET financial path must carry authentic MPC provenance when claiming NEAR-MPC
+    if (
+      mode === EXEC_MODE.TESTNET &&
+      adapters?.requestSignature &&
+      !signResult?.near_tx_full &&
+      !signResult?.mpc_signature &&
+      signResult?.label === "LOCAL_KEY_NOT_NEAR_MPC"
+    ) {
+      trace.ok = false;
+      trace.error = "local_key_forbidden_as_near_mpc_substitute";
+      return trace;
+    }
     if (nonce === undefined || nonce === null) {
       trace.ok = false;
       trace.error = "nonce_required";
@@ -499,13 +511,19 @@ export async function runAutonomousExecution(opts) {
 
   // Reconcile
   if (adapters?.reconcile) {
-    const settleOk = trace.steps.some(
-      (s) => s.settle && s.settle.ok && !s.settle.skipped
-    );
+    const settleObj = trace.steps.find((s) => s.settle)?.settle;
+    const settleOk = Boolean(settleObj?.ok && !settleObj?.skipped);
+    // Financial modes: only independently_verified settles count as independent evidence.
+    // Simulator / synthetic settles may be ok for LOCAL_FORK labels but are not independent.
+    const independentEvidence = financial
+      ? settleOk &&
+        (settleObj?.independently_verified === true ||
+          settleObj?.financial_readiness === true)
+      : settleOk;
     const rec = await adapters.reconcile({
       operation_id: operationId,
-      independent_evidence: settleOk === true,
-      settle: trace.steps.find((s) => s.settle)?.settle,
+      independent_evidence: independentEvidence === true,
+      settle: settleObj,
     });
     trace.steps.push({ reconcile: rec });
     if (!rec?.ok) {

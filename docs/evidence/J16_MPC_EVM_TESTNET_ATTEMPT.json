@@ -1,0 +1,64 @@
+{
+  "kind": "J16_MPC_EVM_TESTNET_ATTEMPT",
+  "started_at": "2026-11-14T11:19:39.056Z",
+  "hard_stop_mainnet": true,
+  "sepolia_rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+  "usdc_sepolia": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+  "discovery": {
+    "sepolia_chain_id": 11155111,
+    "usdc_code_bytes": 2635,
+    "usdc_contract_present": true,
+    "near_rpc": "https://test.rpc.fastnear.com",
+    "sponsor_probe": {
+      "nio-owner-02b7cf.testnet": "6.9938"
+    },
+    "fund_mode": "faucet:https://helper.nearprotocol.com/account",
+    "mpc_evm": {
+      "near_secp_key": "secp256k1:2pz2W4ZmSadFUBVVLUxPqXqh1mhqh5ytJ3Zc3vSFMqWogTYdF92Q6x8qpQwc5inv4WbKA5G9CgYnbWNLb1fksTK",
+      "evm_address": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+      "path": "trading/v1/portfolio/j16-mpc-6890",
+      "predecessor": "j16f6890.testnet"
+    },
+    "funding": {
+      "eth_wei": "0",
+      "usdc_raw": "0",
+      "funded_for_transfer": false
+    }
+  },
+  "gates": {
+    "AUTHENTIC_NEAR_MPC_SIGNATURE": "PASS",
+    "REAL_EVM_TESTNET_BROADCAST": "NO-GO",
+    "TOKEN_TRANSFER_VERIFIED": "NO-GO",
+    "INTENTS_SETTLEMENT_VERIFIED": "NO-GO — token transfer ≠ Intents swap; route unfunded/unsupported in-session",
+    "AUTHENTIC_NEAR_MPC_SIGNATURE_NOTE": "NEAR MPC Secp256k1 signature extracted from testnet request_signature; not an EVM broadcast"
+  },
+  "note": "Token transfer ≠ Intents swap. Local private-key signatures are forbidden as MPC substitute.",
+  "steps": [
+    {
+      "deploy": "9u9VKrzRamCsKeKRDB4cW5kbXkpRAm7mjkiF7SMGHiab"
+    },
+    {
+      "propose_trade": "EiYex6ednx9WB8o62sVF9KfJq2tQ9CgcZUdXhkL44QUk",
+      "explorer": "https://testnet.nearblocks.io/txns/EiYex6ednx9WB8o62sVF9KfJq2tQ9CgcZUdXhkL44QUk",
+      "note": "NEAR-side reservation only — not EVM broadcast"
+    }
+  ],
+  "accounts": {
+    "owner": "nio-owner-02b7cf.testnet",
+    "agent": "nio-agent-02b7cf.testnet",
+    "policy": "j16f6890.testnet",
+    "mpc_evm": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55"
+  },
+  "mpc_extract": {
+    "found": true,
+    "reason": null,
+    "has_signature_json": true,
+    "near_tx": "9eaSHcVf1vCDHp9tntxFx4LvVLdzp7zxNfUs4uG362X",
+    "explorer": "https://testnet.nearblocks.io/txns/9eaSHcVf1vCDHp9tntxFx4LvVLdzp7zxNfUs4uG362X",
+    "recovered": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "matches_derived_mpc": true
+  },
+  "verdict": "NO_GO",
+  "blocker": "MPC-derived Sepolia address lacks ETH gas and/or USDC test tokens — cannot complete authentic MPC→EVM broadcast without funding (HARD STOP: no mainnet funding; testnet faucet for derived address not available in-session)",
+  "finished_at": "2026-11-14T11:20:05.308Z"
+}

@@ -279,8 +279,10 @@ export function validateSignedRawAgainstPolicy({
 }
 
 /**
- * Minimal realistic local EVM JSON-RPC for settlement-path proofs.
- * Labeled LOCAL_FORK — not mainnet.
+ * IN-MEMORY RPC SIMULATOR — NOT Anvil/Hardhat, NOT a real EVM fork.
+ * Manufactures receipts and ERC-20 Transfer logs. Must never satisfy
+ * financial readiness / independent settlement gates (J16).
+ * Retained only for unit tests of pipeline wiring (explicitly labeled).
  */
 export function createLocalForkRpc({
   chainId = 31337,
@@ -294,7 +296,9 @@ export function createLocalForkRpc({
     receipts: new Map(),
     seenRaw: new Set(),
     blockNumber: 1,
-    label: "LOCAL_FORK",
+    label: "IN_MEMORY_RPC_SIMULATOR",
+    is_real_evm_node: false,
+    manufactures_receipts: true,
   };
   if (signerAddress) {
     state.nonces.set(String(signerAddress).toLowerCase(), Number(startNonce));
@@ -367,8 +371,9 @@ export function createLocalForkRpc({
                 },
               ]
             : [],
-          independently_verified: true,
-          label: "LOCAL_FORK",
+          independently_verified: false,
+          synthetic: true,
+          label: "IN_MEMORY_RPC_SIMULATOR",
         };
         state.txs.set(txHash, { raw, decoded, sender });
         state.receipts.set(txHash, receipt);
@@ -383,7 +388,12 @@ export function createLocalForkRpc({
     }
   }
 
-  return { eth, state, label: "LOCAL_FORK" };
+  return {
+    eth,
+    state,
+    label: "IN_MEMORY_RPC_SIMULATOR",
+    is_real_evm_node: false,
+  };
 }
 
 export async function broadcastSignedRawOnce({
@@ -455,7 +465,9 @@ export async function broadcastSignedRawOnce({
 export function verifySettlementFromReceipt({
   receipt,
   expected,
-  allowLocalForkLabel = false,
+  allowSimulatorLabel = false,
+  requireRealNode = false,
+  balanceDelta = null,
 }) {
   if (!receipt) {
     return { ok: false, reason: "receipt_missing", unknown: true };
@@ -463,12 +475,26 @@ export function verifySettlementFromReceipt({
   if (receipt.status !== "0x1" && receipt.status !== 1 && receipt.status !== "1") {
     return { ok: false, reason: "receipt_failed_status", receipt };
   }
-  if (receipt.label === "LOCAL_FORK" && !allowLocalForkLabel) {
+  const synth =
+    receipt.synthetic === true ||
+    receipt.label === "IN_MEMORY_RPC_SIMULATOR" ||
+    receipt.label === "LOCAL_FORK";
+  if (synth && (requireRealNode || !allowSimulatorLabel)) {
     return {
       ok: false,
-      reason: "local_fork_receipt_not_accepted_as_mainnet",
-      label: "LOCAL_FORK",
+      reason: "synthetic_receipt_not_independent_settlement",
+      label: receipt.label || "IN_MEMORY_RPC_SIMULATOR",
+      financial_readiness: false,
     };
+  }
+  if (requireRealNode && receipt.from_node !== true && !receipt.blockHash) {
+    // Real nodes always include blockHash on mined receipts
+    if (!receipt.blockNumber || synth) {
+      return {
+        ok: false,
+        reason: "receipt_not_from_real_evm_node",
+      };
+    }
   }
   const from = String(receipt.from || "").toLowerCase();
   if (expected.mpc && from !== String(expected.mpc).toLowerCase()) {
@@ -490,6 +516,17 @@ export function verifySettlementFromReceipt({
   if (!hit) {
     return { ok: false, reason: "transfer_log_missing" };
   }
+  if (
+    expected.token &&
+    String(hit.address || "").toLowerCase() !==
+      String(expected.token).toLowerCase()
+  ) {
+    return {
+      ok: false,
+      reason: "transfer_log_wrong_token_contract",
+      got: hit.address,
+    };
+  }
   if (expected.depositAddress) {
     const toTopic = String(hit.topics?.[2] || "").toLowerCase();
     const want =
@@ -508,12 +545,39 @@ export function verifySettlementFromReceipt({
       return { ok: false, reason: "transfer_amount_mismatch", amt };
     }
   }
+  if (balanceDelta) {
+    const { beforeSender, afterSender, beforeDest, afterDest, amount } =
+      balanceDelta;
+    if (
+      beforeSender === undefined ||
+      afterSender === undefined ||
+      beforeDest === undefined ||
+      afterDest === undefined
+    ) {
+      return { ok: false, reason: "balance_delta_incomplete" };
+    }
+    const want = BigInt(amount ?? expected.amount ?? 0);
+    if (BigInt(beforeSender) - BigInt(afterSender) !== want) {
+      return { ok: false, reason: "sender_balance_delta_mismatch" };
+    }
+    if (BigInt(afterDest) - BigInt(beforeDest) !== want) {
+      return { ok: false, reason: "dest_balance_delta_mismatch" };
+    }
+  } else if (requireRealNode) {
+    return {
+      ok: false,
+      reason: "balance_delta_required_for_real_node_settlement",
+    };
+  }
   return {
     ok: true,
     status: "SETTLED",
     tx_hash: receipt.transactionHash,
-    independently_verified: true,
-    label: receipt.label || "LIVE",
+    independently_verified: !synth,
+    financial_readiness: !synth && requireRealNode === true,
+    label: synth
+      ? "IN_MEMORY_RPC_SIMULATOR"
+      : receipt.label || "REAL_EVM_NODE",
   };
 }
 

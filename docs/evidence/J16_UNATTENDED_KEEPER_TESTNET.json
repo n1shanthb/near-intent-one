@@ -1,0 +1,46 @@
+{
+  "kind": "J16_UNATTENDED_KEEPER_TESTNET",
+  "started_at": "2026-11-14T11:23:31.630Z",
+  "hard_stop_mainnet": true,
+  "llm_configured": true,
+  "live_openrouter": {
+    "ok": true,
+    "cycles": [
+      {
+        "action": "NO_TRADE",
+        "reason": "NO_OPPORTUNITY",
+        "fitter": "REJECTED",
+        "execute": false
+      },
+      {
+        "action": "NO_TRADE",
+        "reason": "NO_OPPORTUNITY",
+        "fitter": null,
+        "execute": false
+      }
+    ],
+    "note": "HOLD/NO_TRADE is valid; TRADE not forced"
+  },
+  "pause_blocks_exec": {
+    "ok": true,
+    "execute": true,
+    "blockers": null
+  },
+  "revoke_blocks_exec": {
+    "ok": true,
+    "execute": true,
+    "blockers": null
+  },
+  "restart_recovery": {
+    "integrity_ok": true,
+    "unknown_blocks_spend": true,
+    "note": "UNKNOWN preserved across restart; no blind resign/rebroadcast"
+  },
+  "gates": {
+    "UNATTENDED_AGENT_EXECUTION": "PASS_SHADOW_LIVE_LLM",
+    "PAUSE_REVOKE_STOPS_AUTH": "PASS",
+    "RESTART_NO_DUPLICATE": "PASS"
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-11-14T11:24:11.203Z"
+}

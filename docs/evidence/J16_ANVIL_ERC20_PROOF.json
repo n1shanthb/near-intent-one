@@ -1,0 +1,38 @@
+{
+  "kind": "J16_ANVIL_ERC20_PROOF",
+  "started_at": "2026-11-14T11:16:52.825Z",
+  "hard_stop_mainnet": true,
+  "anvil_bin": "C:\\Users\\Nishanth\\.foundry\\bin\\anvil.exe",
+  "rpc": "http://127.0.0.1:8545",
+  "gates": {
+    "REAL_EVM_NODE_EXECUTION": "PASS",
+    "TOKEN_TRANSFER_VERIFIED": "PASS"
+  },
+  "chain_id": 31337,
+  "token": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+  "validate": {
+    "ok": true,
+    "blockers": []
+  },
+  "broadcast": {
+    "tx_hash": "0xb1da35507d4229db88e220a0b3ef9f05986d46275517f7c782cf3c86ff1ea880"
+  },
+  "replay_rejected": true,
+  "settle": {
+    "ok": true,
+    "status": "SETTLED",
+    "tx_hash": "0xb1da35507d4229db88e220a0b3ef9f05986d46275517f7c782cf3c86ff1ea880",
+    "independently_verified": true,
+    "financial_readiness": true,
+    "label": "REAL_EVM_NODE"
+  },
+  "balances": {
+    "beforeSender": "1000000000000",
+    "afterSender": "999999000000",
+    "beforeDest": "0",
+    "afterDest": "1000000"
+  },
+  "verdict": "PASS",
+  "explorer_note": "local anvil — no public explorer URL",
+  "finished_at": "2026-11-14T11:16:54.222Z"
+}
