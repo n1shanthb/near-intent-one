@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { compilePolicyFromText } from "../../policy/compile";
 import { CONSTRAINT_META } from "../../policy/schema";
-import { FROZEN_POLICY } from "../../data/evidenceSnapshot";
 import { useOwnerSession } from "../../state/OwnerSession";
 import { useProductSession } from "../../state/ProductSession";
+import { useWorkspace } from "../../state/WorkspaceContext";
 import type { NavId } from "./nav";
 import { AutonomousMandatePreview } from "./AutonomousMandatePreview";
 
@@ -16,6 +16,7 @@ type Tab = "overview" | "composer" | "preview";
 type MandateMode = "allowlist" | "any_eligible_token";
 
 export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
+  const { isPublic, personalProvisioned, identities } = useWorkspace();
   const { authMode, portfolio, gateI } = useProductSession();
   const { verified, session } = useOwnerSession();
   const [tab, setTab] = useState<Tab>("overview");
@@ -81,21 +82,71 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
       ]
     : [];
 
+  if (isPublic) {
+    return (
+      <div className="page-enter nio-mandate-page">
+        <div className="axis-intro">
+          <div>
+            <h1>Mandate</h1>
+            <p>
+              Live NEAR mainnet mandate for{" "}
+              <span className="mono">{identities.policy}</span>. Read-only public
+              workspace — no compiler preview, no demo limits.
+            </p>
+          </div>
+        </div>
+        <AutonomousMandatePreview />
+        <p className="axis-supporting" style={{ marginTop: 12 }}>
+          Personal mandate composer is available only in{" "}
+          <strong>Set up your own</strong> workspace.
+        </p>
+        <button
+          type="button"
+          className="axis-button secondary"
+          onClick={() => onNav("security")}
+        >
+          Open security
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="page-enter nio-mandate-page">
       <div className="axis-intro">
         <div>
           <h1>Mandate</h1>
           <p>
-            Two first-class modes: Owner Allowlist (default) or Agent&apos;s
-            Choice (ANY_ELIGIBLE_TOKEN — explicit owner authorization required).
-            Chain-specific asset identities only. Owner mutations stay blocked
-            without authorization.
+            Personal workspace. Compose a preview mandate for your own portfolio.
+            This never inherits Nishanth&apos;s mainnet policy.
           </p>
         </div>
       </div>
 
-      <AutonomousMandatePreview />
+      {!personalProvisioned ? (
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Setup required</h2>
+            <span className="nio-badge nio-badge-warn">NOT PROVISIONED</span>
+          </div>
+          <p>
+            No personal on-chain mandate yet. Verify ownership, then provision a
+            portfolio. Compiler below is preview-only until a policy account exists.
+          </p>
+          <div className="axis-actions">
+            <button type="button" className="axis-button" onClick={() => onNav("owner")}>
+              Owner auth
+            </button>
+            <button
+              type="button"
+              className="axis-button secondary"
+              onClick={() => onNav("my-portfolio")}
+            >
+              My Portfolio
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="axis-panel">
         <div className="axis-panel-heading">
@@ -128,43 +179,10 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
               onChange={(e) => setExplicitAny(e.target.checked)}
             />
             <span>
-              I explicitly authorize dynamic token selection across selected
-              chains (still subject to limits, venues, and on-chain policy).
+              I explicitly authorize dynamic token selection across selected chains.
             </span>
           </label>
         ) : null}
-        {!explicitAny && mandateMode === "any_eligible_token" ? (
-          <p className="axis-supporting" style={{ color: "var(--danger, #b00)" }}>
-            Broad discretion is not active until the checkbox is set — default
-            remains allowlist.
-          </p>
-        ) : null}
-        <div style={{ marginTop: 12 }} className="axis-actions">
-          {(
-            [
-              ["near", "NEAR"],
-              ["ethereum", "Ethereum"],
-              ["arbitrum", "Arbitrum"],
-              ["base", "Base"],
-            ] as const
-          ).map(([key, label]) => (
-            <label key={key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input
-                type="checkbox"
-                checked={chains[key]}
-                onChange={(e) =>
-                  setChains((c) => ({ ...c, [key]: e.target.checked }))
-                }
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-        <p className="axis-supporting">
-          Per-chain spending limits, venues, slippage, expiry, and pause/revoke
-          remain owner-controlled. On-chain enforcement uses canonical asset ids
-          — not symbols.
-        </p>
       </section>
 
       <div className="axis-segmented" role="tablist">
@@ -189,13 +207,15 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
       {tab === "overview" ? (
         <section className="axis-panel" style={{ marginTop: 16 }}>
           <div className="axis-panel-heading">
-            <h2>Current policy posture</h2>
-            <span className="nio-badge nio-badge-recorded">DEMO / PREVIEW</span>
+            <h2>Personal posture</h2>
+            <span className="nio-badge nio-badge-idle">
+              {personalProvisioned ? "BOUND" : "PREVIEW ONLY"}
+            </span>
           </div>
-          <dl className="nio-kv">
+          <dl className="nio-kv nio-kv-compact">
             <div>
               <dt>API</dt>
-              <dd>{gateI.status === "available" ? "Connected" : "Recorded / unreachable"}</dd>
+              <dd>{gateI.status === "available" ? "Connected" : "Unreachable"}</dd>
             </div>
             <div>
               <dt>Owner session</dt>
@@ -206,34 +226,22 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
               </dd>
             </div>
             <div>
-              <dt>Wallet product mode</dt>
-              <dd>{authMode ?? "unset (public visitor)"} — separate from Ledger owner path</dd>
+              <dt>Wallet mode</dt>
+              <dd>{authMode ?? "unset"}</dd>
             </div>
             <div>
-              <dt>On-chain mandate status</dt>
-              <dd>
-                {portfolio?.policy_contract
-                  ? `Policy account bound · deploy_status ${portfolio.deploy_status}`
-                  : "No personal on-chain mandate — compiler preview only"}
-              </dd>
-            </div>
-            <div>
-              <dt>Personal policy contract</dt>
+              <dt>Personal policy</dt>
               <dd className="mono">
-                {portfolio?.policy_contract ?? "None — compiler preview only"}
+                {portfolio?.policy_contract ?? "None — not provisioned"}
               </dd>
-            </div>
-            <div>
-              <dt>Frozen demo max trade</dt>
-              <dd className="mono">{FROZEN_POLICY.max_trade_value}</dd>
             </div>
           </dl>
-          <p className="axis-supporting" style={{ marginTop: 12 }}>
-            Public visitors can inspect rules. Deploying or mutating a personal mandate
-            requires a verified owner session. NEP-413 ownership proof does not itself
-            authorize trading. Demo mandate is not a real-user portfolio.
-          </p>
-          <button type="button" className="axis-button secondary" onClick={() => onNav("security")}>
+          <button
+            type="button"
+            className="axis-button secondary"
+            style={{ marginTop: 12 }}
+            onClick={() => onNav("security")}
+          >
             Open security / Ledger
           </button>
         </section>
@@ -243,7 +251,7 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
         <section className="axis-panel" style={{ marginTop: 16 }}>
           <div className="axis-panel-heading">
             <h2>Mandate composer</h2>
-            <span className="nio-badge nio-badge-warn">NOT AN LLM</span>
+            <span className="nio-badge nio-badge-warn">PREVIEW</span>
           </div>
           <div className="nio-form-grid">
             <label className="axis-field">
@@ -290,11 +298,7 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
           </div>
           <label className="axis-field" style={{ marginTop: 12 }}>
             <span>Natural-language instruction</span>
-            <textarea
-              rows={5}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
+            <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} />
           </label>
           <div className="axis-actions" style={{ marginTop: 12 }}>
             <button type="button" className="axis-button secondary" onClick={() => setText(EXAMPLE)}>
@@ -343,7 +347,7 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
               </div>
               <p className="axis-supporting" style={{ marginTop: 12 }}>
                 Constraint catalog covers {Object.keys(CONSTRAINT_META).length} known fields.
-                Planned features are labeled honestly and are not claimed as on-chain enforced.
+                Preview is not an on-chain mandate.
               </p>
               <button
                 type="button"
@@ -357,9 +361,6 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
                   {JSON.stringify(result.policy, null, 2)}
                 </pre>
               ) : null}
-              <p className="axis-supporting" style={{ marginTop: 12 }}>
-                Owner set_policy remains blocked without an authenticated owner session.
-              </p>
             </>
           )}
         </section>

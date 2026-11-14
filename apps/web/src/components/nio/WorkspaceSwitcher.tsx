@@ -57,25 +57,35 @@ export function LiveDataChrome() {
 
   if (!isPublic) return null;
 
-  const tone =
-    live.status === "ready"
+  const quality = live.mandate?.data_quality;
+  const isLastGood =
+    quality === "LAST_KNOWN_GOOD" || Boolean(live.mandate?.stale);
+  // Never label cached / last-known-good as FRESH or LIVE.
+  const tone = isLastGood
+    ? "nio-badge-warn"
+    : live.status === "ready" && live.mandate?.fresh
       ? "nio-badge-success"
-      : live.status === "stale"
-        ? "nio-badge-warn"
-        : live.status === "error"
-          ? "nio-badge-danger"
-          : "nio-badge-idle";
+      : live.status === "ready"
+        ? "nio-badge-idle"
+        : live.status === "stale"
+          ? "nio-badge-warn"
+          : live.status === "error"
+            ? "nio-badge-danger"
+            : "nio-badge-idle";
 
-  const label =
-    live.status === "ready"
+  const label = isLastGood
+    ? "LAST KNOWN GOOD"
+    : live.status === "ready" && live.mandate?.fresh
       ? "LIVE"
-      : live.status === "stale"
-        ? "STALE"
-        : live.status === "error"
-          ? "API ERROR"
-          : live.status === "loading"
-            ? "LOADING"
-            : "IDLE";
+      : live.status === "ready"
+        ? "CACHED"
+        : live.status === "stale"
+          ? "STALE"
+          : live.status === "error"
+            ? "API ERROR"
+            : live.status === "loading"
+              ? "LOADING"
+              : "IDLE";
 
   return (
     <div className="nio-live-chrome axis-actions" style={{ flexWrap: "wrap", gap: 8 }}>

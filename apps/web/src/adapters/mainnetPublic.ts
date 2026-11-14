@@ -12,35 +12,37 @@ async function getJson<T>(path: string): Promise<T> {
   return body;
 }
 
+export type TriBool = boolean | null;
+
 export type MainnetMandate = {
   ok: boolean;
   owner: string;
   agent: string;
   policy: string;
   portfolio_id: string;
-  mandate_epoch: number;
-  paused: boolean;
-  revoked: boolean;
-  autonomous_trading: boolean;
-  enforce_autonomous_on_agent: boolean;
-  state_version: number | { error?: unknown };
+  mandate_epoch: number | null;
+  paused: TriBool;
+  revoked: TriBool;
+  autonomous_trading: TriBool;
+  enforce_autonomous_on_agent: TriBool;
+  state_version: number | string | null;
   limits: {
-    max_trade_value: string;
-    daily_turnover_limit: string;
-    max_pending_exposure: string;
-    max_slippage_bps: number;
-    max_gas_budget: string;
+    max_trade_value: string | null;
+    daily_turnover_limit: string | null;
+    max_pending_exposure: string | null;
+    max_slippage_bps: number | null;
+    max_gas_budget: string | null;
     allowed_chains: string[];
     allowed_assets: string[];
     allowed_venues: string[];
     allowed_destinations: string[];
-    valid_until: string;
-    token_scope: string;
+    valid_until: string | null;
+    token_scope: string | null;
   };
   usage: {
     reserved_pending_exposure: string | number;
-    daily_turnover?: string | { toString?: () => string };
-    realized_exposure?: string | { toString?: () => string };
+    daily_turnover?: string | number | null;
+    realized_exposure?: string | number | null;
   };
   expiry: {
     expires_at_ms: number | null;
@@ -48,7 +50,17 @@ export type MainnetMandate = {
   };
   fetched_at: string;
   fresh: boolean;
+  stale?: boolean;
+  data_quality?: string;
+  cached_at?: string | null;
+  rpc_error?: string | null;
 };
+
+export function flagLabel(v: TriBool, on = "ON", off = "OFF"): string {
+  if (v === true) return on;
+  if (v === false) return off;
+  return "UNKNOWN";
+}
 
 export type MainnetDecisionSummary = {
   cycle_id: string;

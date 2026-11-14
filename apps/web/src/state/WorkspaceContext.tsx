@@ -150,29 +150,65 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!isPublic) return;
     setLiveStatus((s) => (s === "ready" || s === "stale" ? s : "loading"));
+    const errs: string[] = [];
+    let mandateOk = false;
     try {
       // Mandate first so upstream can warm RPC cache before other reads.
-      const m = await fetchMainnetMandate();
-      setMandate(
-        m?.ok
-          ? (sanitizeMandate(
-              m as unknown as Record<string, unknown>
-            ) as unknown as MainnetMandate)
-          : m
-      );
-      const [a, d, t, b] = await Promise.all([
-        fetchMainnetAgent().catch(() => null),
+      try {
+        const m = await fetchMainnetMandate();
+        setMandate(
+          m?.ok
+            ? (sanitizeMandate(
+                m as unknown as Record<string, unknown>
+              ) as unknown as MainnetMandate)
+            : m
+        );
+        mandateOk = Boolean(m?.ok);
+        if (m?.stale || m?.data_quality === "LAST_KNOWN_GOOD") {
+          errs.push("mandate:last_known_good");
+        }
+      } catch (e) {
+        errs.push(`mandate:${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      const [a, d, t, b] = await Promise.allSettled([
+        fetchMainnetAgent(),
         fetchMainnetDecisions(40),
-        fetchMainnetTransactions().catch(() => null),
-        fetchMainnetBalances().catch(() => null),
+        fetchMainnetTransactions(),
+        fetchMainnetBalances(),
       ]);
-      setAgent(a);
-      setDecisions(d.decisions || []);
-      setTransactions(t);
-      setBalances(b);
-      setLiveError(null);
+
+      if (a.status === "fulfilled" && a.value) setAgent(a.value);
+      else if (a.status === "rejected")
+        errs.push(`agent:${String((a.reason as Error)?.message || a.reason)}`);
+
+      if (d.status === "fulfilled") setDecisions(d.value.decisions || []);
+      else {
+        errs.push(
+          `decisions:${String((d.reason as Error)?.message || d.reason)}`
+        );
+        // Keep prior decisions on partial failure — do not wipe the page.
+      }
+
+      if (t.status === "fulfilled" && t.value) setTransactions(t.value);
+      else if (t.status === "rejected")
+        errs.push(`txs:${String((t.reason as Error)?.message || t.reason)}`);
+
+      if (b.status === "fulfilled" && b.value) setBalances(b.value);
+      else if (b.status === "rejected")
+        errs.push(
+          `balances:${String((b.reason as Error)?.message || b.reason)}`
+        );
+
+      setLiveError(errs.length ? errs.join(" · ") : null);
       setLastUpdated(Date.now());
-      setLiveStatus("ready");
+      if (!mandateOk && errs.some((e) => e.startsWith("mandate:"))) {
+        setLiveStatus("error");
+      } else if (errs.length) {
+        setLiveStatus("stale");
+      } else {
+        setLiveStatus("ready");
+      }
     } catch (e) {
       setLiveError(e instanceof Error ? e.message : String(e));
       setLiveStatus((s) => (s === "ready" || s === "stale" ? "stale" : "error"));

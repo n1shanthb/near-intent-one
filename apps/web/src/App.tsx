@@ -125,7 +125,15 @@ function AppInner() {
       {nav === "agent" && <AgentWorkspace onNav={onNav} />}
       {(nav === "mandate" || nav === "policies") && <MandatePage onNav={onNav} />}
       {nav === "verify" && <ProofVerifyPage onNav={onNav} />}
-      {nav === "inspect" && <AgentInspectorPage onNav={onNav} />}
+      {nav === "inspect" && (
+        <AgentInspectorPage
+          onNav={onNav}
+          accountSlug={
+            window.location.pathname.match(/^\/inspect\/([^/]+)/)?.[1] ||
+            "nishanthb.near"
+          }
+        />
+      )}
       {nav === "activity" && <TransactionsPage onNav={onNav} />}
       {nav === "evidence" && <EvidencePage onNav={onNav} />}
       {nav === "mainnet" && <MainnetEvidencePage onNav={onNav} />}

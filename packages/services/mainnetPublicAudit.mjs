@@ -1,6 +1,12 @@
 /**
  * Read-only mainnet public audit/mandate helpers for OCI.
  * No signing. No secrets in responses.
+ *
+ * Rules:
+ * - Normalize every RPC view; never leak `{error}` envelopes to clients.
+ * - Unknown ≠ false (autonomy OFF). Use null / data_quality markers.
+ * - Prefer fewer sequential reads + fallback RPC + last-good cache.
+ * - Never label a cache hit as fresh.
  */
 import { join } from "node:path";
 import { MAINNET_IDENTITIES } from "../mainnet/identities.mjs";
@@ -13,11 +19,24 @@ import {
 } from "../autonomous/decisionAudit.mjs";
 import { readFile } from "node:fs/promises";
 
+/** Prefer public near.org first; FastNear free tier rate-limits hard under fan-out. */
 const RPCS = [
   process.env.NIO_MAINNET_RPC,
-  "https://rpc.mainnet.fastnear.com",
   "https://rpc.mainnet.near.org",
+  "https://rpc.mainnet.fastnear.com",
 ].filter(Boolean);
+
+const CACHE_MS = 25_000;
+const LAST_GOOD_MAX_MS = 15 * 60_000;
+const BACKOFF_MS = [250, 600, 1200];
+
+let cache = { at: 0, mandate: null, agent: null };
+/** Durable last successful full snapshot (may be older than CACHE_MS). */
+let lastGood = { at: 0, agent: null, mandate: null };
+
+async function sleep(ms) {
+  await new Promise((r) => setTimeout(r, ms));
+}
 
 async function rpc(url, method, params) {
   const res = await fetch(url, {
@@ -26,6 +45,28 @@ async function rpc(url, method, params) {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   return res.json();
+}
+
+function isRateLimited(err) {
+  const msg = JSON.stringify(err || "");
+  return /-429/i.test(msg) || /rate limit/i.test(msg) || /-320/i.test(msg);
+}
+
+export function isViewError(value) {
+  return Boolean(value && typeof value === "object" && "error" in value);
+}
+
+export function unwrapView(value, fallback = null) {
+  if (value == null || isViewError(value)) return fallback;
+  return value;
+}
+
+/** Tri-state boolean: true | false | null (UNKNOWN). Never coerce null→false. */
+export function asTriBool(value) {
+  if (value === true || value === false) return value;
+  if (value === "true" || value === 1 || value === "1") return true;
+  if (value === "false" || value === 0 || value === "0") return false;
+  return null;
 }
 
 export async function pickMainnetRpc() {
@@ -38,17 +79,6 @@ export async function pickMainnetRpc() {
     }
   }
   throw new Error("no_mainnet_rpc");
-}
-
-/** True when a view result is an RPC/contract error envelope — never render these in React. */
-export function isViewError(value) {
-  return Boolean(value && typeof value === "object" && "error" in value);
-}
-
-/** Unwrap a view result to a scalar/object, or `fallback` when the RPC failed. */
-export function unwrapView(value, fallback = null) {
-  if (value == null || isViewError(value)) return fallback;
-  return value;
 }
 
 export async function viewFn(url, methodName, args = {}) {
@@ -68,20 +98,24 @@ export async function viewFn(url, methodName, args = {}) {
   }
 }
 
-/** Prefer a healthy RPC; on rate-limit / failure, try the next endpoint. */
+/**
+ * Sequential RPC with fallback + short backoff on 429.
+ * Never parallel-fan-out against FastNear.
+ */
 export async function viewFnResilient(methodName, args = {}) {
   let lastErr = null;
   for (const url of RPCS) {
-    try {
-      const out = await viewFn(url, methodName, args);
-      if (!isViewError(out)) return out;
-      lastErr = out.error;
-      const msg = JSON.stringify(out.error || "");
-      if (!/-320/i.test(msg) && !/rate limit/i.test(msg) && !/-429/i.test(msg)) {
-        return out;
+    for (let attempt = 0; attempt < BACKOFF_MS.length; attempt++) {
+      try {
+        const out = await viewFn(url, methodName, args);
+        if (!isViewError(out)) return out;
+        lastErr = out.error;
+        if (!isRateLimited(out.error)) return out;
+        await sleep(BACKOFF_MS[attempt]);
+      } catch (e) {
+        lastErr = String(e.message || e);
+        await sleep(BACKOFF_MS[attempt]);
       }
-    } catch (e) {
-      lastErr = String(e.message || e);
     }
   }
   return { error: lastErr || "all_rpcs_failed" };
@@ -97,195 +131,207 @@ export async function viewAccount(url) {
   return j.result;
 }
 
-let cache = { at: 0, mandate: null, agent: null };
-const CACHE_MS = 20_000;
+function normalizeLimits(raw) {
+  const limits = isViewError(raw) || !raw || typeof raw !== "object" ? {} : raw;
+  return {
+    max_trade_value: limits.max_trade_value ?? null,
+    daily_turnover_limit: limits.daily_turnover_limit ?? null,
+    max_pending_exposure: limits.max_pending_exposure ?? null,
+    max_slippage_bps:
+      typeof limits.max_slippage_bps === "number"
+        ? limits.max_slippage_bps
+        : limits.max_slippage_bps != null
+          ? Number(limits.max_slippage_bps)
+          : null,
+    max_gas_budget: limits.max_gas_budget ?? null,
+    token_scope: limits.token_scope ?? null,
+    allowed_chains: Array.isArray(limits.allowed_chains)
+      ? limits.allowed_chains
+      : [],
+    allowed_assets: Array.isArray(limits.allowed_assets)
+      ? limits.allowed_assets
+      : [],
+    allowed_venues: Array.isArray(limits.allowed_venues)
+      ? limits.allowed_venues
+      : [],
+    allowed_destinations: Array.isArray(limits.allowed_destinations)
+      ? limits.allowed_destinations
+      : [],
+    valid_until: limits.valid_until ?? null,
+  };
+}
+
+function markStale(snap, reason) {
+  if (!snap) return null;
+  return {
+    ...snap,
+    fresh: false,
+    stale: true,
+    data_quality: "LAST_KNOWN_GOOD",
+    cached_at: snap.fetched_at,
+    rpc_error: reason,
+  };
+}
 
 export async function getLiveAgentSnapshot() {
   const now = Date.now();
   if (cache.agent && now - cache.at < CACHE_MS) {
-    return { ...cache.agent, cache_age_ms: now - cache.at, fresh: false };
-  }
-  let url;
-  try {
-    url = await pickMainnetRpc();
-  } catch (e) {
-    if (cache.agent) {
-      return {
-        ...cache.agent,
-        fresh: false,
-        stale: true,
-        rpc_error: String(e.message || e),
-      };
-    }
-    throw e;
-  }
-  let acct;
-  try {
-    acct = await viewAccount(url);
-  } catch (e) {
-    if (cache.agent) {
-      return {
-        ...cache.agent,
-        fresh: false,
-        stale: true,
-        rpc_error: String(e.message || e),
-      };
-    }
-    throw e;
+    return {
+      ...cache.agent,
+      fresh: false,
+      cache_age_ms: now - cache.at,
+      data_quality: cache.agent.data_quality || "CACHE",
+    };
   }
 
-  // Prefer composite + a few critical views. Never fan out 12+ sequential RPC calls
-  // (FastNear free tier returns -429 and {error} envelopes that crash React if rendered).
-  const gj = await viewFnResilient("get_gate_j_mandate");
-  const hasGj = !isViewError(gj);
-  const prior = cache.agent?.views || {};
+  try {
+    const url = await pickMainnetRpc();
+    const acct = await viewAccount(url);
 
-  const [pausedV, epochV, autoV, enforceV, stateV, revocationV, limitsV] =
-    await Promise.all([
-      hasGj && gj.paused != null
-        ? Promise.resolve(gj.paused)
-        : viewFnResilient("get_paused"),
+    // Minimal sequential reads — gate_j first (composite), then flags, then limits.
+    const gj = await viewFnResilient("get_gate_j_mandate");
+    const hasGj = !isViewError(gj);
+
+    const paused = unwrapView(
+      hasGj && gj.paused != null ? gj.paused : await viewFnResilient("get_paused"),
+      null
+    );
+    const mandate_epoch = unwrapView(
       hasGj && gj.mandate_epoch != null
-        ? Promise.resolve(gj.mandate_epoch)
-        : viewFnResilient("get_mandate_epoch"),
-      viewFnResilient("get_autonomous_trading"),
-      viewFnResilient("get_enforce_autonomous_on_agent"),
-      viewFnResilient("get_state_version"),
-      viewFnResilient("get_revocation_status"),
+        ? gj.mandate_epoch
+        : await viewFnResilient("get_mandate_epoch"),
+      null
+    );
+    const autonomous_trading = asTriBool(
+      await viewFnResilient("get_autonomous_trading")
+    );
+    const enforce_autonomous_on_agent = asTriBool(
+      await viewFnResilient("get_enforce_autonomous_on_agent")
+    );
+    const state_version = unwrapView(
+      await viewFnResilient("get_state_version"),
+      null
+    );
+    const revocation = unwrapView(
+      await viewFnResilient("get_revocation_status"),
+      null
+    );
+    const limitsRaw =
       hasGj && gj.limits
-        ? Promise.resolve(gj.limits)
-        : viewFnResilient("get_limits"),
-    ]);
+        ? gj.limits
+        : await viewFnResilient("get_limits");
+    const limits = normalizeLimits(limitsRaw);
+    const limitsOk =
+      Boolean(limits.max_trade_value) && limits.allowed_chains.length > 0;
 
-  const owner = MAINNET_IDENTITIES.owner;
-  const agent = MAINNET_IDENTITIES.agent;
-  const portfolio_id = MAINNET_IDENTITIES.portfolio_id;
-  const paused = unwrapView(pausedV, unwrapView(prior.paused, null));
-  const mandate_epoch = unwrapView(
-    epochV,
-    unwrapView(prior.mandate_epoch, null)
-  );
-  const autonomous_trading = unwrapView(
-    autoV,
-    unwrapView(prior.autonomous_trading, null)
-  );
-  const enforce_autonomous_on_agent = unwrapView(
-    enforceV,
-    unwrapView(prior.enforce_autonomous_on_agent, null)
-  );
-  const state_version = unwrapView(stateV, unwrapView(prior.state_version, null));
-  const revocation = unwrapView(revocationV, unwrapView(prior.revocation, null));
-  const reserved_pending_exposure = unwrapView(
-    hasGj && gj.reserved_pending_exposure != null
-      ? gj.reserved_pending_exposure
-      : prior.reserved_pending_exposure,
-    "0"
-  );
-  const intents_signer_id = MAINNET_IDENTITIES.mpc_evm_address;
-  const derivation_path = MAINNET_IDENTITIES.derivation_path;
-  const limits = unwrapView(limitsV, unwrapView(prior.limits, {}));
+    const snap = {
+      ok: true,
+      network: "mainnet",
+      fetched_at: new Date().toISOString(),
+      fresh: true,
+      cache_ttl_ms: CACHE_MS,
+      data_quality: limitsOk ? "LIVE" : "PARTIAL",
+      identities: {
+        owner: MAINNET_IDENTITIES.owner,
+        agent: MAINNET_IDENTITIES.agent,
+        policy: MAINNET_IDENTITIES.policy,
+        portfolio_id: MAINNET_IDENTITIES.portfolio_id,
+        mpc_evm: MAINNET_IDENTITIES.mpc_evm_address,
+      },
+      code_hash: acct.code_hash,
+      storage_usage: acct.storage_usage,
+      views: {
+        owner: MAINNET_IDENTITIES.owner,
+        agent: MAINNET_IDENTITIES.agent,
+        portfolio_id: MAINNET_IDENTITIES.portfolio_id,
+        paused: asTriBool(paused),
+        mandate_epoch:
+          typeof mandate_epoch === "number"
+            ? mandate_epoch
+            : mandate_epoch != null
+              ? Number(mandate_epoch)
+              : null,
+        autonomous_trading,
+        enforce_autonomous_on_agent,
+        state_version:
+          typeof state_version === "number" || typeof state_version === "string"
+            ? state_version
+            : null,
+        revocation,
+        reserved_pending_exposure: unwrapView(
+          hasGj ? gj.reserved_pending_exposure : null,
+          "0"
+        ),
+        intents_signer_id: MAINNET_IDENTITIES.mpc_evm_address,
+        derivation_path: MAINNET_IDENTITIES.derivation_path,
+        limits,
+        daily_turnover: hasGj ? unwrapView(gj.daily_turnover, null) : null,
+        realized_exposure: hasGj ? unwrapView(gj.realized_exposure, null) : null,
+      },
+      provenance: {
+        deploy_tx: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+        migrate_tx: "3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME",
+        activate_tx: "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+        unpause_tx: "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
+        audit_wasm_tx: "4oM5UGjwk8vtUzJ6cjo6bhY1zWaaGSMtD8c2LDC2Tb3G",
+        migrate_v2_tx: "CRUYyjdYMwfKzxpUBvcKXJtn5dvi7CH9zdocUawu2CFj",
+        no_trade_audit_tx: "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+      },
+    };
+    if (hasGj) snap.gate_j_mandate = gj;
 
-  const snap = {
-    ok: true,
-    network: "mainnet",
-    fetched_at: new Date().toISOString(),
-    fresh: true,
-    cache_ttl_ms: CACHE_MS,
-    identities: {
-      owner: MAINNET_IDENTITIES.owner,
-      agent: MAINNET_IDENTITIES.agent,
-      policy: MAINNET_IDENTITIES.policy,
-      portfolio_id: MAINNET_IDENTITIES.portfolio_id,
-      mpc_evm: MAINNET_IDENTITIES.mpc_evm_address,
-    },
-    code_hash: acct.code_hash,
-    storage_usage: acct.storage_usage,
-    views: {
-      owner,
-      agent,
-      portfolio_id,
-      paused,
-      mandate_epoch,
-      autonomous_trading,
-      enforce_autonomous_on_agent,
-      state_version,
-      revocation,
-      reserved_pending_exposure,
-      intents_signer_id,
-      derivation_path,
-      limits: limits && typeof limits === "object" ? limits : {},
-      daily_turnover: hasGj ? unwrapView(gj.daily_turnover, null) : null,
-      realized_exposure: hasGj ? unwrapView(gj.realized_exposure, null) : null,
-    },
-    provenance: {
-      deploy_tx: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
-      migrate_tx: "3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME",
-      activate_tx: "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
-      unpause_tx: "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
-    },
-  };
-  if (hasGj) snap.gate_j_mandate = gj;
-  cache = { at: now, agent: snap, mandate: null };
-  return snap;
+    cache = { at: now, agent: snap, mandate: null };
+    if (limitsOk) {
+      lastGood = { at: now, agent: snap, mandate: null };
+    }
+    return snap;
+  } catch (e) {
+    const reason = String(e.message || e);
+    if (lastGood.agent && now - lastGood.at < LAST_GOOD_MAX_MS) {
+      const stale = markStale(lastGood.agent, reason);
+      cache = { at: now, agent: stale, mandate: null };
+      return stale;
+    }
+    throw e;
+  }
 }
 
 export async function getLiveMandateSnapshot() {
   const agent = await getLiveAgentSnapshot();
-  const limitsRaw = agent.views.limits || agent.gate_j_mandate?.limits || {};
-  const limits = isViewError(limitsRaw) ? {} : limitsRaw;
+  const limits = normalizeLimits(agent.views.limits);
   const validUntilNs = Number(limits.valid_until || 0);
   const nowMs = Date.now();
   const expiryMs = validUntilNs > 0 ? Math.floor(validUntilNs / 1e6) : null;
-  const epoch = unwrapView(agent.views.mandate_epoch, null);
-  const stateVersion = unwrapView(agent.views.state_version, null);
-  const reserved = unwrapView(agent.views.reserved_pending_exposure, "0");
-  return {
+  const auto = asTriBool(agent.views.autonomous_trading);
+  const enforce = asTriBool(agent.views.enforce_autonomous_on_agent);
+  const paused = asTriBool(agent.views.paused);
+  const mandate = {
     ok: true,
     network: "mainnet",
     fetched_at: agent.fetched_at,
-    fresh: agent.fresh,
-    owner: unwrapView(agent.views.owner, MAINNET_IDENTITIES.owner),
-    agent: unwrapView(agent.views.agent, MAINNET_IDENTITIES.agent),
+    fresh: Boolean(agent.fresh) && !agent.stale,
+    stale: Boolean(agent.stale),
+    data_quality: agent.data_quality || (agent.fresh ? "LIVE" : "CACHE"),
+    cached_at: agent.cached_at || null,
+    rpc_error: agent.rpc_error || null,
+    owner: MAINNET_IDENTITIES.owner,
+    agent: MAINNET_IDENTITIES.agent,
     policy: MAINNET_IDENTITIES.policy,
-    portfolio_id: unwrapView(
-      agent.views.portfolio_id,
-      MAINNET_IDENTITIES.portfolio_id
-    ),
-    mandate_epoch: typeof epoch === "number" ? epoch : Number(epoch) || null,
-    paused: unwrapView(agent.views.paused, null),
-    revoked: Boolean(agent.views.revocation?.revoked),
-    autonomous_trading: Boolean(unwrapView(agent.views.autonomous_trading, false)),
-    enforce_autonomous_on_agent: Boolean(
-      unwrapView(agent.views.enforce_autonomous_on_agent, false)
-    ),
-    state_version:
-      typeof stateVersion === "number" || typeof stateVersion === "string"
-        ? stateVersion
+    portfolio_id: MAINNET_IDENTITIES.portfolio_id,
+    mandate_epoch: agent.views.mandate_epoch,
+    paused,
+    revoked:
+      agent.views.revocation && !isViewError(agent.views.revocation)
+        ? Boolean(agent.views.revocation.revoked)
         : null,
-    limits: {
-      max_trade_value: limits.max_trade_value ?? null,
-      daily_turnover_limit: limits.daily_turnover_limit ?? null,
-      max_pending_exposure: limits.max_pending_exposure ?? null,
-      max_slippage_bps: limits.max_slippage_bps ?? null,
-      max_gas_budget: limits.max_gas_budget ?? null,
-      token_scope: limits.token_scope ?? null,
-      allowed_chains: Array.isArray(limits.allowed_chains)
-        ? limits.allowed_chains
-        : [],
-      allowed_assets: Array.isArray(limits.allowed_assets)
-        ? limits.allowed_assets
-        : [],
-      allowed_venues: Array.isArray(limits.allowed_venues)
-        ? limits.allowed_venues
-        : [],
-      allowed_destinations: Array.isArray(limits.allowed_destinations)
-        ? limits.allowed_destinations
-        : [],
-      valid_until: limits.valid_until ?? null,
-    },
+    autonomous_trading: auto,
+    enforce_autonomous_on_agent: enforce,
+    state_version: agent.views.state_version,
+    limits,
     usage: {
-      reserved_pending_exposure:
-        typeof reserved === "object" ? "0" : String(reserved ?? "0"),
+      reserved_pending_exposure: String(
+        unwrapView(agent.views.reserved_pending_exposure, "0")
+      ),
       daily_turnover: unwrapView(agent.views.daily_turnover, null),
       realized_exposure: unwrapView(agent.views.realized_exposure, null),
     },
@@ -300,6 +346,10 @@ export async function getLiveMandateSnapshot() {
       note: "Allowlists are PERMITTED BY POLICY; settlement requires separate verification",
     },
   };
+  if (mandate.fresh && limits.max_trade_value) {
+    lastGood = { ...lastGood, at: Date.now(), mandate };
+  }
+  return mandate;
 }
 
 async function loadMeta(cycle_id, storeDir) {
@@ -359,29 +409,38 @@ export async function getProof(cycle_id) {
   if (!detail.ok) return detail;
   let onchain = null;
   try {
-    const url = await pickMainnetRpc();
-    onchain = await viewFn(url, "get_decision_cycle", { cycle_id });
+    onchain = await viewFnResilient("get_decision_cycle", { cycle_id });
   } catch (e) {
     onchain = { error: String(e.message || e) };
   }
   const chainHash =
-    onchain && !onchain.error ? onchain.evidence_hash : null;
+    onchain && !isViewError(onchain) ? onchain.evidence_hash : null;
   const match =
     chainHash &&
     detail.record.evidence_hash &&
     chainHash === detail.record.evidence_hash;
+  const status = match
+    ? AUDIT_STATUS.ONCHAIN_VERIFIED
+    : isViewError(onchain) || !chainHash
+      ? detail.meta.status || AUDIT_STATUS.OFFCHAIN_ONLY
+      : "ONCHAIN_MISMATCH";
   return {
     ok: true,
     cycle_id,
     offchain_evidence_hash: detail.record.evidence_hash,
     recomputed_ok: detail.integrity.ok,
-    onchain_lookup: onchain,
+    onchain_lookup: isViewError(onchain) ? null : onchain,
+    onchain_error: isViewError(onchain) ? onchain.error : null,
     hash_match: Boolean(match),
-    status: match
-      ? AUDIT_STATUS.ONCHAIN_VERIFIED
-      : detail.meta.status || AUDIT_STATUS.OFFCHAIN_ONLY,
+    status,
     near_tx: detail.meta.near_tx,
     explorer: detail.meta.explorer,
+    status_explain:
+      status === AUDIT_STATUS.ONCHAIN_VERIFIED
+        ? "On-chain evidence hash matches the off-chain record and verification succeeded."
+        : status === "ONCHAIN_MISMATCH"
+          ? "An on-chain record exists but the evidence hash does not match."
+          : "Decision recorded locally; no matching NEAR receipt was verified.",
     note:
       "Audit receipt ≠ swap settlement. SETTLED only after independent reconcile.",
   };
@@ -396,7 +455,8 @@ export async function getLiveBalancesSnapshot() {
         finality: "final",
         account_id,
       });
-      if (j.error) return { amount: null, status: "unavailable", note: String(j.error) };
+      if (j.error)
+        return { amount: null, status: "unavailable", note: String(j.error) };
       const yocto = j.result?.amount;
       if (yocto == null) return { amount: null, status: "unavailable" };
       const near = Number(yocto) / 1e24;

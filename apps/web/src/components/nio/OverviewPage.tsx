@@ -18,6 +18,7 @@ import {
   chainBadge,
   safeText,
   safeNumber,
+  flagLabel,
 } from "../../adapters/mainnetPublic";
 import {
   formatLastUpdated,
@@ -194,14 +195,10 @@ export function OverviewPage({
               <dt>Autonomous</dt>
               <dd style={{ fontSize: 18 }}>
                 {mandate
-                  ? typeof mandate.autonomous_trading === "boolean"
-                    ? mandate.autonomous_trading
-                      ? "ON"
-                      : "OFF"
-                    : "—"
+                  ? flagLabel(mandate.autonomous_trading)
                   : live.status === "loading"
                     ? "…"
-                    : "—"}
+                    : "UNKNOWN"}
               </dd>
             </div>
             <div>

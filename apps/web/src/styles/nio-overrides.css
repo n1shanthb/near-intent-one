@@ -533,6 +533,68 @@ body,
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+/* Compact two-column mandate / security labels */
+.nio-kv-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+.nio-kv-compact > div {
+  min-width: 0;
+}
+.nio-flag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nio-wrap-addr {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.nio-skeleton-stack {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.nio-skeleton {
+  height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f2f4f7 25%, #e8ebf0 50%, #f2f4f7 75%);
+  background-size: 200% 100%;
+  animation: nio-shimmer 1.2s ease-in-out infinite;
+}
+.nio-skeleton.short { height: 28px; width: 60%; }
+@keyframes nio-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.nio-empty-state {
+  padding: 18px 16px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 12px;
+  background: #fafbfc;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.nio-empty-state p { margin: 0; }
+/* Keep active workspace visible on mobile topbar */
+.nio-topbar-switcher {
+  display: flex;
+  min-width: 0;
+}
+.nio-topbar-switcher .nio-workspace-switcher span {
+  white-space: nowrap;
+}
+.nio-workspace-switcher {
+  max-width: 100%;
+}
+.axis-stat {
+  min-width: 0;
+  overflow: hidden;
+}
+.axis-stat strong {
+  overflow-wrap: anywhere;
+}
 
 .nio-scenario-grid {
   display: grid;
@@ -697,6 +759,29 @@ body,
 }
 @media (max-width: 700px) {
   .nio-pipeline { grid-template-columns: 1fr; }
+  .nio-kv-compact { grid-template-columns: 1fr; }
+  .nio-topbar-switcher .nio-workspace-switcher span {
+    font-size: 12px;
+  }
+  .axis-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: 100%;
+  }
+  .axis-topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .axis-network-chip,
+  .axis-stat {
+    max-width: 100%;
+  }
+  .mono.nio-wrap-addr,
+  .nio-kv dd.mono {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
 }
 
 .nio-owner-steps {

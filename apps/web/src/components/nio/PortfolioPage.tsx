@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNearWallet } from "near-connect-hooks";
 import { getPortfolio, listBalances } from "../../adapters/gatei";
-import { usdcLabel, chainBadge } from "../../adapters/mainnetPublic";
-import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
+import {
+  usdcLabel,
+  chainBadge,
+  flagLabel,
+} from "../../adapters/mainnetPublic";
 import { useProductSession } from "../../state/ProductSession";
 import {
   formatLastUpdated,
@@ -10,7 +13,6 @@ import {
 } from "../../state/WorkspaceContext";
 import { LiveDataChrome } from "./WorkspaceSwitcher";
 import { Portfolio } from "../Portfolio";
-import { FourChainPortfolioPanel } from "./FourChainPortfolioPanel";
 import type { NavId } from "./nav";
 import type { BalanceSlice, PortfolioRecord } from "../../types/gateI";
 
@@ -62,8 +64,12 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
   }, [gateI.status, isPublic]);
 
   const mandate = live.mandate;
-  const recordedBefore = GATE_K_FIRST_TRADE.balance_before_usdc;
-  const recordedAfter = GATE_K_FIRST_TRADE.balance_after_usdc;
+  const verifiedRows =
+    live.balances?.rows?.filter((r) => r.status === "verified") ?? [];
+  const hasAnyBalance = Boolean(live.balances?.rows?.length);
+  const balancesUnavailable =
+    !hasAnyBalance ||
+    (live.balances?.rows?.every((r) => r.status !== "verified") ?? true);
 
   if (isPublic) {
     return (
@@ -80,14 +86,12 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
           <LiveDataChrome />
         </div>
 
-        <FourChainPortfolioPanel />
-
         <section className="axis-panel">
           <div className="axis-panel-heading">
             <h2>Mainnet identities</h2>
             <span className="nio-badge nio-badge-success">MAINNET</span>
           </div>
-          <dl className="nio-kv">
+          <dl className="nio-kv nio-kv-compact">
             <div>
               <dt>Owner</dt>
               <dd className="mono">{identities.owner}</dd>
@@ -111,10 +115,28 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
           <div className="axis-panel-heading">
             <h2>Verified balances</h2>
             <span className="nio-badge nio-badge-idle">
-              {live.balances?.ok ? "LIVE READ" : "PENDING"}
+              {verifiedRows.length ? "LIVE READ" : "UNAVAILABLE"}
             </span>
           </div>
-          {live.balances?.rows?.length ? (
+
+          {balancesUnavailable ? (
+            <div className="nio-empty-state">
+              <p>Live balance data unavailable</p>
+              <p className="axis-supporting">
+                {live.error
+                  ? `API: ${live.error}`
+                  : live.balances?.note ||
+                    "No verified mainnet balance rows returned."}
+              </p>
+              <button
+                type="button"
+                className="axis-button"
+                onClick={() => void live.refresh()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
             <div className="axis-table-wrap">
               <table>
                 <thead>
@@ -128,10 +150,10 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {live.balances.rows.map((row) => (
+                  {live.balances!.rows.map((row) => (
                     <tr key={`${row.role}-${row.chain}-${row.asset}`}>
                       <td>{row.role}</td>
-                      <td className="mono">{row.account}</td>
+                      <td className="mono nio-wrap-addr">{row.account}</td>
                       <td>{row.chain}</td>
                       <td>{row.asset}</td>
                       <td className="mono">
@@ -155,14 +177,6 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="nio-empty-state">
-              <p>
-                Balance endpoint unavailable
-                {live.error ? ` (${live.error})` : ""}. Amounts are not substituted
-                with testnet demo figures.
-              </p>
-            </div>
           )}
           <p className="axis-supporting" style={{ marginTop: 10 }}>
             {live.balances?.note ??
@@ -175,7 +189,7 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
             <h2>Mandate limits (live)</h2>
           </div>
           {mandate?.ok ? (
-            <dl className="nio-kv">
+            <dl className="nio-kv nio-kv-compact">
               <div>
                 <dt>Network</dt>
                 <dd>NEAR mainnet</dd>
@@ -185,12 +199,14 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
                 <dd>
                   <span
                     className={`nio-badge ${
-                      mandate.autonomous_trading
+                      mandate.autonomous_trading === true
                         ? "nio-badge-success"
-                        : "nio-badge-danger"
+                        : mandate.autonomous_trading === false
+                          ? "nio-badge-danger"
+                          : "nio-badge-idle"
                     }`}
                   >
-                    {mandate.autonomous_trading ? "ON" : "OFF"}
+                    {flagLabel(mandate.autonomous_trading)}
                   </span>
                 </dd>
               </div>
@@ -222,7 +238,7 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
               </div>
               <div>
                 <dt>Policy epoch</dt>
-                <dd className="mono">{mandate.mandate_epoch}</dd>
+                <dd className="mono">{mandate.mandate_epoch ?? "—"}</dd>
               </div>
             </dl>
           ) : (
@@ -231,24 +247,6 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
               {live.error ? `: ${live.error}` : "."}
             </p>
           )}
-        </section>
-
-        <section className="axis-panel">
-          <div className="axis-panel-heading">
-            <h2>Historical testnet evidence</h2>
-            <span className="nio-badge nio-badge-recorded">TESTNET · NOT MAINNET</span>
-          </div>
-          <p className="axis-supporting">
-            Gate K residual {recordedAfter} USDC (before {recordedBefore}) on Sepolia
-            is historical lab evidence only.
-          </p>
-          <button
-            type="button"
-            className="axis-button secondary"
-            onClick={() => onNav("evidence")}
-          >
-            Open historical evidence
-          </button>
         </section>
       </div>
     );
@@ -309,25 +307,9 @@ export function PortfolioPage({ onNav }: { onNav: (id: NavId) => void }) {
           <h2>Historical testnet lab (optional)</h2>
           <span className="nio-badge nio-badge-recorded">PUBLIC DEMO · TESTNET</span>
         </div>
-        <div
-          className="axis-stats"
-          style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}
-        >
-          <div className="axis-stat">
-            <span>API</span>
-            <strong style={{ fontSize: 22 }}>
-              {gateI.status === "available" ? "Connected" : "Recorded mode"}
-            </strong>
-          </div>
-          <div className="axis-stat">
-            <span>USDC after Gate K</span>
-            <strong style={{ fontSize: 22 }}>{recordedAfter}</strong>
-          </div>
-          <div className="axis-stat">
-            <span>USDC before Gate K</span>
-            <strong style={{ fontSize: 22 }}>{recordedBefore}</strong>
-          </div>
-        </div>
+        <p className="axis-supporting">
+          Optional lab evidence only — never shown as mainnet holdings.
+        </p>
         {loadError ? <p className="axis-supporting">{loadError}</p> : null}
         <p className="axis-supporting mono" style={{ marginTop: 10 }}>
           Technical id · {DEMO_ID}
