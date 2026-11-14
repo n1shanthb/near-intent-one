@@ -40,6 +40,15 @@ vendor/near-hackathon-prompt-examples/
 
 private/
 
+# Hackathon video assets (large / local)
+NIO_NEAR_HACKATHON_X_FINAL.mp4
+ultrademo-workspace/
+**/video_*.mp4
+private/video-work/tmp/
+private/video-work/out/
+private/video-work/audio/
+private/video-work/ledger-frames/
+
 .vercel
 
 # Local IDE / agent tooling

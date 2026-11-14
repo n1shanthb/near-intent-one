@@ -1,8 +1,27 @@
-# NIO — NEAR Intent One
+# NIO — Four-Chain Autonomous DeFi, Hardware-Governed by NEAR
 
-**An autonomous DeFi agent governed by a hardware-authorized NEAR smart-contract mandate.** OpenRouter models research, propose and critique; a deterministic Fitter enforces bounded risk; NEAR MPC Chain Signatures enable EVM execution; NEAR Intents handles cross-chain settlement; even rejected AI decisions are independently auditable on NEAR.
+**Ledger-authorized on-chain mandates, deterministic AI risk enforcement, NEAR MPC Chain Signatures, three verified mainnet Intents settlements, and independently auditable autonomous decisions.**
 
 Hardware sets the rules. The policy contract—not the agent—owns the multichain signing path. AI can refuse to trade, and that refusal is still a NEAR receipt.
+
+### Watch 2:17 demo
+
+[![NIO 2:17 demo thumbnail](docs/submission/NIO_VIDEO_THUMBNAIL.png)](./NIO_NEAR_HACKATHON_X_FINAL.mp4)
+
+**Duration:** 137 seconds · **File:** [`NIO_NEAR_HACKATHON_X_FINAL.mp4`](./NIO_NEAR_HACKATHON_X_FINAL.mp4) (local / release asset)  
+**X post URL:** *publish after owner review — do not invent a link*  
+Script / shotlist / verification: [`docs/submission/VIDEO_SCRIPT.md`](docs/submission/VIDEO_SCRIPT.md) · [`VIDEO_SHOTLIST.md`](docs/submission/VIDEO_SHOTLIST.md) · [`VIDEO_VERIFICATION.md`](docs/submission/VIDEO_VERIFICATION.md)
+
+### What judges should see first
+
+1. **FOUR CHAINS** — NEAR, Ethereum, Arbitrum, Base  
+2. **HARDWARE OWNER** — real Ledger authority (`nishanthb.near`)  
+3. **ON-CHAIN MANDATE** — epoch **4**: **$5** / trade · **$25** / day · **$10** pending · **200** bps  
+4. **AI AUTONOMY** — Researcher / Strategist / Fitter / Critic  
+5. **REAL MAINNET PROOFS** — J8B / M1 / M2 **owner-supervised** Intents settlements  
+6. **AUTONOMOUS DECISION PROOF** — ONCHAIN_VERIFIED **NO_TRADE**  
+7. **AGENT MARKET** — real **0.15 USDC** hire / escrow  
+8. **PUBLIC VERIFIER** — inspect receipts without a wallet  
 
 ---
 
@@ -23,6 +42,22 @@ https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s
 **Full proof index:** [`docs/PROOF_INDEX.md`](docs/PROOF_INDEX.md)
 
 **Judge quickstart:** [`docs/JUDGE_QUICKSTART.md`](docs/JUDGE_QUICKSTART.md)
+
+---
+
+## Why NIO is secure
+
+- **Owner retains Ledger control** — FullAccess stays on hardware; the trading agent never receives the owner seed or FullAccess key.
+- **Bounded epoch-scoped on-chain mandate** — spend caps, allowlists, and expiry live in `policy.nishanthb.near`.
+- **Token, chain, venue, destination allowlists** — exact identities, not free-form symbols.
+- **Deterministic Fitter before execution** — LLMs advise; the Fitter can refuse.
+- **Per-trade / daily / pending budgets** — currently epoch 4: $5 / $25 / $10 (historical epoch 3 was $1 / $5 / $2).
+- **Pause and revoke** — owner can stop new authorizations.
+- **NEAR MPC signing** is contract-gated on a contract-owned derivation path.
+- **Independent settlement reconcile** or an on-chain **NO_TRADE** audit receipt.
+- **Limitation:** signatures already produced cannot necessarily be recalled by later revocation.
+
+Do not overclaim “full hardware isolation of every signing path” beyond what the current deployment proves.
 
 ---
 
