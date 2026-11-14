@@ -1394,14 +1394,37 @@ export async function canaryStepSettle({
     deps.adapters ||
     (testHarness ? null : await createMainnetCanaryAdapters({ env }));
 
+  const destKind =
+    rec.payload?.destination_kind ||
+    (String(rec.payload?.kind || "").includes("mission1") ? "nep141" : null);
+  const isNearDest = destKind === "nep141" || destKind === "near_nep141_ft_delta";
+  const sourceChainId = Number(rec.payload?.chain_id || CANARY_CHAIN_ID);
+  const sourceRpc =
+    deps.sourceRpc ||
+    (sourceChainId === 1
+      ? a?.ethRpc || MAINNET_EVM_RPCS.ethereum
+      : sourceChainId === 8453
+        ? a?.baseRpc || MAINNET_EVM_RPCS.base
+        : a?.arbRpc || MAINNET_EVM_RPCS.arbitrum);
+  const sourceToken =
+    deps.sourceToken ||
+    (sourceChainId === 1
+      ? MAINNET_USDC.ethereum
+      : sourceChainId === 8453
+        ? MAINNET_USDC.base
+        : CANARY_TOKEN);
+  const sourceAmount = String(rec.payload?.amount || CANARY_AMOUNT);
+
   const source =
     deps.sourceVerify ||
     (await verifySourceUsdcTransfer({
       txHash: rec.locked_broadcast_hash,
       mpc,
       escrow: rec.payload.deposit_address,
-      amount: CANARY_AMOUNT,
-      rpcUrl: a?.arbRpc || MAINNET_EVM_RPCS.arbitrum,
+      amount: sourceAmount,
+      rpcUrl: sourceRpc,
+      token: sourceToken,
+      expectedChainId: sourceChainId,
     }));
 
   const settle =
@@ -1412,12 +1435,16 @@ export async function canaryStepSettle({
       pollFn: deps.oneClickStatus,
     }));
 
+  const recoveryOpts = {
+    destinationKind: isNearDest ? "near_nep141" : "base_usdc",
+  };
+
   if (!source.ok) {
     return {
       ok: false,
       reason: "source_receipt_failed",
       source,
-      settlement_recovery: settlementRecoverySteps("FAILED"),
+      settlement_recovery: settlementRecoverySteps("FAILED", recoveryOpts),
     };
   }
 
@@ -1428,7 +1455,7 @@ export async function canaryStepSettle({
       stage: CANARY_STATES.SETTLEMENT_PENDING,
       source,
       settlement: settle,
-      settlement_recovery: settlementRecoverySteps(settle.normalized),
+      settlement_recovery: settlementRecoverySteps(settle.normalized, recoveryOpts),
       note: "Persist pending; continue polling — do not mark SUCCESS",
     };
   }
@@ -1441,7 +1468,7 @@ export async function canaryStepSettle({
       stage: CANARY_STATES.REFUNDED,
       source,
       settlement: settle,
-      settlement_recovery: settlementRecoverySteps("REFUNDED"),
+      settlement_recovery: settlementRecoverySteps("REFUNDED", recoveryOpts),
     };
   }
 
@@ -1457,11 +1484,11 @@ export async function canaryStepSettle({
       stage: CANARY_STATES.FAILED,
       source,
       settlement: settle,
-      settlement_recovery: settlementRecoverySteps(settle.normalized),
+      settlement_recovery: settlementRecoverySteps(settle.normalized, recoveryOpts),
     };
   }
 
-  // REQUIRED: Base USDC delta check before SETTLED
+  // REQUIRED: destination delta check before SETTLED (Base USDC or NEAR NEP-141)
   const minOut =
     deps.minAmountOut ||
     rec.outcomes?.[CANARY_STATES.QUOTE_VERIFIED]?.min_out ||
@@ -1469,7 +1496,59 @@ export async function canaryStepSettle({
     rec.payload?.min_amount_out ||
     null;
   if (!minOut) {
-    return { ok: false, reason: "min_amount_out_missing_for_base_check" };
+    return {
+      ok: false,
+      reason: isNearDest
+        ? "min_amount_out_missing_for_near_check"
+        : "min_amount_out_missing_for_base_check",
+    };
+  }
+
+  if (isNearDest) {
+    const { verifyNearNep141Delta } = await import("./canarySettlement.mjs");
+    const nearDest =
+      deps.nearVerify ||
+      (await verifyNearNep141Delta({
+        accountId: rec.payload.recipient || MAINNET_IDENTITIES.owner,
+        beforeRaw: rec.near_usdc_before || deps.nearUsdcBefore || "0",
+        minAmountOut: minOut,
+        tokenContract:
+          rec.payload.destination_contract ||
+          "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        rpcUrl: a?.rpc,
+      }));
+    if (!nearDest.ok) {
+      return {
+        ok: false,
+        reason: "near_usdc_delta_insufficient",
+        stage: CANARY_STATES.SETTLEMENT_PENDING,
+        source,
+        settlement: settle,
+        destination: nearDest,
+        note: "1Click SUCCESS alone is NOT final — NEAR NEP-141 funds missing/short",
+        settlement_recovery: settlementRecoverySteps("PENDING", recoveryOpts),
+      };
+    }
+    advanceLifecycle(operationId, CANARY_STATES.SETTLED, {
+      env,
+      storeDir,
+      outcome: { near_delta: nearDest.delta, min_out: minOut },
+    });
+    consumeCanaryApproval(operationId, { env, storeDir, reason: "settled" });
+    return {
+      ok: true,
+      stage: CANARY_STATES.SETTLED,
+      source,
+      settlement: settle,
+      destination: nearDest,
+      note: "Final SUCCESS only after NEAR NEP-141 USDC delta verified. Policy reconcile_pending is a separate owner/reconciler confirmed mutation.",
+      window: windowStatusReport({
+        policyPausedOnchain: null,
+        owner_pause_required: true,
+        broadcastStatus: "verified",
+        lifecycle: CANARY_STATES.SETTLED,
+      }),
+    };
   }
 
   const base =
@@ -1491,7 +1570,7 @@ export async function canaryStepSettle({
       settlement: settle,
       base,
       note: "1Click SUCCESS alone is NOT final — Base funds missing/short",
-      settlement_recovery: settlementRecoverySteps("PENDING"),
+      settlement_recovery: settlementRecoverySteps("PENDING", recoveryOpts),
     };
   }
 

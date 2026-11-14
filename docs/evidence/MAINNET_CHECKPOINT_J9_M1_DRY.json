@@ -23,10 +23,10 @@
     ]
   },
   "tokens": {
-    "ok": true,
-    "eth_usdc": true,
-    "near_usdc": true,
-    "wrap_near_listed": true,
+    "ok": false,
+    "eth_usdc": false,
+    "near_usdc": false,
+    "wrap_near_listed": false,
     "near_usdc_decimals": 6,
     "distinction": "Destination is NEP-141 USDC contract on NEAR — not native NEAR, not wrap.near, not an intents ledger balance id"
   },
@@ -44,29 +44,28 @@
   },
   "ethereum": {
     "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
-    "native_wei": "0",
-    "native_eth": 0,
-    "usdc_raw": "0",
+    "native_wei": "600000000000000",
+    "native_eth": 0.0006,
+    "usdc_raw": "1200535",
     "nonce_latest": 0,
     "nonce_pending": 0,
     "gas_price": {
       "ok": true,
-      "gas_price_wei": "248516689",
-      "gas_price_gwei": 0.248516689
+      "gas_price_wei": "162486897",
+      "gas_price_gwei": 0.162486897
     },
     "gas_estimate": {
       "ok": true,
-      "estimated": false,
-      "gas_limit": "250000",
-      "reason": "estimate_fallback",
-      "detail": "execution reverted: ERC20: transfer amount exceeds balance"
+      "estimated": true,
+      "gas_limit": "54360",
+      "eth_estimate": "45300"
     },
     "economics": {
-      "gas_price_wei": "248516689",
-      "gas_limit": "250000",
-      "fee_wei": "62129172250000",
-      "fee_eth": 0.00006212917225,
-      "fee_usd_approx": 0.19881335120000002,
+      "gas_price_wei": "162486897",
+      "gas_limit": "54360",
+      "fee_wei": "8832787720920",
+      "fee_eth": 0.00000883278772092,
+      "fee_usd_approx": 0.028264920706944,
       "trade_usdc": 1,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
@@ -77,37 +76,40 @@
   "near_destination": {
     "recipient": "nishanthb.near",
     "storage": {
-      "ok": false,
-      "registered": false,
-      "storage_balance": null,
+      "ok": true,
+      "registered": true,
+      "storage_balance": {
+        "total": "1250000000000000000000",
+        "available": "0"
+      },
       "storage_bounds": {
         "min": "1250000000000000000000",
         "max": "1250000000000000000000"
       },
       "account_id": "nishanthb.near",
       "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-      "note": "Owner must storage_deposit on the NEP-141 before receiving"
+      "note": null
     },
     "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
   },
   "quote": {
-    "ok": true,
+    "ok": false,
     "dry": true,
     "amount_in": "1000000",
-    "amount_out": "995420",
-    "min_amount_out": "990442",
+    "amount_out": null,
+    "min_amount_out": "0",
     "deposit_address": null,
-    "deadline": "2026-11-13T17:24:16.454Z",
-    "refund_fee": "300000",
-    "withdraw_fee": "4378",
-    "time_estimate": 45,
+    "deadline": null,
+    "refund_fee": null,
+    "withdraw_fee": null,
+    "time_estimate": null,
     "policy_fit": {
       "label": "m1_eth_usdc_to_near_usdc",
       "amount_in": "1000000",
-      "min_amount_out": "990442",
+      "min_amount_out": "0",
       "max_slippage_bps": 100,
       "policy_floor": "990000",
-      "result": "PASS",
+      "result": "BLOCKED",
       "altered_values": false
     },
     "decimals": {
@@ -117,9 +119,9 @@
       "decimals_out": 6,
       "same_decimal_scale": true,
       "amount_in": "1000000",
-      "min_amount_out": "990442",
+      "min_amount_out": "0",
       "policy_floor": "990000",
-      "policy_would_accept": true,
+      "policy_would_accept": false,
       "classification": "SAFE_SAME_DECIMALS",
       "can_safely_validate_value_slippage_exposure": true,
       "risks": [],
@@ -128,13 +130,13 @@
     "note": "dry quote — deposit_address may be null until funded quote + approval"
   },
   "blockers": [
-    "mpc_eth_usdc_insufficient:have=0:need=1000000",
-    "mpc_ethereum_native_eth_zero",
-    "near_usdc_storage_unregistered:owner_must_storage_deposit_before_receive"
+    "tokens_unavailable:tokens_tls_error",
+    "origin_eth_usdc_missing_from_1click",
+    "dest_near_usdc_missing_from_1click",
+    "dry_quote_failed:quote_tls_error",
+    "policy_slippage_floor_rejects_min_out:min=0:floor=990000"
   ],
-  "warnings": [
-    "wrap.near_is_listed_but_not_selected — Mission 1 uses NEP-141 USDC (6 decimals), not wrap.near (24)"
-  ],
+  "warnings": [],
   "approval_boundary": {
     "stop": true,
     "requires_explicit_approval_for": [
@@ -148,17 +150,15 @@
     "proposed_trade": {
       "amount": "1000000",
       "amount_label": "1 USDC",
-      "source_fee_budget_wei": "62129172250000",
-      "source_fee_eth": 0.00006212917225,
-      "source_fee_usd_approx": 0.19881335120000002,
+      "source_fee_budget_wei": "8832787720920",
+      "source_fee_eth": 0.00000883278772092,
+      "source_fee_usd_approx": 0.028264920706944,
       "destination_asset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-      "min_output": "990442",
+      "min_output": "0",
       "signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "recipient": "nishanthb.near",
       "refund_route": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4 on Ethereum (ORIGIN_CHAIN)",
       "quote_slippage_bps": 50
     }
-  },
-  "status": "AWAITING_FUNDING",
-  "preserved": true
+  }
 }

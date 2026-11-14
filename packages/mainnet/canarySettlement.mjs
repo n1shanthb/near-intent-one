@@ -263,24 +263,82 @@ export async function checkNearFtStorageRegistered({
   };
 }
 
-export function settlementRecoverySteps(normalized) {
+/**
+ * Select source/destination verifiers from a route profile (J8B / M1 / M2).
+ */
+export function resolveCanarySettlementPlan(route = {}) {
+  const sourceChainId = Number(route.source_chain_id);
+  const destKind = route.destination_kind || route.settlement?.destination;
+  if (destKind === "near_nep141_ft_delta" || destKind === "nep141") {
+    return {
+      source: {
+        kind: "evm_erc20_transfer",
+        chain_id: sourceChainId,
+        rpc:
+          sourceChainId === 1
+            ? MAINNET_EVM_RPCS.ethereum
+            : sourceChainId === 8453
+              ? MAINNET_EVM_RPCS.base
+              : MAINNET_EVM_RPCS.arbitrum,
+        token:
+          sourceChainId === 1
+            ? MAINNET_USDC.ethereum
+            : sourceChainId === 8453
+              ? MAINNET_USDC.base
+              : ARBITRUM_NATIVE_USDC,
+      },
+      destination: {
+        kind: "near_nep141_ft_delta",
+        token_contract: route.destination_contract || NEAR_NATIVE_USDC_CONTRACT,
+        account_id: route.recipient,
+        verify: "verifyNearNep141Delta",
+      },
+    };
+  }
+  // Default J8B: Arb → Base USDC
+  return {
+    source: {
+      kind: "evm_erc20_transfer",
+      chain_id: 42161,
+      rpc: MAINNET_EVM_RPCS.arbitrum,
+      token: ARBITRUM_NATIVE_USDC,
+    },
+    destination: {
+      kind: "evm_erc20_delta",
+      chain_id: 8453,
+      rpc: MAINNET_EVM_RPCS.base,
+      token: MAINNET_USDC.base,
+      verify: "verifyBaseUsdcDelta",
+    },
+  };
+}
+
+export function settlementRecoverySteps(normalized, { destinationKind = "base_usdc" } = {}) {
   const common = [
     "Do not resign a different digest at the same nonce",
     "Do not create a second canary approval for a duplicate deposit",
     "Keep autonomous_trading=false",
     "Ledger pause() to close the execution window if still open",
   ];
+  const destCheck =
+    destinationKind === "near_nep141" || destinationKind === "nep141"
+      ? "Verify NEAR NEP-141 USDC delta >= min_amount_out at nishanthb.near"
+      : "Verify Base USDC delta >= min_amount_out";
+  const refundCheck =
+    destinationKind === "near_nep141" || destinationKind === "nep141"
+      ? "Confirm Ethereum USDC returned to MPC refund address"
+      : "Confirm Arbitrum USDC returned to MPC or refund address";
   switch (String(normalized || "").toUpperCase()) {
     case "SUCCESS":
       return [
-        "Verify Base USDC delta >= min_amount_out",
+        destCheck,
         "Reconcile policy pending op to settled only after evidence complete",
         "Ledger pause()",
         ...common,
       ];
     case "REFUNDED":
       return [
-        "Confirm Arbitrum USDC returned to MPC or refund address",
+        refundCheck,
         "Mark journal REFUNDED; do not count as trade success",
         "Ledger pause()",
         ...common,

@@ -50,7 +50,17 @@ export {
   verifyNearNep141Delta,
   checkNearFtStorageRegistered,
   settlementRecoverySteps,
+  resolveCanarySettlementPlan,
 } from "./canarySettlement.mjs";
+export {
+  buildMission1ApprovalPreview,
+  buildMission1TransactionPlan,
+  createMission1CanaryApproval,
+  validateMission1CanaryApproval,
+  verifyMission1Settlement,
+  auditMission1ProductionPath,
+  MISSION1_APPROVAL_KIND,
+} from "./mission1ExecutionPath.mjs";
 export {
   M1_ETH_NEAR_USDC,
   M2_BASE_ETH_USDC,

@@ -15,28 +15,30 @@
 | Recipient | `nishanthb.near` |
 | Refund | `0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4` on Ethereum |
 | Quote slippage | 50 bps (policy max 100) |
-| Min out (dry) | `990430` |
-| Est. source fee | ~0.000129 ETH (≈$0.41) |
+| Min out (dry) | `0` |
+| Est. source fee | ~0.000007 ETH (≈$0.02) |
 
 Destination is **not** `wrap.near`, native NEAR, or an intents balance id.
 
 ## Live checks
 
-- 1Click tokens: eth_usdc=true, near_usdc=true
+- 1Click tokens: eth_usdc=false, near_usdc=false
 - Policy paused=true, epoch=2, eip155:1=true
-- MPC ETH wei=0, USDC raw=0, nonce=0/0
-- NEAR USDC storage registered=false
-- Dry quote policy fit=PASS
+- MPC ETH wei=600000000000000, USDC raw=1200535, nonce=0/0
+- NEAR USDC storage registered=true
+- Dry quote policy fit=BLOCKED
 
 ## Blockers
 
-- mpc_eth_usdc_insufficient:have=0:need=1000000
-- mpc_ethereum_native_eth_zero
-- near_usdc_storage_unregistered:owner_must_storage_deposit_before_receive
+- tokens_unavailable:tokens_tls_error
+- origin_eth_usdc_missing_from_1click
+- dest_near_usdc_missing_from_1click
+- dry_quote_failed:quote_tls_error
+- policy_slippage_floor_rejects_min_out:min=0:floor=990000
 
 ## Warnings
 
-- wrap.near_is_listed_but_not_selected — Mission 1 uses NEP-141 USDC (6 decimals), not wrap.near (24)
+- (none)
 
 ## Approval boundary
 

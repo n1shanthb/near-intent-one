@@ -56,6 +56,7 @@ export async function createMainnetCanaryAdapters(opts = {}) {
   const provider = new providers.JsonRpcProvider({ url: rpc });
   const arbRpc = opts.arbRpc || MAINNET_EVM_RPCS.arbitrum;
   const baseRpc = opts.baseRpc || MAINNET_EVM_RPCS.base;
+  const ethRpc = opts.ethRpc || MAINNET_EVM_RPCS.ethereum;
   const policy = MAINNET_IDENTITIES.policy;
 
   return {
@@ -67,6 +68,7 @@ export async function createMainnetCanaryAdapters(opts = {}) {
     rpc,
     arbRpc,
     baseRpc,
+    ethRpc,
 
     view: (method, args = {}) => viewFunction(rpc, policy, method, args),
 
