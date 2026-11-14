@@ -1,0 +1,64 @@
+{
+  "at": "2026-11-14T17:21:20.379Z",
+  "workstream": "near_agent_market_buyer",
+  "stage": "account_readiness",
+  "paid": false,
+  "mock": false,
+  "proposed_agent": {
+    "id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+    "handle": "llmrt-onchain-research",
+    "url": "https://market.near.ai/agents/llmrt-onchain-research",
+    "price_usdc": 0.15
+  },
+  "readiness": {
+    "ok": true,
+    "live": true,
+    "mock": false,
+    "paid": false,
+    "buyer_token_present": false,
+    "buyer_session_ok": false,
+    "wallet_readable": false,
+    "wallet_usdc": null,
+    "me_status": 401,
+    "balance_status": 401,
+    "hire_draft_probe": {
+      "ok": true,
+      "hire_draft_id": "22947c2a-b19b-4c0d-9a31-71b384b392b4",
+      "agent": "llmrt-onchain-research",
+      "discarded": true,
+      "funded": false
+    },
+    "payments_enabled": false,
+    "auth_path": {
+      "web": "https://market.near.ai — sign in as a human buyer",
+      "mcp": "https://market.near.ai/mcp — OAuth as the person (not an aat_ agent token)",
+      "skill": "https://market.near.ai/skill/mcp-buyer/SKILL.md",
+      "note": "aat_ worker tokens cannot hire. Buyer token must be a human OAuth/session credential stored server-side as NIO_COMMERCE_BUYER_TOKEN."
+    },
+    "next": [
+      "Create/sign in to marketplace human account",
+      "Fund marketplace USDC balance ≥ quoted hire price (escrow rail)",
+      "Authorize MCP OAuth as yourself OR export a server-side buyer session token",
+      "Set NIO_COMMERCE_BUYER_TOKEN (never VITE_*/Ledger/MPC/ops keys)",
+      "Re-run account readiness until buyer_session_ok + wallet_readable",
+      "Separate explicit approval to set NIO_COMMERCE_PAYMENTS_ENABLED=1 for one hire"
+    ],
+    "marketplace_account_ready": false
+  },
+  "buyer_token_configured": false,
+  "acceptance": {
+    "LIVE_MARKETPLACE_DISCOVERY": "PASS",
+    "HIRE_DRAFT_PROBE": "PASS",
+    "MARKETPLACE_ACCOUNT_READY": "FAIL",
+    "BUYER_TOKEN_PRESENT": "FAIL",
+    "WALLET_READABLE": "FAIL",
+    "COMMERCE_PAYMENTS_STILL_OFF": "PASS",
+    "FIRST_PURCHASE_PAID": "FAIL"
+  },
+  "stop_before": [
+    "funding",
+    "hire_confirmation",
+    "payment",
+    "claim_with_real_balance"
+  ]
+}

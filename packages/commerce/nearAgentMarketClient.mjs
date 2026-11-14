@@ -20,24 +20,46 @@ export class MarketClientError extends Error {
   }
 }
 
-function authHeaders(token) {
+function authHeaders(token, cookie) {
   const h = {
     accept: "application/json",
     "content-type": "application/json",
     "user-agent": "nio-commerce/1.0",
   };
   if (token) h.authorization = `Bearer ${token}`;
+  if (cookie) h.cookie = cookie;
   return h;
 }
 
-async function marketFetch(path, { method = "GET", token, body, base = MARKET_BASE } = {}) {
+function extractSetCookies(res) {
+  if (typeof res.headers.getSetCookie === "function") {
+    return res.headers.getSetCookie();
+  }
+  const single = res.headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
+/** Pull `name=value` pairs from Set-Cookie headers (hire_draft cookie flow). */
+export function cookieHeaderFromSetCookie(setCookies) {
+  const pairs = [];
+  for (const raw of setCookies || []) {
+    const first = String(raw).split(";")[0]?.trim();
+    if (first && first.includes("=")) pairs.push(first);
+  }
+  return pairs.length ? pairs.join("; ") : null;
+}
+
+async function marketFetch(
+  path,
+  { method = "GET", token, cookie, body, base = MARKET_BASE } = {}
+) {
   const url = path.startsWith("http") ? path : `${base.replace(/\/$/, "")}${path}`;
   let res;
   let text;
   try {
     res = await fetch(url, {
       method,
-      headers: authHeaders(token),
+      headers: authHeaders(token, cookie),
       body: body != null ? JSON.stringify(body) : undefined,
     });
     text = await res.text();
@@ -52,7 +74,15 @@ async function marketFetch(path, { method = "GET", token, body, base = MARKET_BA
   } catch {
     json = { raw: text.slice(0, 500) };
   }
-  return { ok: res.ok, status: res.status, json, text, url };
+  return {
+    ok: res.ok,
+    status: res.status,
+    json,
+    text,
+    url,
+    set_cookies: extractSetCookies(res),
+    cookie: cookieHeaderFromSetCookie(extractSetCookies(res)),
+  };
 }
 
 export function getBuyerToken(env = process.env) {
@@ -189,7 +219,10 @@ export async function discoverAgentsWithPricing(opts = {}) {
   };
 }
 
-/** Visitor hire-draft (unauthenticated). Does NOT fund or hire. */
+/**
+ * Visitor hire-draft (unauthenticated). Does NOT fund or hire.
+ * Official API keys the draft with Set-Cookie `hire_draft=…` (7-day TTL).
+ */
 export async function createHireDraft(agentId, { brief, acceptanceWindowDays = 3, base } = {}) {
   if (!brief || String(brief).trim().length < 8) {
     return { ok: false, reason: "brief_too_short" };
@@ -214,23 +247,138 @@ export async function createHireDraft(agentId, { brief, acceptanceWindowDays = 3
   return {
     ok: true,
     draft: r.json,
+    hire_draft_id: r.json?.hireDraftId || null,
+    cookie: r.cookie,
     funded: false,
     hired: false,
     live: true,
     mock: false,
-    note: "Draft only — buyer must approve/fund on marketplace; no payment yet",
+    note: "Draft only — buyer must claim/approve/fund on marketplace; no payment yet",
   };
 }
 
-export async function discardHireDraft(hireDraftId, { base } = {}) {
-  const r = await marketFetch(
-    `/v1/hire-draft?hireDraftId=${encodeURIComponent(hireDraftId)}`,
-    { method: "DELETE", base }
-  );
+/** Discard visitor draft using the hire_draft cookie from createHireDraft. */
+export async function discardHireDraft({ cookie, base } = {}) {
+  if (!cookie) {
+    return { ok: false, reason: "missing_hire_draft_cookie" };
+  }
+  const r = await marketFetch(`/v1/hire-draft`, {
+    method: "DELETE",
+    cookie,
+    base,
+  });
   return {
     ok: r.status === 204 || r.ok,
     status: r.status,
     detail: r.json,
+  };
+}
+
+/**
+ * Claim visitor hire-draft into an authenticated job draft.
+ * Requires human buyer session/OAuth — never uses aat_ agent tokens.
+ * Does NOT fund escrow.
+ */
+export async function claimHireDraft({ token, cookie, base, env = process.env } = {}) {
+  const t = token || getBuyerToken(env);
+  if (!t) return { ok: false, reason: "missing_buyer_token", funded: false };
+  if (!cookie) return { ok: false, reason: "missing_hire_draft_cookie", funded: false };
+  const r = await marketFetch(`/v1/hire-draft/claim`, {
+    method: "POST",
+    token: t,
+    cookie,
+    base,
+  });
+  if (!r.ok) {
+    return {
+      ok: false,
+      reason: r.status === 401 ? "unauthorized" : "claim_failed",
+      status: r.status,
+      detail: r.json,
+      funded: false,
+    };
+  }
+  return {
+    ok: true,
+    claimed: r.json,
+    funded: false,
+    hired: false,
+    live: true,
+    mock: false,
+    note: "Claimed to job draft only — payment still requires marketplace approval/balance",
+  };
+}
+
+/**
+ * Authenticated-readiness probe. Never enables payments or creates a paid hire.
+ */
+export async function checkMarketplaceAccountReadiness({
+  env = process.env,
+  probeAgentId = null,
+  brief = "NIO commerce readiness probe — discard immediately. No payment.",
+  base,
+} = {}) {
+  const token = getBuyerToken(env);
+  const me = await marketFetch(`/v1/me`, { token: token || undefined, base });
+  const balance = await marketFetch(`/v1/wallet/balance`, {
+    token: token || undefined,
+    base,
+  });
+
+  let hireDraft = null;
+  let discarded = null;
+  if (probeAgentId) {
+    hireDraft = await createHireDraft(probeAgentId, { brief, base });
+    if (hireDraft.ok && hireDraft.cookie) {
+      discarded = await discardHireDraft({ cookie: hireDraft.cookie, base });
+    }
+  }
+
+  const buyer_session_ok = me.ok === true && me.status === 200;
+  const wallet_readable = balance.ok === true && balance.status === 200;
+  const usdc =
+    balance.json?.usdc != null
+      ? Number(balance.json.usdc)
+      : balance.json?.USDC != null
+        ? Number(balance.json.USDC)
+        : null;
+
+  return {
+    ok: true,
+    live: true,
+    mock: false,
+    paid: false,
+    buyer_token_present: Boolean(token),
+    buyer_session_ok,
+    wallet_readable,
+    wallet_usdc: Number.isFinite(usdc) ? usdc : null,
+    me_status: me.status,
+    balance_status: balance.status,
+    hire_draft_probe: hireDraft
+      ? {
+          ok: hireDraft.ok,
+          hire_draft_id: hireDraft.hire_draft_id,
+          agent: hireDraft.draft?.agentHandle || null,
+          discarded: discarded?.ok === true,
+          funded: false,
+        }
+      : null,
+    payments_enabled: paymentsEnabled(env),
+    auth_path: {
+      web: "https://market.near.ai — sign in as a human buyer",
+      mcp: "https://market.near.ai/mcp — OAuth as the person (not an aat_ agent token)",
+      skill: "https://market.near.ai/skill/mcp-buyer/SKILL.md",
+      note: "aat_ worker tokens cannot hire. Buyer token must be a human OAuth/session credential stored server-side as NIO_COMMERCE_BUYER_TOKEN.",
+    },
+    next: [
+      "Create/sign in to marketplace human account",
+      "Fund marketplace USDC balance ≥ quoted hire price (escrow rail)",
+      "Authorize MCP OAuth as yourself OR export a server-side buyer session token",
+      "Set NIO_COMMERCE_BUYER_TOKEN (never VITE_*/Ledger/MPC/ops keys)",
+      "Re-run account readiness until buyer_session_ok + wallet_readable",
+      "Separate explicit approval to set NIO_COMMERCE_PAYMENTS_ENABLED=1 for one hire",
+    ],
+    marketplace_account_ready: buyer_session_ok && wallet_readable,
   };
 }
 

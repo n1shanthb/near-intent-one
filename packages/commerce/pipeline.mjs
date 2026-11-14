@@ -122,11 +122,16 @@ export async function runCommerceDiscoveryPipeline(opts = {}) {
     if (draft.ok) {
       runtime.jobs.update(job.operation_id, {
         state: "PAYMENT_PENDING",
-        hire_draft_id: draft.draft?.hireDraftId || draft.draft?.hire_draft_id,
-        receipt: { hire_draft: draft.draft, funded: false },
+        hire_draft_id: draft.hire_draft_id || draft.draft?.hireDraftId,
+        receipt: {
+          hire_draft: draft.draft,
+          funded: false,
+          // Cookie is capability for discard/claim — not logged to public views
+          has_hire_draft_cookie: Boolean(draft.cookie),
+        },
       });
-      if (opts.discardDraftAfter === true && draft.draft?.hireDraftId) {
-        await discardHireDraft(draft.draft.hireDraftId);
+      if (opts.discardDraftAfter === true && draft.cookie) {
+        await discardHireDraft({ cookie: draft.cookie });
         runtime.jobs.update(job.operation_id, {
           state: "APPROVED",
           note: "probe_draft_discarded",

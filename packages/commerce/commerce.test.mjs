@@ -13,6 +13,10 @@ import {
   paymentsEnabled,
   getBuyerToken,
   hashBrief,
+  createHireDraft,
+  discardHireDraft,
+  checkMarketplaceAccountReadiness,
+  cookieHeaderFromSetCookie,
 } from "./nearAgentMarketClient.mjs";
 import {
   commerceGates,
@@ -178,5 +182,43 @@ describe("live marketplace discovery", () => {
     assert.equal(getBuyerToken({}), null);
     assert.equal(paymentsEnabled({}), false);
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("creates and discards a real hire-draft without paying", async () => {
+    const search = await searchAgents({
+      q: "research",
+      category: "research",
+      limit: 5,
+    });
+    assert.equal(search.ok, true);
+    const agent = search.agents.find((a) => a.available_now) || search.agents[0];
+    assert.ok(agent?.agent_id);
+    const draft = await createHireDraft(agent.agent_id, {
+      brief: "NIO test hire-draft — discard immediately. No payment.",
+    });
+    assert.equal(draft.ok, true);
+    assert.equal(draft.funded, false);
+    assert.ok(draft.hire_draft_id);
+    assert.ok(draft.cookie);
+    const discarded = await discardHireDraft({ cookie: draft.cookie });
+    assert.equal(discarded.ok, true);
+  });
+
+  it("reports marketplace account not ready without buyer token", async () => {
+    assert.equal(
+      cookieHeaderFromSetCookie([
+        "hire_draft=abc; HttpOnly; Path=/",
+        "other=1; Path=/",
+      ]),
+      "hire_draft=abc; other=1"
+    );
+    const r = await checkMarketplaceAccountReadiness({
+      env: {},
+      probeAgentId: null,
+    });
+    assert.equal(r.marketplace_account_ready, false);
+    assert.equal(r.buyer_token_present, false);
+    assert.equal(r.paid, false);
+    assert.equal(r.payments_enabled, false);
   });
 });
