@@ -1,0 +1,85 @@
+{
+  "checkpoint": "J9_FUNDING_PREP",
+  "baseline": "e51eed92be1696699703fb5b9accd2d2b9b4a4fe",
+  "recorded_at": "2026-11-14T03:02:48.768Z",
+  "mutations_invoked": false,
+  "policy_paused": true,
+  "j8b_reconciled_untouched": true,
+  "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+  "shortfalls": {
+    "eth_usdc": 1,
+    "eth_eth": 0.0005,
+    "base_usdc": 0,
+    "base_eth": 0.0001,
+    "near_storage_near": 0.00125
+  },
+  "live": {
+    "eth_usdc": 0,
+    "eth_eth": 0,
+    "base_usdc_raw": "997398",
+    "base_eth": 0,
+    "near_storage_registered": false,
+    "eth_gas_price_gwei": 0.072,
+    "eth_erc20_fee_est_usd": 0.023,
+    "base_fee_est_usd": 0.002,
+    "eth_buffer_ok": true,
+    "base_buffer_ok": true
+  },
+  "transactions": [
+    {
+      "id": "T1_NEAR_USDC_STORAGE_DEPOSIT",
+      "agent_can_initiate_ledger": true,
+      "requires_owner_ledger_confirm": true,
+      "prepared_args_file": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\storage-deposit-near-usdc.args.json",
+      "preview": {
+        "signer": "nishanthb.near",
+        "receiver": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "method": "storage_deposit",
+        "args": {
+          "account_id": "nishanthb.near",
+          "registration_only": true
+        },
+        "deposit": "0.00125 NEAR",
+        "gas": "30.0 Tgas",
+        "network": "mainnet",
+        "hd_path": "m/44'/397'/0'/0'/1'"
+      },
+      "command_ready": "$near='C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe'; $HD=\"m/44'/397'/0'/0'/1'\"; $Args='C:\\Users\\Nishanth\\.nio-secure\\mainnet-canary\\storage-deposit-near-usdc.args.json'; & $near contract call-function as-transaction 17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1 storage_deposit file-args $Args prepaid-gas '30.0 Tgas' attached-deposit '0.00125 NEAR' sign-as nishanthb.near network-config mainnet sign-with-ledger --seed-phrase-hd-path $HD usb send"
+    },
+    {
+      "id": "T2_ETH_USDC_TO_MPC",
+      "agent_can_send": false,
+      "instruction": {
+        "network": "Ethereum mainnet (chainId 1)",
+        "token": "USDC 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "decimals": 6,
+        "amount": "1 USDC (1000000 raw)",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "from": "your owner EOA or exchange withdraw (Ethereum network selected)"
+      }
+    },
+    {
+      "id": "T3_ETH_NATIVE_TO_MPC",
+      "agent_can_send": false,
+      "instruction": {
+        "network": "Ethereum mainnet (chainId 1)",
+        "asset": "native ETH",
+        "amount": "0.0005 ETH",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "note": "Live canary fee ~0.000007 ETH (~$0.02); 0.0005 ETH buffer still sufficient"
+      }
+    },
+    {
+      "id": "T4_BASE_ETH_TO_MPC",
+      "agent_can_send": false,
+      "instruction": {
+        "network": "Base mainnet (chainId 8453)",
+        "asset": "native ETH",
+        "amount": "0.0001 ETH",
+        "to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "note": "Live Base fee ~6e-7 ETH (~$0.002); 0.0001 ETH buffer still sufficient. Do NOT send Base USDC."
+      }
+    }
+  ],
+  "hard_stop": "Await explicit per-tx approval. Preparing funding session is NOT authorization to send."
+}
