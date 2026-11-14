@@ -1,29 +1,37 @@
 {
   "kind": "AUDIT_SHIP_STATUS",
-  "as_of": "2026-11-14T14:03:30Z",
+  "as_of": "2026-11-14T14:12:00Z",
+  "commit": "7ceb07f4993fae750af5f62a411a364b8d8a697c",
   "gates": {
     "AUDIT_CONTRACT_IMPLEMENTED": "PASS",
     "AUDIT_MAINNET_UPGRADE_STATUS": "PREVIEW_ONLY_STOP_BEFORE_DEPLOY",
     "NO_TRADE_ONCHAIN_RECEIPT": "BLOCKED_AWAITING_WASM_UPGRADE",
     "FITTER_VERDICT_ONCHAIN_RECEIPT": "BLOCKED_AWAITING_WASM_UPGRADE",
     "OCI_LIVE_API": "PASS",
-    "FRONTEND_LIVE_DEPLOYED": "PENDING",
-    "PUBLIC_PROOF_VERIFY_PAGE": "PASS_CODE",
-    "MANDATE_AND_CHAIN_DISPLAY": "PASS_CODE",
-    "AGENT_INSPECTOR": "PASS_CODE",
+    "FRONTEND_LIVE_DEPLOYED": "PASS",
+    "PUBLIC_PROOF_VERIFY_PAGE": "PASS",
+    "MANDATE_AND_CHAIN_DISPLAY": "PASS",
+    "AGENT_INSPECTOR": "PASS",
     "END_TO_END_DEMO_VERIFIED": "PARTIAL"
   },
-  "notes": [
-    "record_decision_cycle + NEP-297 nio_agent_audit events implemented and unit-tested",
-    "Owner Ledger audit WASM upgrade prepared but NOT deployed (explicit stop)",
-    "OCI public GET /v1/mainnet/{agent,mandate,decisions,proof,transactions} live on 129.225.72.169:8787",
-    "Seeded OFFCHAIN_ONLY decision cyc-mainnet-demo-b9cba80b-20261114 (LIVE_LLM NO_TRADE)",
-    "ONCHAIN_VERIFIED receipts require separate DeployContract of audit WASM"
-  ],
-  "oci_checks": {
-    "mainnet_health": true,
-    "mandate_epoch": 3,
-    "autonomous_trading": true,
-    "decision_status": "OFFCHAIN_ONLY"
-  }
+  "urls": {
+    "frontend_production": "https://near-intent-one.vercel.app",
+    "verify_path": "https://near-intent-one.vercel.app/verify",
+    "inspect_path": "https://near-intent-one.vercel.app/inspect/nishanthb.near",
+    "oci_mainnet_health": "https://129.225.72.169:8787/v1/mainnet/health",
+    "oci_mandate": "https://129.225.72.169:8787/v1/mainnet/mandate"
+  },
+  "seeded_decision": {
+    "cycle_id": "cyc-mainnet-demo-b9cba80b-20261114",
+    "decision_hash": "b9cba80b576d475d1ce0509ac8543d6119b882f94603e9d8bee47f06c5cefbf9",
+    "status": "OFFCHAIN_ONLY",
+    "onchain_lookup": "MethodNotFound until audit WASM upgrade"
+  },
+  "next_owner_ledger_only": [
+    "Rebuild policy.wasm with record_decision_cycle",
+    "Confirm SHA256 ≠ prior 8BF2AEAF…",
+    "DeployContract without-init-call to policy.nishanthb.near",
+    "migrate_state_v2_decision_audit",
+    "NIO_DECISION_AUDIT_ON_CHAIN=1 + keeper cycle → ONCHAIN_VERIFIED receipt"
+  ]
 }
