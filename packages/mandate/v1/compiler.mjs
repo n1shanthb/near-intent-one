@@ -1,7 +1,7 @@
 /**
  * Mandate V1 Compiler
  * Canonicalization, hashing, binding, and contract preview compilation.
- * 
+ *
  * NO mainnet mutations. Preview/compile only.
  */
 
@@ -12,7 +12,7 @@ import { validateMandateV1, isMandateExpired, isMandateFresh, ENFORCEMENT } from
 /**
  * Canonicalize a mandate to stable JSON representation.
  * Sorted keys, no whitespace variance.
- * 
+ *
  * @param {object} mandate
  * @returns {string} canonical JSON
  */
@@ -37,7 +37,7 @@ function sortKeysDeep(obj) {
 
 /**
  * Hash a mandate to sha256 hex.
- * 
+ *
  * @param {object} mandate
  * @returns {string} sha256 hex
  */
@@ -49,51 +49,38 @@ export function hashMandateV1(mandate) {
 /**
  * Bind a mandate to context (network, policy_contract, owner, agent, epoch).
  * Validates freshness, expiration, and network consistency.
- * 
+ *
  * @param {object} params
- * @param {object} params.mandate
- * @param {string} params.network
- * @param {string} params.policy_contract
- * @param {string} params.owner
- * @param {object} params.agent
- * @param {number} params.epoch - current epoch for replay protection
  * @returns {{ ok: true, mandate_hash: string, binding: object } | { ok: false, blockers: string[] }}
  */
 export function bindMandateV1({ mandate, network, policy_contract, owner, agent, epoch }) {
   const blockers = [];
 
-  // Validate mandate
   const validation = validateMandateV1(mandate);
   if (!validation.ok) {
     blockers.push(...validation.reasons);
   }
 
-  // Network mismatch
   if (mandate.network !== network) {
     blockers.push(`network_mismatch:${mandate.network}≠${network}`);
   }
 
-  // Policy contract mismatch
   if (mandate.policy_contract !== policy_contract) {
     blockers.push(`policy_contract_mismatch:${mandate.policy_contract}≠${policy_contract}`);
   }
 
-  // Owner mismatch
   if (mandate.owner !== owner) {
     blockers.push(`owner_mismatch:${mandate.owner}≠${owner}`);
   }
 
-  // Agent mismatch
   if (agent && mandate.agent_id !== agent.agent_id) {
     blockers.push(`agent_id_mismatch:${mandate.agent_id}≠${agent.agent_id}`);
   }
 
-  // Expired
   if (isMandateExpired(mandate)) {
     blockers.push("mandate_expired");
   }
 
-  // Stale epoch
   if (!isMandateFresh(mandate, epoch)) {
     blockers.push(`epoch_stale:${mandate.epoch}<${epoch}`);
   }
@@ -117,94 +104,113 @@ export function bindMandateV1({ mandate, network, policy_contract, owner, agent,
 }
 
 /**
- * Compile mandate to PolicyLimits-shaped object for contract preview.
- * 
- * NOTE: This is a PREVIEW only. NO mainnet mutations.
- * 
+ * ms → NEAR nanosecond timestamp (U64 string digits).
+ * @param {number} ms
+ * @returns {string}
+ */
+export function msToNearNs(ms) {
+  return String(BigInt(Math.floor(Number(ms))) * 1_000_000n);
+}
+
+/**
+ * Compile mandate to full on-chain PolicyLimits shape (preview only).
+ * Includes valid_until and token_scope — previously missing.
+ *
  * @param {object} mandate
  * @returns {object} PolicyLimits-shaped object
  */
 export function compileMandateToPolicyLimits(mandate) {
+  assert(mandate, "mandate_required");
+  const token_scope = String(mandate.token_scope || "allowlist");
+  if (token_scope !== "allowlist" && token_scope !== "any_eligible_token") {
+    throw new Error(`invalid_token_scope:${token_scope}`);
+  }
+  const valid_until_ms = Number(mandate.expires_at_ms || 0);
+  if (!Number.isFinite(valid_until_ms) || valid_until_ms <= 0) {
+    throw new Error("expires_at_ms_required_for_policy_limits");
+  }
+
   return {
-    max_trade_value: mandate.max_trade_raw,
-    daily_turnover_limit: mandate.daily_turnover_budget_raw,
-    max_pending_exposure: mandate.max_pending_exposure_raw,
-    max_gas_budget: mandate.max_gas_budget,
-    max_slippage_bps: mandate.max_slippage_bps,
-    allowed_chains: mandate.allowed_chains,
-    allowed_assets: mandate.allowed_assets,
-    allowed_venues: mandate.allowed_venues,
-    allowed_destinations: mandate.allowed_destinations,
+    max_trade_value: String(mandate.max_trade_raw || "0"),
+    daily_turnover_limit: String(mandate.daily_turnover_budget_raw || "0"),
+    max_pending_exposure: String(mandate.max_pending_exposure_raw || "0"),
+    max_slippage_bps: Number(mandate.max_slippage_bps ?? 0),
+    allowed_assets: Array.isArray(mandate.allowed_assets) ? [...mandate.allowed_assets] : [],
+    allowed_destinations: Array.isArray(mandate.allowed_destinations)
+      ? [...mandate.allowed_destinations]
+      : [],
+    valid_until: msToNearNs(valid_until_ms),
+    token_scope,
+    allowed_chains: Array.isArray(mandate.allowed_chains) ? [...mandate.allowed_chains] : [],
+    allowed_venues: Array.isArray(mandate.allowed_venues) ? [...mandate.allowed_venues] : [],
+    max_gas_budget: String(mandate.max_gas_budget || "0"),
   };
 }
 
 /**
  * Compile activation preview: which contract methods would be called.
- * 
- * NOTE: This is a PREVIEW only. NO mainnet mutations.
- * 
+ * Does NOT propose unpause when trading is disabled.
+ * Prefer atomic activate_autonomous_mandate when trading_enabled.
+ *
+ * NOTE: Preview only. NO mainnet mutations.
+ *
  * @param {object} mandate
  * @returns {object} activation preview
  */
 export function compileActivationPreview(mandate) {
   const methods = [];
+  const notes = [];
+  const policy_limits = compileMandateToPolicyLimits(mandate);
 
-  // PolicyLimits update (if trading enabled)
   if (mandate.trading_enabled) {
-    methods.push("set_policy");
-  }
-
-  // Autonomous trading flag (off-chain only unless enforce_autonomous_on_agent)
-  if (mandate.trading_enabled) {
-    methods.push("set_autonomous_trading");
+    // Prefer single owner signature that sets limits + autonomy + optional unpause.
+    methods.push("activate_autonomous_mandate");
+    notes.push(
+      "Atomic owner activation: set_policy fields + enforce_autonomous_on_agent + autonomous_trading + optional unpause"
+    );
     if (mandate.enforcement_map?.trading_enabled === ENFORCEMENT.PLANNED) {
-      methods.push("set_enforce_autonomous_on_agent");
+      notes.push("enforcement_map.trading_enabled=PLANNED → enforce_autonomous_on_agent=true inside activate");
     }
+  } else {
+    methods.push("set_policy");
+    notes.push("trading_enabled=false → limits may update but autonomous_trading stays off");
+    notes.push("unpause OMITTED: trading-disabled mandate must not accidentally resume agent ops");
   }
-
-  // Unpause (if paused)
-  methods.push("unpause");
 
   return {
     methods,
     mainnet_mutations: false,
+    unpause_included: false,
     note: "Preview only. NO mainnet mutations in this module.",
-    policy_limits: compileMandateToPolicyLimits(mandate),
+    notes,
+    policy_limits,
+    activate_args_preview: mandate.trading_enabled
+      ? {
+          limits: policy_limits,
+          policy_hash: hashMandateV1(mandate),
+          strategy_hash: String(mandate.strategy_hash || ""),
+          enforce_autonomous_on_agent: true,
+          autonomous_trading: true,
+          unpause_now: false, // owner must explicitly opt-in; preview defaults safe
+        }
+      : null,
   };
 }
 
 /**
  * Create a deterministic operation ID for replay/idempotency.
- * 
- * @param {string} mandate_hash
- * @param {string} operation_type - e.g. "activate", "revoke", "pause"
- * @param {number} epoch
- * @returns {string} operation_id
  */
 export function createMandateOperationId(mandate_hash, operation_type, epoch) {
   const payload = `${mandate_hash}:${operation_type}:${epoch}`;
   return createHash("sha256").update(payload, "utf8").digest("hex").slice(0, 16);
 }
 
-/**
- * Assert that mandate is not expired.
- * 
- * @param {object} mandate
- * @throws {Error} if expired
- */
 export function assertNotExpired(mandate) {
   if (isMandateExpired(mandate)) {
     throw new Error("mandate_expired");
   }
 }
 
-/**
- * Assert that mandate epoch is fresh.
- * 
- * @param {object} mandate
- * @param {number} currentEpoch
- * @throws {Error} if stale
- */
 export function assertEpochFresh(mandate, currentEpoch) {
   if (!isMandateFresh(mandate, currentEpoch)) {
     throw new Error(`epoch_stale:${mandate.epoch}<${currentEpoch}`);

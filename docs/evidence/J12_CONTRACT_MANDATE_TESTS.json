@@ -1,0 +1,37 @@
+{
+  "kind": "J12_ONE_TIME_OWNER_MANDATE_TESTNET",
+  "mode": "near_sdk_unit_tests_sandbox_equivalent",
+  "note": "near-workspaces not installed; proof via contracts/policy cargo unit tests (VM sandbox).",
+  "hard_stop": {
+    "mainnet_wasm_upgrade": false,
+    "testnet_deploy": false
+  },
+  "tests": [
+    {
+      "name": "one_time_owner_mandate_then_autonomous_agent_ops",
+      "result": "ok",
+      "evidence": "Owner activate_autonomous_mandate → agent propose_trade op-auto-1 and op-auto-2 reserved without owner re-sign → owner revoke"
+    },
+    {
+      "name": "activate_then_over_limit_propose_rejected",
+      "result": "ok",
+      "evidence": "should_panic exceeds max_trade_value"
+    },
+    {
+      "name": "revoke_after_activate_blocks_agent_propose",
+      "result": "ok",
+      "evidence": "should_panic revoked"
+    },
+    {
+      "name": "agent_cannot_activate_autonomous_mandate",
+      "result": "ok",
+      "evidence": "should_panic owner only"
+    }
+  ],
+  "verdict": "PASS",
+  "autonomous_execution_testnet": {
+    "verdict": "PASS_UNIT",
+    "scope": "Multiple independent agent propose_trade after one owner activate; over-limit and revoke enforced by contract",
+    "not_covered": "Live testnet WASM deploy + real MPC/broadcast (HARD STOP / optional follow-up)"
+  }
+}

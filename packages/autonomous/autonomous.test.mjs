@@ -10,8 +10,9 @@ import { rm } from "node:fs/promises";
 import { buildMandateV1Draft } from "../mandate/v1/schema.mjs";
 import { createShadowAgent, runShadowTick, ACTION, MODE } from "./shadowAgent.mjs";
 import { discoverProviders, quoteService, matchMandate, checkCommerceBalance, reserveBudget } from "./agentMarket.mjs";
-import { createShadowWorker, appendJournalEntry, acquireLock, releaseLock, transitionState, replayJournal, getWorkerHealth, WORKER_STATE } from "./worker.mjs";
+import { createShadowWorker, appendJournalEntry, acquireLock, releaseLock, transitionState, replayJournal, getWorkerHealth, verifyJournalIntegrity, WORKER_STATE } from "./worker.mjs";
 import { simulateCycle, simulateCrashRestart } from "./simulateCycle.mjs";
+import { compileMandateToPolicyLimits, compileActivationPreview } from "../mandate/v1/compiler.mjs";
 
 const MAINNET = "mainnet";
 const POLICY_CONTRACT = "agent_policy.near";
@@ -84,7 +85,11 @@ describe("Shadow Agent", () => {
 
     const decision = await runShadowTick(agent, market);
     assert.ok(decision);
-    assert.ok([ACTION.HOLD, ACTION.WAIT, ACTION.BUY_DATA, ACTION.TRADE].includes(decision.action));
+    assert.ok(
+      [ACTION.HOLD, ACTION.WAIT, ACTION.BUY_DATA, ACTION.TRADE, ACTION.NO_TRADE].includes(
+        decision.action
+      )
+    );
     assert.ok(entries.length > 0);
   });
 
@@ -211,13 +216,14 @@ describe("Shadow Worker", () => {
     assert.equal(worker.state, WORKER_STATE.DECIDING);
   });
 
-  it("quarantines invalid transitions", async () => {
+  it("rejects invalid transitions to ERROR (not financial UNKNOWN)", async () => {
     const worker = await createShadowWorker({
       portfolio_id: "test_p5",
       journal_dir: test_journal_dir,
     });
     await transitionState(worker, WORKER_STATE.EXECUTING); // Invalid from IDLE
-    assert.equal(worker.state, WORKER_STATE.UNKNOWN);
+    assert.equal(worker.state, WORKER_STATE.ERROR);
+    assert.equal(worker.unknown_blocks_spend, false);
   });
 
   it("replays journal", async () => {
@@ -248,6 +254,55 @@ describe("Shadow Worker", () => {
     assert.equal(health.portfolio_id, "test_p7");
     assert.equal(health.state, WORKER_STATE.IDLE);
     assert.equal(health.healthy, true);
+  });
+
+  it("verifies real hash-chain integrity (not placeholder true)", async () => {
+    const worker = await createShadowWorker({
+      portfolio_id: "test_p8",
+      journal_dir: test_journal_dir,
+    });
+    await appendJournalEntry(worker, { kind: "decision", action: "HOLD" });
+    await appendJournalEntry(worker, { kind: "decision", action: "NO_TRADE" });
+    const ok = verifyJournalIntegrity(worker);
+    assert.equal(ok.ok, true);
+    assert.equal(ok.checked, 2);
+
+    // Tamper
+    worker.entries[1].action = "TRADE";
+    const broken = verifyJournalIntegrity(worker);
+    assert.equal(broken.ok, false);
+    assert.equal(broken.reason, "entry_hash_mismatch");
+  });
+
+  it("rejects second cross-process lock on same portfolio", async () => {
+    const dir = join(tmpdir(), `nio-lock-${Date.now()}`);
+    const a = await createShadowWorker({ portfolio_id: "lock_p1", journal_dir: dir });
+    const b = await createShadowWorker({ portfolio_id: "lock_p1", journal_dir: dir });
+    assert.equal(await acquireLock(a), true);
+    assert.equal(await acquireLock(b), false);
+    await releaseLock(a);
+    assert.equal(await acquireLock(b), true);
+    await releaseLock(b);
+  });
+});
+
+describe("Mandate compiler PolicyLimits", () => {
+  it("includes valid_until and token_scope", () => {
+    const mandate = buildTestMandate();
+    const limits = compileMandateToPolicyLimits(mandate);
+    assert.ok(limits.valid_until);
+    assert.equal(limits.token_scope, "allowlist");
+    assert.ok(Array.isArray(limits.allowed_assets));
+    assert.ok(Array.isArray(limits.allowed_chains));
+  });
+
+  it("does not unpause trading-disabled mandates", () => {
+    const mandate = buildTestMandate();
+    mandate.trading_enabled = false;
+    const preview = compileActivationPreview(mandate);
+    assert.equal(preview.unpause_included, false);
+    assert.ok(!preview.methods.includes("unpause"));
+    assert.ok(!preview.methods.includes("activate_autonomous_mandate"));
   });
 });
 
@@ -287,10 +342,12 @@ describe("Simulate Cycle", () => {
     };
 
     const market = buildTestMarket();
+    market.as_of = new Date().toISOString();
     const result = await simulateCycle({
       mandate_input,
       market,
       portfolio_id: "cycle_p1",
+      journal_dir: test_journal_dir,
     });
 
     assert.equal(result.ok, true);

@@ -21,7 +21,7 @@ import { createShadowWorker, appendJournalEntry, acquireLock, releaseLock, trans
  * @param {string} params.portfolio_id
  * @returns {Promise<object>} simulation result
  */
-export async function simulateCycle({ mandate_input, market, portfolio_id }) {
+export async function simulateCycle({ mandate_input, market, portfolio_id, journal_dir, llmMode }) {
   assert(mandate_input, "mandate_input_required");
   assert(market, "market_required");
   assert(portfolio_id, "portfolio_id_required");
@@ -50,7 +50,7 @@ export async function simulateCycle({ mandate_input, market, portfolio_id }) {
     result.mandate_hash = hashMandateV1(mandate);
 
     // 2. Create worker
-    const worker = await createShadowWorker({ portfolio_id });
+    const worker = await createShadowWorker({ portfolio_id, journal_dir });
     result.worker = worker;
 
     // 3. Acquire lock
@@ -73,6 +73,7 @@ export async function simulateCycle({ mandate_input, market, portfolio_id }) {
     const agent = createShadowAgent({
       mandate,
       journal,
+      llmMode: llmMode || "fixture",
     });
 
     // Add commerce budget to state

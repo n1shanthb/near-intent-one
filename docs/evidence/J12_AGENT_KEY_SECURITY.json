@@ -1,0 +1,98 @@
+{
+  "kind": "J12_AGENT_KEY_SECURITY",
+  "mode": "READ_ONLY",
+  "rpc": "https://rpc.mainnet.near.org",
+  "audited_at": "2026-11-14T08:11:26.078Z",
+  "accounts": {
+    "nishanthb.near": {
+      "ok": true,
+      "keys": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224234974000017
+        }
+      ],
+      "full_access": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224234974000017
+        }
+      ]
+    },
+    "agent.nishanthb.near": {
+      "ok": true,
+      "keys": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224310634000001
+        },
+        {
+          "public_key": "ed25519:DZUECSrU7kcqzN1PcSBGRgqf6uegsbTFxQ8wbDBxEbgJ",
+          "permission": "FullAccess",
+          "nonce": 224311566000006
+        }
+      ],
+      "full_access": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224310634000001
+        },
+        {
+          "public_key": "ed25519:DZUECSrU7kcqzN1PcSBGRgqf6uegsbTFxQ8wbDBxEbgJ",
+          "permission": "FullAccess",
+          "nonce": 224311566000006
+        }
+      ]
+    },
+    "policy.nishanthb.near": {
+      "ok": true,
+      "keys": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224240008000002
+        }
+      ],
+      "full_access": [
+        {
+          "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+          "permission": "FullAccess",
+          "nonce": 224240008000002
+        }
+      ]
+    }
+  },
+  "shared_full_access": {
+    "owner_agent": [
+      "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+    ],
+    "owner_policy": [
+      "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+    ],
+    "agent_policy": [
+      "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+    ]
+  },
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "code": "SHARED_FULLACCESS_OWNER_AGENT",
+      "keys": [
+        "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+      ]
+    },
+    {
+      "severity": "HIGH",
+      "code": "SHARED_FULLACCESS_AGENT_POLICY",
+      "keys": [
+        "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58"
+      ]
+    }
+  ],
+  "mutations": false,
+  "verdict": "FAIL"
+}

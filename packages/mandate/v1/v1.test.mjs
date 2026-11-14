@@ -316,8 +316,10 @@ describe("Mandate V1 Compiler", () => {
     const input = buildValidInput();
     const mandate = buildMandateV1Draft(input);
     const preview = compileActivationPreview(mandate);
-    assert.ok(preview.methods.includes("set_policy"));
-    assert.ok(preview.methods.includes("set_autonomous_trading"));
+    assert.ok(preview.methods.includes("activate_autonomous_mandate"));
+    assert.equal(preview.unpause_included, false);
+    assert.ok(preview.policy_limits.valid_until);
+    assert.equal(preview.policy_limits.token_scope, "allowlist");
     assert.equal(preview.mainnet_mutations, false);
   });
 

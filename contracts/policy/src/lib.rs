@@ -1371,6 +1371,45 @@ impl PolicyContract {
             .unwrap_or(false)
     }
 
+    /// Atomic owner activation for Autonomous Mandate V1.
+    /// ONE owner signature binds: PolicyLimits (+ epoch bump via set_policy semantics),
+    /// enforce_autonomous_on_agent, autonomous_trading, and optional unpause.
+    /// Agent still cannot exceed limits; pause/revoke remain owner-only.
+    /// Does NOT grant owner authority to the agent.
+    pub fn activate_autonomous_mandate(
+        &mut self,
+        limits: PolicyLimits,
+        policy_hash: String,
+        strategy_hash: String,
+        enforce_autonomous_on_agent: bool,
+        autonomous_trading: bool,
+        unpause_now: bool,
+    ) {
+        self.assert_owner();
+        require!(!self.revoked, "revoked: unrevoke before activate");
+        // Reuse set_policy validation + epoch increment
+        self.set_policy(limits, policy_hash, strategy_hash);
+        env::storage_write(
+            &Self::enforce_autonomous_on_agent_key(),
+            &[u8::from(enforce_autonomous_on_agent)],
+        );
+        env::storage_write(
+            &Self::autonomous_trading_key(),
+            &[u8::from(autonomous_trading)],
+        );
+        if unpause_now {
+            require!(!self.revoked, "cannot unpause while revoked");
+            self.paused = false;
+        }
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"activate_autonomous_mandate\",\"epoch\":{},\"enforce\":{},\"autonomous\":{},\"unpaused\":{}}}",
+            self.mandate_epoch,
+            enforce_autonomous_on_agent,
+            autonomous_trading,
+            unpause_now && !self.paused
+        ));
+    }
+
     /// Gate J/K: single authoritative mandate snapshot for off-chain fitter hydration.
     /// Read-only. Never grants signing rights.
     pub fn get_gate_j_mandate(&self) -> GateJMandateView {
@@ -2713,5 +2752,85 @@ mod tests {
         let mut c = deploy();
         testing_env!(context(agent(), 0).build());
         c.set_enforce_autonomous_on_agent(true);
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn agent_cannot_activate_autonomous_mandate() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.activate_autonomous_mandate(
+            limits(),
+            "ph".into(),
+            "sh".into(),
+            true,
+            true,
+            true,
+        );
+    }
+
+    /// ONE owner activation → multiple agent propose_trade without owner re-sign;
+    /// revoke blocks subsequent authorizations.
+    #[test]
+    fn one_time_owner_mandate_then_autonomous_agent_ops() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.pause();
+        assert!(c.get_paused());
+
+        let mut lim = limits();
+        lim.max_trade_value = U128(10);
+        lim.daily_turnover_limit = U128(100);
+        lim.max_pending_exposure = U128(50);
+        lim.valid_until = U64(u64::MAX);
+
+        c.activate_autonomous_mandate(
+            lim,
+            "mandate-hash-j12".into(),
+            "strategy-hash-j12".into(),
+            true,
+            true,
+            true,
+        );
+        assert!(!c.get_paused());
+        assert!(c.get_autonomous_trading());
+        assert!(c.get_enforce_autonomous_on_agent());
+        assert!(c.get_mandate_epoch() >= 1);
+
+        testing_env!(context(agent(), 0).build());
+        let op1 = c.propose_trade(proposal("op-auto-1", 5));
+        assert_eq!(op1.signing_state, SigningState::Reserved);
+        let op2 = c.propose_trade(proposal("op-auto-2", 5));
+        assert_eq!(op2.signing_state, SigningState::Reserved);
+
+        testing_env!(context(owner(), 0).build());
+        c.revoke();
+        assert!(c.get_revocation_status().revoked);
+    }
+
+    #[test]
+    #[should_panic(expected = "revoked")]
+    fn revoke_after_activate_blocks_agent_propose() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.valid_until = U64(u64::MAX);
+        c.activate_autonomous_mandate(lim, "h".into(), "s".into(), true, true, true);
+        c.revoke();
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-after-revoke", 1));
+    }
+
+    #[test]
+    #[should_panic(expected = "exceeds max_trade_value")]
+    fn activate_then_over_limit_propose_rejected() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        let mut lim = limits();
+        lim.max_trade_value = U128(10);
+        lim.valid_until = U64(u64::MAX);
+        c.activate_autonomous_mandate(lim, "h".into(), "s".into(), true, true, true);
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-over", 11));
     }
 }

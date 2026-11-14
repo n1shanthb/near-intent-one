@@ -4,11 +4,14 @@
 
 export {
   MODE,
+  LLM_MODE,
   ACTION,
   REASON,
   createShadowAgent,
   runShadowTick,
 } from "./shadowAgent.mjs";
+
+export { mandateV1ToGateJ } from "./mandateAdapter.mjs";
 
 export {
   discoverProviders,
@@ -26,6 +29,7 @@ export {
 
 export {
   WORKER_STATE,
+  GENESIS_HASH,
   createShadowWorker,
   appendJournalEntry,
   acquireLock,
@@ -34,9 +38,14 @@ export {
   replayJournal,
   getWorkerHealth,
   verifyJournalIntegrity,
+  persistBudget,
+  markUnknownOutcome,
+  clearUnknownAfterReconcile,
 } from "./worker.mjs";
 
 export {
   simulateCycle,
   simulateCrashRestart,
 } from "./simulateCycle.mjs";
+
+export { runKeeperCycles } from "./keeper.mjs";

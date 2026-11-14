@@ -1,0 +1,44 @@
+{
+  "kind": "J12_FITTER_NEGOTIATION",
+  "cases": [
+    {
+      "name": "adapt_oversized_to_mandate",
+      "outcome": "ADAPTED",
+      "reason_codes": [
+        "SIZE_REDUCED_TO_LIMIT"
+      ],
+      "parameters_changed": [
+        {
+          "parameter": "proposed_size_usdc_raw",
+          "from": "100000000",
+          "to": "20000000",
+          "why": "SIZE_REDUCED_TO_LIMIT"
+        }
+      ],
+      "fitted_size": "20000000"
+    },
+    {
+      "name": "reject_below_min_viable_after_fit",
+      "outcome": "REJECTED",
+      "reason_codes": [
+        "MIN_VIABLE_NOT_MET"
+      ]
+    },
+    {
+      "name": "critic_veto",
+      "outcome": "REJECTED",
+      "reason_codes": [
+        "CRITIC_VETO"
+      ]
+    },
+    {
+      "name": "strategist_no_trade",
+      "outcome": "REJECTED",
+      "reason_codes": [
+        "MALFORMED_PROPOSAL"
+      ]
+    }
+  ],
+  "pass": true,
+  "verdict": "PASS"
+}
