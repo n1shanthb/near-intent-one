@@ -7,6 +7,7 @@ import {
   FolderLock,
   Globe2,
   KeyRound,
+  Layers2,
   LayoutDashboard,
   LoaderCircle,
   LogOut,

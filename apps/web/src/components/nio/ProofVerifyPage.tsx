@@ -134,7 +134,7 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
                   {mandate.autonomous_trading ? "AUTONOMOUS" : "NOT_AUTONOMOUS"}
                 </Badge>{" "}
                 <Badge kind="enforce">
-                  enforce={String(mandate.enforce_autonomous_on_agent)}
+                  {`enforce=${String(mandate.enforce_autonomous_on_agent)}`}
                 </Badge>
               </li>
               <li>
