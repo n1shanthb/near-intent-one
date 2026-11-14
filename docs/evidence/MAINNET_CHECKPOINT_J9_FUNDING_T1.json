@@ -1,0 +1,23 @@
+{
+  "checkpoint": "J9_FUNDING_T1",
+  "mutations": [
+    "T1_NEAR_USDC_STORAGE_DEPOSIT"
+  ],
+  "near_tx": "9GgJcFa53Jo1HGVDJaM7JES78qWfFq5CDYGTn1vaCgNn",
+  "explorer": "https://explorer.near.org/transactions/9GgJcFa53Jo1HGVDJaM7JES78qWfFq5CDYGTn1vaCgNn",
+  "tx_final_status": "FINAL",
+  "storage_registered": true,
+  "storage_balance": {
+    "total": "1250000000000000000000",
+    "available": "0"
+  },
+  "policy_paused": true,
+  "next_stopped": [
+    "T2",
+    "T3",
+    "T4"
+  ],
+  "no_unpause": true,
+  "no_swap": true,
+  "recorded_at": "2026-11-14T03:07:09.526Z"
+}
