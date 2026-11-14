@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { H3_EXECUTION } from "../../data/evidenceSnapshot";
 import {
@@ -13,6 +13,10 @@ import {
 } from "../../state/WorkspaceContext";
 import { LiveDataChrome } from "./WorkspaceSwitcher";
 import type { NavId } from "./nav";
+import {
+  fetchMainnetCommerceStatus,
+  type MainnetCommerceJob,
+} from "../../adapters/mainnetPublic";
 
 type Tab = "all" | "executed" | "blocked" | "proofs";
 
@@ -31,7 +35,7 @@ type TxRow = {
   detail: string;
   tabs: Tab[];
   networkLabel?: "MAINNET" | "TESTNET";
-  modeLabel?: "AUTONOMOUS" | "SUPERVISED" | "HISTORICAL";
+  modeLabel?: "AUTONOMOUS" | "SUPERVISED" | "HISTORICAL" | "COMMERCE";
 };
 
 const HISTORICAL_ROWS: TxRow[] = [
@@ -111,10 +115,64 @@ const HISTORICAL_ROWS: TxRow[] = [
   },
 ];
 
+function commerceRowsFromJobs(jobs: MainnetCommerceJob[]): TxRow[] {
+  return jobs
+    .filter((j) => Number(j.paid_amount_usdc || 0) > 0 && !j.mock)
+    .flatMap((j) => {
+      const purchase: TxRow = {
+        id: `commerce-hire-${j.market_job_id || j.operation_id}`,
+        date: (j.created_at || "").slice(0, 19) || "mainnet",
+        gate: "COM",
+        type: "AGENT MARKET PURCHASE",
+        chain: "market.near.ai",
+        result: `${j.paid_amount_usdc} ${j.currency || "USDC"} · ${j.state}`,
+        tone: "success",
+        href: j.job_url || j.tx_url || j.listing_url || undefined,
+        detail: `Hired ${j.agent_handle || j.agent_name || "agent"} via marketplace USDC escrow (not a DeFi trade). Job ${j.market_job_id || "—"}.`,
+        tabs: ["all", "executed", "proofs"],
+        networkLabel: "MAINNET",
+        modeLabel: "COMMERCE",
+      };
+      if (j.delivery_hash || String(j.state || "").toUpperCase() === "DELIVERED" || String(j.state || "").toUpperCase() === "ACCEPTED") {
+        return [
+          purchase,
+          {
+            ...purchase,
+            id: `commerce-deliver-${j.market_job_id || j.operation_id}`,
+            type: "AGENT SERVICE DELIVERED",
+            result: j.delivery_hash
+              ? `hash ${String(j.delivery_hash).slice(0, 16)}…`
+              : String(j.state),
+            detail: `Deliverable from ${j.agent_handle || "agent"} — untrusted research input only.`,
+            tone: "recorded" as const,
+          },
+        ];
+      }
+      return [purchase];
+    });
+}
+
 export function TransactionsPage({ onNav }: { onNav: (id: NavId) => void }) {
   const { isPublic, live, personalProvisioned } = useWorkspace();
   const [tab, setTab] = useState<Tab>("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [commerceJobs, setCommerceJobs] = useState<MainnetCommerceJob[]>([]);
+
+  useEffect(() => {
+    if (!isPublic) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await fetchMainnetCommerceStatus();
+        if (!cancelled) setCommerceJobs(status.jobs || []);
+      } catch {
+        if (!cancelled) setCommerceJobs([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPublic]);
 
   const mainnetRows: TxRow[] = useMemo(() => {
     if (!isPublic) return [];
@@ -138,8 +196,10 @@ export function TransactionsPage({ onNav }: { onNav: (id: NavId) => void }) {
       gate: "AUDIT",
       type:
         d.final_action === "NO_TRADE"
-          ? "Decision audit · NO_TRADE"
-          : `Decision audit · ${d.final_action}`,
+          ? "AI NO_TRADE"
+          : d.final_action === "TRADE" || d.final_action === "EXECUTE"
+            ? "AUTONOMOUS TRADE"
+            : `Decision audit · ${d.final_action}`,
       chain: "NEAR mainnet",
       result: `${d.status} · Fitter ${d.fitter_verdict}`,
       tone:
@@ -156,8 +216,9 @@ export function TransactionsPage({ onNav }: { onNav: (id: NavId) => void }) {
       networkLabel: "MAINNET" as const,
       modeLabel: "AUTONOMOUS" as const,
     }));
-    return [...decisions, ...gov];
-  }, [isPublic, live.decisions, live.transactions]);
+    const commerce = commerceRowsFromJobs(commerceJobs);
+    return [...commerce, ...decisions, ...gov];
+  }, [isPublic, live.decisions, live.transactions, commerceJobs]);
 
   const allRows = isPublic
     ? [...mainnetRows, ...HISTORICAL_ROWS.map((r) => ({ ...r, tabs: [...r.tabs, "proofs"] as Tab[] }))]

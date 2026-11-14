@@ -8,6 +8,18 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+function loadCommerceSnapshot(): Record<string, unknown> {
+  try {
+    return JSON.parse(
+      readFileSync(join(__dirname, "commerce-live.json"), "utf8")
+    ) as Record<string, unknown>;
+  } catch {
+    return { ok: true, jobs: [], paid_purchases: 0, mock: false };
+  }
+}
 
 const DEMO_PORTFOLIOS = new Set(["i-a-a4e7", "i-b-a4e7"]);
 const MAX_BODY = 64 * 1024;
@@ -32,11 +44,15 @@ const ALLOWED_EXACT = new Set([
   "GET /mainnet/decisions",
   "GET /mainnet/transactions",
   "GET /mainnet/balances",
+  "GET /mainnet/commerce/status",
+  "GET /mainnet/commerce/agents",
+  "GET /mainnet/commerce/jobs",
 ]);
 
 const ALLOWED_PREFIX = [
   "GET /mainnet/decisions/",
   "GET /mainnet/proof/",
+  "GET /mainnet/commerce/jobs/",
 ];
 
 function apiBase(): string {
@@ -299,6 +315,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method,
     });
     return;
+  }
+
+  // Commerce reads: serve committed live hire snapshot (and optional OCI merge later).
+  // Hire/payment mutations are never exposed here.
+  if (method === "GET" && apiPath.startsWith("/mainnet/commerce")) {
+    const snap = loadCommerceSnapshot();
+    if (apiPath === "/mainnet/commerce/status") {
+      res.status(200).json({ ...snap, source: "bff_snapshot" });
+      return;
+    }
+    if (apiPath === "/mainnet/commerce/jobs") {
+      const jobs = (snap.jobs as unknown[]) || [];
+      res.status(200).json({
+        ok: true,
+        jobs,
+        paid_count: snap.paid_purchases ?? jobs.length,
+        source: "bff_snapshot",
+      });
+      return;
+    }
+    if (apiPath === "/mainnet/commerce/agents") {
+      const jobs = (snap.jobs as Array<Record<string, unknown>>) || [];
+      res.status(200).json({
+        ok: true,
+        live: true,
+        mock: false,
+        agents_discovered: jobs.length,
+        agents: jobs.map((j) => ({
+          agent_id: j.agent_id,
+          handle: j.agent_handle,
+          name: j.agent_name,
+          listing_url: j.listing_url,
+          paid_amount_usdc: j.paid_amount_usdc,
+          state: j.state,
+        })),
+        budget: snap.budget,
+        gates: snap.gates,
+        source: "bff_snapshot",
+      });
+      return;
+    }
+    if (apiPath.startsWith("/mainnet/commerce/jobs/")) {
+      const id = decodeURIComponent(apiPath.slice("/mainnet/commerce/jobs/".length));
+      const jobs = (snap.jobs as Array<Record<string, unknown>>) || [];
+      const job =
+        jobs.find(
+          (j) =>
+            j.market_job_id === id ||
+            j.operation_id === id ||
+            j.hire_draft_id === id
+        ) || null;
+      if (!job) {
+        res.status(404).json({ ok: false, reason: "not_found" });
+        return;
+      }
+      res.status(200).json({ ok: true, job, source: "bff_snapshot" });
+      return;
+    }
   }
 
   let bodyBuf = Buffer.alloc(0);

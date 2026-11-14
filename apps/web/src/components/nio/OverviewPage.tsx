@@ -28,6 +28,7 @@ import { useOwnerSession } from "../../state/OwnerSession";
 import { NetworkStatusPanel } from "./NetworkIndicator";
 import { LiveDataChrome } from "./WorkspaceSwitcher";
 import { OnboardingJourney } from "./OnboardingJourney";
+import { CommercePanel } from "./CommercePanel";
 
 export function OverviewPage({
   onNav,
@@ -312,6 +313,8 @@ export function OverviewPage({
       </section>
 
       <NetworkStatusPanel ctx={network} />
+
+      <CommercePanel />
 
       <section className="axis-panel">
         <div className="axis-panel-heading">
