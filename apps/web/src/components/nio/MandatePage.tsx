@@ -5,6 +5,7 @@ import { FROZEN_POLICY } from "../../data/evidenceSnapshot";
 import { useOwnerSession } from "../../state/OwnerSession";
 import { useProductSession } from "../../state/ProductSession";
 import type { NavId } from "./nav";
+import { AutonomousMandatePreview } from "./AutonomousMandatePreview";
 
 const EXAMPLE =
   "Allow trading on Ethereum and NEAR, only USDC, ETH and NEAR. Maximum $10 per trade, $50 per day, 1% slippage and stop at 5% drawdown.";
@@ -93,6 +94,8 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
           </p>
         </div>
       </div>
+
+      <AutonomousMandatePreview />
 
       <section className="axis-panel">
         <div className="axis-panel-heading">

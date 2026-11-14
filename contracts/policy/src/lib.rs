@@ -1351,6 +1351,26 @@ impl PolicyContract {
             .unwrap_or(false)
     }
 
+    /// Autonomous Mandate V1: when enabled, agent propose/sign also requires
+    /// `autonomous_trading == true`. Default OFF preserves canary/operator
+    /// unpause windows that do not set the autonomous flag.
+    /// Owner-only. Never deploy this toggle as agent-callable.
+    pub fn set_enforce_autonomous_on_agent(&mut self, enabled: bool) {
+        self.assert_owner();
+        require!(!self.revoked, "revoked");
+        env::storage_write(&Self::enforce_autonomous_on_agent_key(), &[u8::from(enabled)]);
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"enforce_autonomous_on_agent\",\"enabled\":{}}}",
+            enabled
+        ));
+    }
+
+    pub fn get_enforce_autonomous_on_agent(&self) -> bool {
+        env::storage_read(&Self::enforce_autonomous_on_agent_key())
+            .map(|b| !b.is_empty() && b[0] != 0)
+            .unwrap_or(false)
+    }
+
     /// Gate J/K: single authoritative mandate snapshot for off-chain fitter hydration.
     /// Read-only. Never grants signing rights.
     pub fn get_gate_j_mandate(&self) -> GateJMandateView {
@@ -1414,6 +1434,10 @@ struct ParsedIntent {
 impl PolicyContract {
     fn autonomous_trading_key() -> Vec<u8> {
         b"gate_k:autonomous_trading".to_vec()
+    }
+
+    fn enforce_autonomous_on_agent_key() -> Vec<u8> {
+        b"gate_k:enforce_autonomous_on_agent".to_vec()
     }
 
     fn trusted_signer_storage_key(public_key: &str) -> Vec<u8> {
@@ -1580,6 +1604,14 @@ impl PolicyContract {
             env::block_timestamp() < self.limits.valid_until.0,
             "mandate expired"
         );
+        // Optional hard gate for Autonomous Mandate V1. Default off so
+        // operator-gated canaries (unpause without autonomous_trading) still work.
+        if self.get_enforce_autonomous_on_agent() {
+            require!(
+                self.get_autonomous_trading(),
+                "autonomous_trading_required"
+            );
+        }
     }
 
     fn derivation_path(&self) -> String {
@@ -2640,5 +2672,46 @@ mod tests {
         assert!(c.get_revocation_status().revoked);
         assert!(c.get_paused());
         c.unpause();
+    }
+
+    #[test]
+    fn enforce_autonomous_default_off_allows_canary_propose() {
+        let mut c = deploy();
+        assert!(!c.get_enforce_autonomous_on_agent());
+        assert!(!c.get_autonomous_trading());
+        testing_env!(context(agent(), 0).build());
+        let op = c.propose_trade(proposal("op-canary-ok", 5));
+        assert_eq!(op.signing_state, SigningState::Reserved);
+    }
+
+    #[test]
+    #[should_panic(expected = "autonomous_trading_required")]
+    fn enforce_autonomous_on_blocks_propose_without_flag() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.set_enforce_autonomous_on_agent(true);
+        assert!(c.get_enforce_autonomous_on_agent());
+        assert!(!c.get_autonomous_trading());
+        testing_env!(context(agent(), 0).build());
+        c.propose_trade(proposal("op-auto-blocked", 5));
+    }
+
+    #[test]
+    fn enforce_autonomous_on_allows_propose_when_autonomous_enabled() {
+        let mut c = deploy();
+        testing_env!(context(owner(), 0).build());
+        c.set_enforce_autonomous_on_agent(true);
+        c.set_autonomous_trading(true);
+        testing_env!(context(agent(), 0).build());
+        let op = c.propose_trade(proposal("op-auto-ok", 5));
+        assert_eq!(op.signing_state, SigningState::Reserved);
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn agent_cannot_set_enforce_autonomous_on_agent() {
+        let mut c = deploy();
+        testing_env!(context(agent(), 0).build());
+        c.set_enforce_autonomous_on_agent(true);
     }
 }
