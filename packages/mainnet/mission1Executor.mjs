@@ -66,6 +66,23 @@ import {
 } from "./canarySettlement.mjs";
 import { openTxJournal, localTxHash, TX_STATE } from "../execution/txJournal.mjs";
 import { GAS_ASSUMPTIONS } from "./j5_2.quoteScan.mjs";
+import { waitForPendingOp } from "./canaryRecovery.mjs";
+import {
+  confirmMission1Phase,
+  fetchMission1TrustedState,
+  assertMission1FixturesAllowed,
+  verifyMission1SignedRaw,
+  verifyMission1ReconcileOnchain,
+  mission1SafeAdvance,
+  resolveMission1LiveGate,
+  isAmbiguousOutcome,
+} from "./mission1Safety.mjs";
+import {
+  createMission1LiveAdapters,
+  createMission1ViewAdapters,
+} from "./mission1Adapters.mjs";
+import { recoverFromHash } from "../gate-k/settle.mjs";
+import { readFileSync, existsSync } from "node:fs";
 
 export const MISSION1_RUNNER_STEPS = Object.freeze([
   "prepareApproval",
@@ -183,25 +200,20 @@ export function setMission1NearUsdcBefore(
   return { ok: true, near_usdc_before: String(beforeRaw) };
 }
 
+/**
+ * Phase confirmation — only accepted in the required lifecycle state
+ * immediately before that mutation (no advance booking).
+ */
 export function recordMission1Confirmation(
   operationId,
   phase,
   { env = process.env, storeDir = null, note = null } = {}
 ) {
-  const v = validateMission1CanaryApproval(operationId, {
+  return confirmMission1Phase(operationId, phase, {
     env,
     storeDir: dirOf(env, storeDir),
+    note,
   });
-  if (!v.ok) return v;
-  const next = {
-    ...v.record,
-    operator_confirmations: {
-      ...v.record.operator_confirmations,
-      [phase]: { at: new Date().toISOString(), note: note || null },
-    },
-  };
-  atomicWrite(v.path, next);
-  return { ok: true, phase, record: next };
 }
 
 /** Step 0 — create Mission1 approval (explicit only; never from readiness). */
@@ -234,6 +246,7 @@ export async function mission1StepQuoteAttest({
   storeDir = null,
   testHarness = false,
   allowFundedQuote = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
@@ -243,57 +256,56 @@ export async function mission1StepQuoteAttest({
     return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
   }
 
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
+
   const mpc = MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
   const ethRpc = deps.ethRpc || MAINNET_EVM_RPCS.ethereum;
   const nearRpc = deps.nearRpc || null;
 
-  const limits = deps.limits || null;
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1ViewAdapters({ env, ethRpc });
+  }
+
+  const trusted = await fetchMission1TrustedState({
+    adapters: a,
+    ethRpc,
+    nearRpc: nearRpc || a?.rpc || null,
+    testHarness,
+    deps,
+  });
+  if (!trusted.ok) return trusted;
+
+  const limits = trusted.limits;
   if (!limits?.max_slippage_bps) {
     return { ok: false, reason: "limits_required" };
   }
-  const epoch = deps.epoch != null ? Number(deps.epoch) : 2;
+  const epoch = Number(trusted.epoch);
   if (epoch !== 2) return { ok: false, reason: "mandate_epoch_mismatch", epoch };
 
-  if (deps.paused === false) {
+  if (trusted.paused === false) {
     return { ok: false, reason: "policy_must_be_paused_before_quote_window" };
   }
 
-  const ethBal =
-    deps.ethBal || (await evmNativeBalance(ethRpc, mpc));
-  const usdcBal =
-    deps.usdcBal ||
-    (await evmErc20Balance(ethRpc, MISSION1_TOKEN, mpc));
-  if (!ethBal.ok || !usdcBal.ok || BigInt(usdcBal.raw) < BigInt(MISSION1_AMOUNT)) {
+  const ethBal = trusted.ethBal;
+  const usdcBal = trusted.usdcBal;
+  if (!ethBal?.ok || !usdcBal?.ok || BigInt(usdcBal.raw) < BigInt(MISSION1_AMOUNT)) {
     return { ok: false, reason: "insufficient_balances" };
   }
 
   // REQUIRED destination snapshot — refuse missing/null (never substitute 0)
-  let nearBefore;
-  if (Object.prototype.hasOwnProperty.call(deps, "nearUsdcBefore")) {
-    nearBefore = deps.nearUsdcBefore;
-    if (nearBefore == null || nearBefore === "") {
-      return { ok: false, reason: "near_usdc_before_required" };
-    }
-  } else {
+  let nearBefore = trusted.nearUsdcBefore;
+  if (nearBefore == null || nearBefore === "") {
     if (deps.nearBalanceFn) {
       nearBefore = await deps.nearBalanceFn();
-    } else if (!nearRpc) {
-      return { ok: false, reason: "near_usdc_before_snapshot_unavailable" };
-    }
-    if (nearBefore == null || nearBefore === "") {
-      return { ok: false, reason: "near_usdc_before_required" };
     }
   }
+  if (nearBefore == null || nearBefore === "") {
+    return { ok: false, reason: "near_usdc_before_required" };
+  }
 
-  const storage =
-    deps.storage ||
-    (nearRpc
-      ? await checkNearFtStorageRegistered({
-          accountId: M1_ETH_NEAR_USDC.recipient,
-          tokenContract: NEAR_NATIVE_USDC_CONTRACT,
-          rpcUrl: nearRpc,
-        })
-      : { ok: true, registered: true });
+  const storage = trusted.storage || { ok: true, registered: true };
   if (!storage.ok || !storage.registered) {
     return { ok: false, reason: "near_usdc_storage_unregistered" };
   }
@@ -531,17 +543,21 @@ export async function mission1StepQuoteAttest({
     env,
     storeDir: sd,
   });
-  advanceLifecycle(operationId, CANARY_STATES.QUOTE_VERIFIED, {
-    env,
-    storeDir: sd,
-    outcome: {
-      quote_hash: quoteResult.one_click_verify?.quote_hash || null,
-      deposit: depositAddress,
-      min_out: quoteResult.min_amount_out,
-      quote_deadline_ms: deadlineMs,
-      near_usdc_before: String(nearBefore),
-    },
-  });
+  const qv = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.QUOTE_VERIFIED, {
+      env,
+      storeDir: sd,
+      outcome: {
+        quote_hash: quoteResult.one_click_verify?.quote_hash || null,
+        deposit: depositAddress,
+        min_out: quoteResult.min_amount_out,
+        quote_deadline_ms: deadlineMs,
+        near_usdc_before: String(nearBefore),
+      },
+    }),
+    "QUOTE_VERIFIED"
+  );
+  if (!qv.ok) return qv;
 
   bindTxAuthorization(operationId, {
     nonce: nonceFinal,
@@ -569,18 +585,22 @@ export async function mission1StepQuoteAttest({
     expected_epoch: 2,
   };
 
-  advanceLifecycle(operationId, CANARY_STATES.ATTESTED, {
-    env,
-    storeDir: sd,
-    outcome: {
-      digest_hex,
-      nonce: nonceFinal,
-      min_out: quoteResult.min_amount_out,
-      propose_args: proposeArgs,
-      quote_deadline_ms: deadlineMs,
-      near_usdc_before: String(nearBefore),
-    },
-  });
+  const att = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.ATTESTED, {
+      env,
+      storeDir: sd,
+      outcome: {
+        digest_hex,
+        nonce: nonceFinal,
+        min_out: quoteResult.min_amount_out,
+        propose_args: proposeArgs,
+        quote_deadline_ms: deadlineMs,
+        near_usdc_before: String(nearBefore),
+      },
+    }),
+    "ATTESTED"
+  );
+  if (!att.ok) return att;
 
   return {
     ok: true,
@@ -603,23 +623,42 @@ export async function mission1StepVerifyUnpaused({
   operationId,
   env = process.env,
   storeDir = null,
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, { env, storeDir: sd });
   if (!v.ok) return { ok: false, reason: v.reason };
   if (getLifecycleState(v.record) !== CANARY_STATES.ATTESTED) {
     return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
   }
-  const paused = deps.paused;
-  if (paused !== false) {
-    return { ok: false, reason: "policy_still_paused", paused };
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1ViewAdapters({ env });
   }
-  advanceLifecycle(operationId, CANARY_STATES.OWNER_UNPAUSED, {
-    env,
-    storeDir: sd,
-    outcome: { verified_unpaused: true },
+  const live = await resolveMission1LiveGate({
+    adapters: a,
+    testHarness,
+    deps,
+    requireUnpaused: true,
   });
+  if (!live.ok) {
+    return live.reason === "policy_re_paused"
+      ? { ok: false, reason: "policy_still_paused", paused: live.paused }
+      : live;
+  }
+  const adv = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.OWNER_UNPAUSED, {
+      env,
+      storeDir: sd,
+      outcome: { verified_unpaused: true },
+    }),
+    "OWNER_UNPAUSED"
+  );
+  if (!adv.ok) return adv;
   return { ok: true, stage: CANARY_STATES.OWNER_UNPAUSED };
 }
 
@@ -628,9 +667,13 @@ export async function mission1StepPropose({
   env = process.env,
   storeDir = null,
   invoke = false,
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, {
     env,
     storeDir: sd,
@@ -643,6 +686,13 @@ export async function mission1StepPropose({
   if (state === CANARY_STATES.PROPOSED) {
     return { ok: false, reason: "already_proposed_no_resubmit" };
   }
+  if (state === CANARY_STATES.RECONCILIATION_REQUIRED) {
+    return {
+      ok: false,
+      reason: "reconciliation_required_no_resubmit",
+      note: "Ambiguous prior propose — read-only reconcile only",
+    };
+  }
   if (state !== CANARY_STATES.OWNER_UNPAUSED) {
     return { ok: false, reason: `bad_state:${state}` };
   }
@@ -654,28 +704,169 @@ export async function mission1StepPropose({
   if (String(args.tx?.token_contract).toLowerCase() !== MISSION1_TOKEN) {
     return { ok: false, reason: "wrong_token" };
   }
+  if (String(args.tx?.amount) !== MISSION1_AMOUNT) {
+    return { ok: false, reason: "wrong_amount" };
+  }
   if (!invoke) {
-    return { ok: true, dry: true, propose_args: args, note: "Pass invoke:true after confirm" };
+    return {
+      ok: true,
+      dry: true,
+      propose_args: args,
+      note: "Pass invoke:true after confirm at OWNER_UNPAUSED",
+    };
   }
-  if (deps.paused !== false) return { ok: false, reason: "policy_re_paused" };
-  if (deps.existingPending?.payload_commitment) {
-    return { ok: false, reason: "already_on_chain_reserved" };
+
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1LiveAdapters({ env });
   }
+  const live = await resolveMission1LiveGate({
+    adapters: a,
+    testHarness,
+    deps: { ...deps, _pendingOpId: operationId },
+    requireUnpaused: true,
+  });
+  if (!live.ok) return live;
+  if (live.epoch != null && Number(live.epoch) !== 2) {
+    return { ok: false, reason: "epoch_changed", epoch: live.epoch };
+  }
+
+  let existingPending = live.existingPending;
+  if (
+    existingPending === undefined &&
+    a?.getPending &&
+    !(testHarness && Object.prototype.hasOwnProperty.call(deps, "existingPending"))
+  ) {
+    existingPending = await a.getPending(operationId);
+  }
+  if (existingPending?.payload_commitment) {
+    return {
+      ok: false,
+      reason: "already_on_chain_reserved",
+      pending: existingPending,
+      note: "Do not resubmit propose; reconcile read-only",
+    };
+  }
+
   const claim = tryClaimExecution(operationId, "propose", { env, storeDir: sd });
   if (!claim.ok) return claim;
   try {
     const res = deps.proposeFn
       ? await deps.proposeFn(args)
-      : { ok: false, reason: "propose_adapter_missing" };
-    if (!res?.ok && res?.transaction_hash == null && !res?.ok) {
-      if (res?.reason) return res;
+      : a?.proposeQuotedEvmTransfer
+        ? await a.proposeQuotedEvmTransfer(args)
+        : { ok: false, reason: "propose_adapter_missing" };
+
+    if (!res?.ok && !res?.transaction_hash) {
+      return res?.reason
+        ? { ok: false, ...res }
+        : { ok: false, reason: "propose_failed", detail: res };
     }
-    advanceLifecycle(operationId, CANARY_STATES.PROPOSED, {
-      env,
-      storeDir: sd,
-      outcome: { near_tx: res.transaction_hash || res.near_tx || null },
-    });
-    return { ok: true, stage: CANARY_STATES.PROPOSED, near_tx: res.transaction_hash || null };
+    if (res?.ok === false && !res?.transaction_hash) {
+      return { ok: false, reason: res.reason || "propose_reported_failure", detail: res };
+    }
+
+    const digest = v.record.locked_digest_hex;
+    let verified = null;
+    if (testHarness && deps.pendingVerify) {
+      verified = deps.pendingVerify;
+    } else {
+      const pendingAdapters =
+        deps.pendingAdapters ||
+        (a?.getPending
+          ? a
+          : testHarness && deps.getPending
+            ? {
+                getPending: deps.getPending,
+                listPending: deps.listPending,
+              }
+            : null);
+      if (!pendingAdapters?.getPending) {
+        return {
+          ok: false,
+          reason: "pending_verify_adapter_required",
+          note: "Cannot advance to PROPOSED without on-chain PendingOp verification",
+        };
+      }
+      verified = await waitForPendingOp({
+        adapters: pendingAdapters,
+        operationId,
+        expectedDigest: digest,
+        attempts: deps.pendingAttempts ?? 8,
+        delayMs: deps.pendingDelayMs ?? 750,
+        sleepFn: deps.sleepFn,
+      });
+    }
+
+    if (verified.ok) {
+      const adv = mission1SafeAdvance(
+        advanceLifecycle(operationId, CANARY_STATES.PROPOSED, {
+          env,
+          storeDir: sd,
+          outcome: {
+            near_tx: res.transaction_hash || res.near_tx || null,
+            payload_commitment: verified.pending.payload_commitment,
+            pending_source: verified.source || "verify",
+          },
+        }),
+        "PROPOSED"
+      );
+      if (!adv.ok) return adv;
+      return {
+        ok: true,
+        stage: CANARY_STATES.PROPOSED,
+        near_tx: res.transaction_hash || null,
+        pending: verified.pending,
+      };
+    }
+
+    if (verified.reason === "payload_commitment_mismatch") {
+      mission1SafeAdvance(
+        advanceLifecycle(operationId, CANARY_STATES.FAILED, {
+          env,
+          storeDir: sd,
+          outcome: {
+            reason: "payload_commitment_mismatch",
+            near_tx: res.transaction_hash || null,
+            pending: verified.pending,
+          },
+        }),
+        "FAILED"
+      );
+      return {
+        ok: false,
+        reason: "payload_commitment_mismatch",
+        pending: verified.pending,
+        may_resubmit: false,
+      };
+    }
+
+    // Ambiguous — block resubmission; reconcile read-only
+    const advR = mission1SafeAdvance(
+      advanceLifecycle(operationId, CANARY_STATES.RECONCILIATION_REQUIRED, {
+        env,
+        storeDir: sd,
+        outcome: {
+          reason: verified.reason || "pending_op_temporarily_unverified",
+          near_tx: res.transaction_hash || null,
+          expected_digest: digest,
+        },
+      }),
+      "RECONCILIATION_REQUIRED"
+    );
+    return {
+      ok: false,
+      reason: "reconciliation_required",
+      stage: advR.ok
+        ? CANARY_STATES.RECONCILIATION_REQUIRED
+        : getLifecycleState(
+            validateMission1CanaryApproval(operationId, { env, storeDir: sd })
+              .record
+          ),
+      may_resubmit: false,
+      detail: verified,
+      note: "Ambiguous propose outcome — do not resubmit; read-only reconcile",
+    };
   } finally {
     releaseExecutionClaim(operationId, "propose", { env, storeDir: sd });
   }
@@ -686,9 +877,13 @@ export async function mission1StepRequestSignature({
   env = process.env,
   storeDir = null,
   invoke = false,
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, { env, storeDir: sd });
   if (!v.ok) return { ok: false, reason: v.reason };
   const need = requireOperatorConfirmation(v.record, "sign");
@@ -696,49 +891,302 @@ export async function mission1StepRequestSignature({
   if (getLifecycleState(v.record) !== CANARY_STATES.PROPOSED) {
     return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
   }
-  if (deps.paused !== false && invoke) {
-    return { ok: false, reason: "policy_re_paused" };
-  }
   const digest = v.record.locked_digest_hex;
   if (!digest) return { ok: false, reason: "digest_not_locked" };
   if (!invoke) {
-    return { ok: true, dry: true, digest_hex: digest, note: "Pass invoke:true after confirm" };
+    return {
+      ok: true,
+      dry: true,
+      digest_hex: digest,
+      note: "Pass invoke:true after confirm at PROPOSED",
+    };
   }
+
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1LiveAdapters({ env });
+  }
+  const live = await resolveMission1LiveGate({
+    adapters: a,
+    testHarness,
+    deps,
+    requireUnpaused: true,
+  });
+  if (!live.ok) return live;
+  if (live.epoch != null && Number(live.epoch) !== 2) {
+    return { ok: false, reason: "epoch_changed_before_sign", epoch: live.epoch };
+  }
+
+  const pendingPre =
+    testHarness && Object.prototype.hasOwnProperty.call(deps, "pendingPreSign")
+      ? deps.pendingPreSign
+      : a?.getPending
+        ? await a.getPending(operationId)
+        : deps.pendingPreSign;
+  if (!pendingPre) {
+    return { ok: false, reason: "pending_missing_before_sign" };
+  }
+  if (String(pendingPre.signing_state) !== "Reserved") {
+    return {
+      ok: false,
+      reason: "signing_state_not_reserved",
+      signing_state: pendingPre.signing_state,
+      note: "Do not request_signature twice",
+    };
+  }
+  if (
+    String(pendingPre.payload_commitment || "").toLowerCase() !==
+    String(digest).toLowerCase()
+  ) {
+    return { ok: false, reason: "payload_commitment_mismatch_before_sign" };
+  }
+
   const res = deps.signFn
     ? await deps.signFn(operationId)
-    : { ok: false, reason: "sign_adapter_missing" };
+    : a?.requestSignature
+      ? await a.requestSignature(operationId)
+      : { ok: false, reason: "sign_adapter_missing" };
+
   if (!res?.ok && !res?.transaction_hash) {
-    return res?.reason ? res : { ok: false, reason: "sign_failed", detail: res };
+    return res?.reason
+      ? { ok: false, ...res }
+      : { ok: false, reason: "sign_failed", detail: res };
   }
-  const mpcDigest = deps.mpcDigestHex || digest;
-  if (String(mpcDigest).toLowerCase() !== String(digest).toLowerCase()) {
-    return { ok: false, reason: "mpc_digest_mismatch" };
+
+  const full = deps.nearTxFull
+    ? deps.nearTxFull
+    : res.transaction_hash && a?.waitNearTx
+      ? await a.waitNearTx(res.transaction_hash)
+      : null;
+
+  if (!full && !deps.assembled) {
+    return {
+      ok: false,
+      reason: "near_finality_pending",
+      residual: true,
+      may_repeat_request_signature: false,
+      propose_tx: res.transaction_hash,
+      note: "Ambiguous MPC outcome — do not repeat request_signature; reconcile",
+    };
   }
-  advanceLifecycle(operationId, CANARY_STATES.MPC_SIGNED, {
+
+  const assembled =
+    deps.assembled ||
+    (a?.assembleEip155FromMpcNearTx
+      ? a.assembleEip155FromMpcNearTx({
+          nearTxFull: full,
+          nonce: v.record.locked_nonce,
+          gasPrice: v.record.locked_gas_price,
+          gasLimit: v.record.locked_gas_limit,
+          depositAddress: v.record.payload?.deposit_address,
+          amount: MISSION1_AMOUNT,
+          token: MISSION1_TOKEN,
+          chainId: MISSION1_CHAIN_ID,
+          expectedDigestHex: digest,
+        })
+      : null);
+
+  if (!assembled?.ok) {
+    if (assembled && isAmbiguousOutcome(assembled.reason)) {
+      return {
+        ok: false,
+        ...assembled,
+        may_repeat_request_signature: false,
+      };
+    }
+    if (assembled) {
+      const failAdv = mission1SafeAdvance(
+        advanceLifecycle(operationId, CANARY_STATES.FAILED, {
+          env,
+          storeDir: sd,
+          outcome: assembled,
+        }),
+        "FAILED"
+      );
+      return { ok: false, ...assembled, advance: failAdv };
+    }
+    return { ok: false, reason: "assemble_adapter_missing" };
+  }
+
+  // Never default a missing observed digest to the expected digest
+  const observed =
+    assembled.observed_digest_hex ||
+    assembled.digest_hex ||
+    deps.mpcDigestHex ||
+    null;
+  if (!observed) {
+    return {
+      ok: false,
+      reason: "mpc_digest_not_observed",
+      may_repeat_request_signature: false,
+      note: "Missing observed digest must not default to expected",
+    };
+  }
+  if (String(observed).toLowerCase() !== String(digest).toLowerCase()) {
+    return {
+      ok: false,
+      reason: "mpc_digest_mismatch",
+      observed,
+      expected: digest,
+      may_repeat_request_signature: false,
+    };
+  }
+
+  const rawCheck =
+    deps.skipSignedRawVerify === true && testHarness
+      ? { ok: true }
+      : a?.verifySignedRawAgainstAuth
+        ? a.verifySignedRawAgainstAuth(assembled.rawHex, {
+            deposit_address: v.record.payload?.deposit_address,
+            nonce: v.record.locked_nonce,
+            gas_price: v.record.locked_gas_price,
+            gas_limit: v.record.locked_gas_limit,
+            digest_hex: digest,
+          })
+        : verifyMission1SignedRaw(
+            assembled.rawHex,
+            {
+              deposit_address: v.record.payload?.deposit_address,
+              nonce: v.record.locked_nonce,
+              gas_price: v.record.locked_gas_price,
+              gas_limit: v.record.locked_gas_limit,
+              digest_hex: digest,
+            },
+            {
+              recoverFn:
+                deps.recoverFn ||
+                ((hash, r, s, recoveryId) => {
+                  let addr = recoverFromHash(hash, r, s, recoveryId);
+                  const mpc = MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
+                  if (addr.toLowerCase() !== mpc) {
+                    const alt = recoverFromHash(hash, r, s, recoveryId ^ 1);
+                    if (alt.toLowerCase() === mpc) addr = alt;
+                  }
+                  return addr;
+                }),
+            }
+          );
+  if (!rawCheck.ok) return { ok: false, ...rawCheck };
+
+  const pendingPost =
+    testHarness && deps.pendingPostSign !== undefined
+      ? deps.pendingPostSign
+      : a?.getPending
+        ? await a.getPending(operationId)
+        : pendingPre;
+  if (
+    !pendingPost?.payload_commitment ||
+    String(pendingPost.payload_commitment).toLowerCase() !==
+      String(observed).toLowerCase()
+  ) {
+    return { ok: false, reason: "payload_commitment_mismatch_at_sign" };
+  }
+
+  const lhash = localTxHash(assembled.rawHex);
+  bindTxAuthorization(operationId, {
+    nonce: v.record.locked_nonce,
+    digestHex: digest,
+    localTxHash: lhash,
+    gasPrice: v.record.locked_gas_price,
+    gasLimit: v.record.locked_gas_limit,
     env,
     storeDir: sd,
-    outcome: { near_sign_tx: res.transaction_hash || null, digest_hex: digest },
   });
-  return { ok: true, stage: CANARY_STATES.MPC_SIGNED, digest_hex: digest };
+
+  // Persist assembled raw into approval outcome for persist step binding
+  const adv = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.MPC_SIGNED, {
+      env,
+      storeDir: sd,
+      outcome: {
+        near_sign_tx: res.transaction_hash || null,
+        digest_hex: digest,
+        observed_digest_hex: observed,
+        recovered: assembled.recovered || rawCheck.recovered,
+        local_tx_hash: lhash,
+        signed_raw_hex: assembled.rawHex,
+      },
+    }),
+    "MPC_SIGNED"
+  );
+  if (!adv.ok) return adv;
+
+  return {
+    ok: true,
+    stage: CANARY_STATES.MPC_SIGNED,
+    digest_hex: digest,
+    observed_digest_hex: observed,
+    local_tx_hash: lhash,
+    signed_raw_hex: assembled.rawHex,
+    may_repeat_request_signature: false,
+  };
 }
 
 /**
  * Persist identical signed raw bytes to durable journal BEFORE any broadcast.
+ * Decodes and verifies recovered signer, chainId 1, nonce, gas, Eth USDC,
+ * zero ETH value, exact ERC-20 transfer, deposit, and 1_000_000 amount.
  */
 export function mission1StepPersistSignedRaw({
   operationId,
-  signedRawHex,
+  signedRawHex = null,
   env = process.env,
   storeDir = null,
+  testHarness = false,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, { env, storeDir: sd });
   if (!v.ok) return { ok: false, reason: v.reason };
   if (getLifecycleState(v.record) !== CANARY_STATES.MPC_SIGNED) {
     return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
   }
-  if (!signedRawHex) return { ok: false, reason: "signed_raw_required" };
+  const raw =
+    signedRawHex ||
+    v.record.outcomes?.[CANARY_STATES.MPC_SIGNED]?.signed_raw_hex ||
+    null;
+  if (!raw) return { ok: false, reason: "signed_raw_required" };
+
+  const auth = {
+    deposit_address: v.record.payload?.deposit_address,
+    nonce: v.record.locked_nonce,
+    gas_price: v.record.locked_gas_price,
+    gas_limit: v.record.locked_gas_limit,
+    digest_hex: v.record.locked_digest_hex,
+    local_tx_hash:
+      v.record.locked_local_tx_hash ||
+      v.record.outcomes?.[CANARY_STATES.MPC_SIGNED]?.local_tx_hash ||
+      null,
+  };
+
+  let verified;
+  if (deps.skipSignedRawVerify === true && testHarness) {
+    verified = {
+      ok: true,
+      rawHex: raw,
+      local_tx_hash: localTxHash(raw),
+      digest_hex: auth.digest_hex,
+      recovered: MAINNET_IDENTITIES.mpc_evm_address.toLowerCase(),
+    };
+  } else {
+    verified = verifyMission1SignedRaw(raw, auth, {
+      recoverFn:
+        deps.recoverFn ||
+        ((hash, r, s, recoveryId) => {
+          let addr = recoverFromHash(hash, r, s, recoveryId);
+          const mpc = MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
+          if (addr.toLowerCase() !== mpc) {
+            const alt = recoverFromHash(hash, r, s, recoveryId ^ 1);
+            if (alt.toLowerCase() === mpc) addr = alt;
+          }
+          return addr;
+        }),
+    });
+  }
+  if (!verified.ok) return verified;
+
   const journal =
     deps.journal ||
     openTxJournal({
@@ -765,13 +1213,32 @@ export function mission1StepPersistSignedRaw({
         .digest("hex"),
     });
   }
-  const hash = localTxHash(signedRawHex);
-  journal.markSigned(id, { signedRawHex });
-  advanceLifecycle(operationId, CANARY_STATES.READY_TO_BROADCAST, {
+  const lockedRaw = verified.rawHex || raw;
+  const hash = verified.local_tx_hash || localTxHash(lockedRaw);
+  journal.markSigned(id, { signedRawHex: lockedRaw });
+  bindTxAuthorization(operationId, {
+    nonce: v.record.locked_nonce,
+    digestHex: v.record.locked_digest_hex,
+    localTxHash: hash,
+    gasPrice: v.record.locked_gas_price,
+    gasLimit: v.record.locked_gas_limit,
     env,
     storeDir: sd,
-    outcome: { local_tx_hash: hash, journal_id: id },
   });
+  const adv = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.READY_TO_BROADCAST, {
+      env,
+      storeDir: sd,
+      outcome: {
+        local_tx_hash: hash,
+        journal_id: id,
+        signed_raw_locked: true,
+        recovered: verified.recovered,
+      },
+    }),
+    "READY_TO_BROADCAST"
+  );
+  if (!adv.ok) return adv;
   return {
     ok: true,
     stage: CANARY_STATES.READY_TO_BROADCAST,
@@ -789,9 +1256,13 @@ export async function mission1StepBroadcast({
   env = process.env,
   storeDir = null,
   invoke = false,
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, {
     env,
     storeDir: sd,
@@ -803,6 +1274,10 @@ export async function mission1StepBroadcast({
   if (getLifecycleState(v.record) !== CANARY_STATES.READY_TO_BROADCAST) {
     return { ok: false, reason: `bad_state:${getLifecycleState(v.record)}` };
   }
+  // Post-signing operator confirmation must be recorded at READY_TO_BROADCAST
+  if (!v.record.operator_confirmations?.broadcast) {
+    return { ok: false, reason: "operator_confirm_required:broadcast" };
+  }
   const deadlineMs =
     v.record.outcomes?.[CANARY_STATES.ATTESTED]?.quote_deadline_ms ||
     v.record.outcomes?.[CANARY_STATES.QUOTE_VERIFIED]?.quote_deadline_ms;
@@ -812,12 +1287,35 @@ export async function mission1StepBroadcast({
   ) {
     return { ok: false, reason: "quote_expired_before_broadcast" };
   }
-  if (deps.paused !== false && invoke) {
-    return { ok: false, reason: "policy_re_paused" };
+  if (
+    v.record.locked_nonce == null ||
+    !v.record.locked_digest_hex ||
+    !v.record.locked_gas_price ||
+    !v.record.locked_gas_limit ||
+    !v.record.locked_local_tx_hash
+  ) {
+    return { ok: false, reason: "authorization_locks_incomplete" };
   }
+
   if (!invoke) {
-    return { ok: true, dry: true, note: "Pass invoke:true after confirm" };
+    return {
+      ok: true,
+      dry: true,
+      note: "Pass invoke:true after explicit post-signing broadcast confirmation",
+    };
   }
+
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1LiveAdapters({ env });
+  }
+  const live = await resolveMission1LiveGate({
+    adapters: a,
+    testHarness,
+    deps,
+    requireUnpaused: true,
+  });
+  if (!live.ok) return live;
 
   const journal = deps.journal;
   if (!journal) return { ok: false, reason: "journal_required" };
@@ -834,9 +1332,12 @@ export async function mission1StepBroadcast({
   }
   if (
     cur.broadcast_hash &&
-    [TX_STATE.BROADCAST, TX_STATE.CONFIRMED, TX_STATE.SETTLEMENT_PENDING, TX_STATE.SETTLED].includes(
-      cur.state
-    )
+    [
+      TX_STATE.BROADCAST,
+      TX_STATE.CONFIRMED,
+      TX_STATE.SETTLEMENT_PENDING,
+      TX_STATE.SETTLED,
+    ].includes(cur.state)
   ) {
     return {
       ok: true,
@@ -846,10 +1347,166 @@ export async function mission1StepBroadcast({
       note: "already_broadcast_journal_authority",
     };
   }
+
   const raw = deps.signedRawHex || journal.loadSignedRaw(operationId);
   if (!raw) return { ok: false, reason: "signed_bytes_missing" };
-  if (deps.expectedNonce != null && Number(v.record.locked_nonce) !== Number(deps.expectedNonce)) {
+
+  // Exact journal binding: local hash must match locked auth
+  const rawHash = localTxHash(raw);
+  if (
+    String(rawHash).toLowerCase() !==
+    String(v.record.locked_local_tx_hash).toLowerCase()
+  ) {
+    return {
+      ok: false,
+      reason: "journal_binding_mismatch",
+      may_resign: false,
+      got: rawHash,
+      want: v.record.locked_local_tx_hash,
+    };
+  }
+
+  const recoverFn =
+    deps.recoverFn ||
+    ((hash, r, s, recoveryId) => {
+      let addr = recoverFromHash(hash, r, s, recoveryId);
+      const mpc = MAINNET_IDENTITIES.mpc_evm_address.toLowerCase();
+      if (addr.toLowerCase() !== mpc) {
+        const alt = recoverFromHash(hash, r, s, recoveryId ^ 1);
+        if (alt.toLowerCase() === mpc) addr = alt;
+      }
+      return addr;
+    });
+  const rawCheck =
+    deps.skipSignedRawVerify === true && testHarness
+      ? { ok: true }
+      : a?.verifySignedRawAgainstAuth
+        ? a.verifySignedRawAgainstAuth(raw, {
+            deposit_address: v.record.payload?.deposit_address,
+            nonce: v.record.locked_nonce,
+            gas_price: v.record.locked_gas_price,
+            gas_limit: v.record.locked_gas_limit,
+            digest_hex: v.record.locked_digest_hex,
+            local_tx_hash: v.record.locked_local_tx_hash,
+          })
+        : verifyMission1SignedRaw(
+            raw,
+            {
+              deposit_address: v.record.payload?.deposit_address,
+              nonce: v.record.locked_nonce,
+              gas_price: v.record.locked_gas_price,
+              gas_limit: v.record.locked_gas_limit,
+              digest_hex: v.record.locked_digest_hex,
+              local_tx_hash: v.record.locked_local_tx_hash,
+            },
+            { recoverFn }
+          );
+  if (!rawCheck.ok) {
+    return { ok: false, ...rawCheck, may_resign: false };
+  }
+
+  // Live Ethereum nonce check
+  const mpc = MAINNET_IDENTITIES.mpc_evm_address;
+  const ethRpc = deps.ethRpc || a?.ethRpc || MAINNET_EVM_RPCS.ethereum;
+  let nonceLatest;
+  let noncePending;
+  if (testHarness && deps.nonce != null) {
+    nonceLatest = Number(deps.nonce);
+    noncePending = Number(deps.nonce);
+  } else if (a?.eth) {
+    const [nl, np] = await Promise.all([
+      a.eth("eth_getTransactionCount", [mpc, "latest"]),
+      a.eth("eth_getTransactionCount", [mpc, "pending"]),
+    ]);
+    if (!nl?.result || !np?.result) {
+      return {
+        ok: false,
+        reason: "eth_nonce_rpc_ambiguous",
+        may_resign: false,
+        note: "Reconcile read-only; never automatic retry",
+      };
+    }
+    nonceLatest = Number(BigInt(nl.result));
+    noncePending = Number(BigInt(np.result));
+  } else {
+    const [nl, np] = await Promise.all([
+      ethJsonRpc(ethRpc, "eth_getTransactionCount", [mpc, "latest"]),
+      ethJsonRpc(ethRpc, "eth_getTransactionCount", [mpc, "pending"]),
+    ]);
+    if (!nl?.result || !np?.result) {
+      return {
+        ok: false,
+        reason: "eth_nonce_rpc_ambiguous",
+        may_resign: false,
+      };
+    }
+    nonceLatest = Number(BigInt(nl.result));
+    noncePending = Number(BigInt(np.result));
+  }
+  if (noncePending > nonceLatest) {
+    return {
+      ok: false,
+      reason: "eth_pending_nonce_in_flight",
+      may_resign: false,
+      nonce_latest: nonceLatest,
+      nonce_pending: noncePending,
+    };
+  }
+  if (nonceLatest !== Number(v.record.locked_nonce)) {
+    return {
+      ok: false,
+      reason: "eth_nonce_not_available_for_broadcast",
+      may_resign: false,
+      nonce_latest: nonceLatest,
+      expected_nonce: v.record.locked_nonce,
+    };
+  }
+  if (
+    deps.expectedNonce != null &&
+    Number(v.record.locked_nonce) !== Number(deps.expectedNonce)
+  ) {
     return { ok: false, reason: "wrong_nonce" };
+  }
+
+  // On-chain prior-submission check via PendingOp + optional eth_getTransaction
+  const pending =
+    testHarness && deps.pending !== undefined
+      ? deps.pending
+      : a?.getPending
+        ? await a.getPending(operationId)
+        : deps.pending;
+  if (!pending?.payload_commitment) {
+    return {
+      ok: false,
+      reason: "pending_op_missing_payload_commitment",
+      may_resign: false,
+    };
+  }
+  if (
+    String(pending.payload_commitment).toLowerCase() !==
+    String(v.record.locked_digest_hex).toLowerCase()
+  ) {
+    return {
+      ok: false,
+      reason: "pending_payload_commitment_mismatch",
+      may_resign: false,
+    };
+  }
+  if (deps.priorTxHash || deps.checkPriorSubmission) {
+    const prior = deps.checkPriorSubmission
+      ? await deps.checkPriorSubmission({
+          localTxHash: v.record.locked_local_tx_hash,
+          nonce: v.record.locked_nonce,
+        })
+      : null;
+    if (prior?.found || prior?.halt_broadcast) {
+      return {
+        ok: false,
+        reason: prior.reason || "prior_submission_detected",
+        may_resign: false,
+        prior,
+      };
+    }
   }
 
   journal.beginBroadcast(operationId);
@@ -857,14 +1514,19 @@ export async function mission1StepBroadcast({
   try {
     send = deps.ethSend
       ? await deps.ethSend(raw)
-      : { error: { message: "eth_send_adapter_missing" } };
+      : a?.eth
+        ? await a.eth("eth_sendRawTransaction", [raw])
+        : { error: { message: "eth_send_adapter_missing" } };
   } catch (e) {
-    journal.markUnknown(operationId, { rpc_error: String(e.message || e).slice(0, 200) });
+    journal.markUnknown(operationId, {
+      rpc_error: String(e.message || e).slice(0, 200),
+    });
     return {
       ok: false,
       reason: "broadcast_rpc_timeout_or_error",
       may_resign: false,
       status: TX_STATE.UNKNOWN,
+      note: "Ambiguous — reconcile read-only, never auto-retry",
     };
   }
   if (send?.error || !send?.result) {
@@ -878,20 +1540,33 @@ export async function mission1StepBroadcast({
         status: TX_STATE.UNKNOWN,
       };
     }
-    return { ok: false, reason: "BROADCAST_FAILED", may_resign: false, error: send?.error };
+    return {
+      ok: false,
+      reason: "BROADCAST_FAILED",
+      may_resign: false,
+      error: send?.error,
+    };
   }
   journal.markBroadcast(operationId, send.result);
   bindBroadcastHash(operationId, send.result, { env, storeDir: sd });
-  advanceLifecycle(operationId, CANARY_STATES.BROADCASTED, {
-    env,
-    storeDir: sd,
-    outcome: { broadcast_hash: send.result },
-  });
-  advanceLifecycle(operationId, CANARY_STATES.SETTLEMENT_PENDING, {
-    env,
-    storeDir: sd,
-    outcome: { broadcast_hash: send.result },
-  });
+  const advB = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.BROADCASTED, {
+      env,
+      storeDir: sd,
+      outcome: { broadcast_hash: send.result },
+    }),
+    "BROADCASTED"
+  );
+  if (!advB.ok) return advB;
+  const advS = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.SETTLEMENT_PENDING, {
+      env,
+      storeDir: sd,
+      outcome: { broadcast_hash: send.result },
+    }),
+    "SETTLEMENT_PENDING"
+  );
+  if (!advS.ok) return advS;
   return {
     ok: true,
     stage: CANARY_STATES.SETTLEMENT_PENDING,
@@ -904,14 +1579,15 @@ export async function mission1StepSettle({
   operationId,
   env = process.env,
   storeDir = null,
+  testHarness = false,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const v = validateMission1CanaryApproval(operationId, { env, storeDir: sd });
-  // Allow used=false or post-broadcast; validateMission1 rejects used — load carefully
   let record = v.record;
   if (!v.ok && v.reason === "approval_already_used") {
-    // settlement may run after consume in some flows; prefer unused until SETTLED
     return { ok: false, reason: v.reason };
   }
   if (!v.ok) return { ok: false, reason: v.reason };
@@ -964,24 +1640,30 @@ export async function mission1StepSettle({
         }),
     };
   }
-  advanceLifecycle(operationId, CANARY_STATES.SETTLED, {
-    env,
-    storeDir: sd,
-    outcome: {
-      near_delta: settled.destination?.delta,
-      min_out: minOut,
-      evidence_hash:
-        deps.evidenceHash ||
-        createHash("sha256")
-          .update(`${txHash}:${settled.destination?.delta}:${minOut}`)
-          .digest("hex"),
-    },
-  });
+  const evidenceHash =
+    deps.evidenceHash ||
+    createHash("sha256")
+      .update(`${txHash}:${settled.destination?.delta}:${minOut}`)
+      .digest("hex");
+  const adv = mission1SafeAdvance(
+    advanceLifecycle(operationId, CANARY_STATES.SETTLED, {
+      env,
+      storeDir: sd,
+      outcome: {
+        near_delta: settled.destination?.delta,
+        min_out: minOut,
+        evidence_hash: evidenceHash,
+      },
+    }),
+    "SETTLED"
+  );
+  if (!adv.ok) return adv;
   consumeCanaryApproval(operationId, { env, storeDir: sd, reason: "settled" });
   return {
     ok: true,
     stage: CANARY_STATES.SETTLED,
     ...settled,
+    evidence_hash: evidenceHash,
     note: "reconcile_pending is a separate owner-Ledger confirmation",
   };
 }
@@ -992,11 +1674,13 @@ export async function mission1StepReconcilePending({
   storeDir = null,
   invoke = false,
   evidenceHash = null,
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
   const sd = dirOf(env, storeDir);
-  // After SETTLED approval is consumed — load file directly
-  const { readFileSync, existsSync } = await import("node:fs");
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
   const path = join(sd, `${operationId}.json`);
   if (!existsSync(path)) return { ok: false, reason: "approval_not_found" };
   const record = JSON.parse(readFileSync(path, "utf8"));
@@ -1027,8 +1711,46 @@ export async function mission1StepReconcilePending({
       note: "Owner Ledger only when reconciler unset",
     };
   }
+
+  let a = adapters || deps.adapters || null;
+  if (!testHarness && !a) {
+    a = await createMission1LiveAdapters({ env });
+  }
+
+  let nearReceiptOk = true;
+  if (deps.nearReceiptVerify) {
+    const nr = await deps.nearReceiptVerify();
+    if (!nr?.ok) {
+      return { ok: false, reason: "near_receipt_verify_failed", detail: nr };
+    }
+  } else if (deps.nearReconcileTx && a?.waitNearTx) {
+    try {
+      const full = await a.waitNearTx(deps.nearReconcileTx);
+      if (!full) {
+        return {
+          ok: false,
+          reason: "near_reconcile_receipt_missing",
+          may_retry_reconcile: false,
+        };
+      }
+    } catch (e) {
+      return {
+        ok: false,
+        reason: "near_reconcile_receipt_ambiguous",
+        error: String(e.message || e).slice(0, 200),
+      };
+    }
+  }
+
   if (deps.reconcileFn) {
     const res = await deps.reconcileFn({
+      operation_id: operationId,
+      settlement_state: "Success",
+      evidence_hash: hash,
+    });
+    if (!res?.ok) return { ok: false, reason: "reconcile_failed", detail: res };
+  } else if (a?.reconcilePending) {
+    const res = await a.reconcilePending({
       operation_id: operationId,
       settlement_state: "Success",
       evidence_hash: hash,
@@ -1037,7 +1759,34 @@ export async function mission1StepReconcilePending({
   } else {
     return { ok: false, reason: "reconcile_adapter_missing_use_ledger" };
   }
-  // Advance via raw write (approval consumed)
+
+  const onchain = await verifyMission1ReconcileOnchain({
+    adapters: a || {
+      getPending: deps.getPending,
+      getPaused: deps.getPausedAfter
+        ? async () => deps.pausedAfter
+        : undefined,
+      getEvidenceHash: deps.getEvidenceHash,
+    },
+    operationId,
+    evidenceHash: hash,
+    testHarness,
+    deps: {
+      pending: deps.pendingAfter,
+      evidenceOnchain: deps.evidenceOnchain,
+      pausedAfter: deps.pausedAfter,
+    },
+  });
+  if (!onchain.ok) {
+    return {
+      ok: false,
+      reason: onchain.reason || "reconcile_onchain_verify_failed",
+      detail: onchain,
+      note: "Do not mark RECONCILED without Success + evidence + policy state",
+    };
+  }
+  void nearReceiptOk;
+
   const next = {
     ...record,
     lifecycle_state: CANARY_STATES.RECONCILED,
@@ -1046,18 +1795,46 @@ export async function mission1StepReconcilePending({
       [CANARY_STATES.RECONCILED]: {
         at: new Date().toISOString(),
         evidence_hash: hash,
+        settlement_state: "Success",
+        paused_after: onchain.paused,
       },
     },
   };
-  atomicWrite(path, next);
-  return { ok: true, stage: CANARY_STATES.RECONCILED, evidence_hash: hash };
+  try {
+    atomicWrite(path, next);
+  } catch (e) {
+    return {
+      ok: false,
+      reason: "reconcile_persist_failed",
+      error: String(e.message || e).slice(0, 200),
+    };
+  }
+  return {
+    ok: true,
+    stage: CANARY_STATES.RECONCILED,
+    evidence_hash: hash,
+    onchain,
+  };
 }
 
 export async function mission1StepVerifyPaused({
+  testHarness = false,
+  adapters = null,
   deps = {},
 } = {}) {
-  if (deps.paused !== true) {
-    return { ok: false, reason: "policy_not_paused", paused: deps.paused };
+  const fixtureGate = assertMission1FixturesAllowed(testHarness, deps);
+  if (!fixtureGate.ok) return fixtureGate;
+  let paused;
+  if (testHarness && Object.prototype.hasOwnProperty.call(deps, "paused")) {
+    paused = deps.paused;
+  } else {
+    let a = adapters || deps.adapters || null;
+    if (!a) a = await createMission1ViewAdapters({});
+    if (!a?.getPaused) return { ok: false, reason: "pause_adapter_required" };
+    paused = await a.getPaused();
+  }
+  if (paused !== true) {
+    return { ok: false, reason: "policy_not_paused", paused };
   }
   return {
     ok: true,
@@ -1069,6 +1846,62 @@ export async function mission1StepVerifyPaused({
     }),
   };
 }
+
+/**
+ * No-mutation production dry rehearsal (quote/attest path optional via deps).
+ * Never proposes, signs, broadcasts, or reconciles.
+ */
+export async function runMission1DryRehearsal({
+  operationId = null,
+  env = process.env,
+  storeDir = null,
+  allowFundedQuote = false,
+  testHarness = false,
+  adapters = null,
+  deps = {},
+} = {}) {
+  const caps = mission1RunnerCapabilities();
+  const runner = assertMission1RunnerComplete();
+  const prep = mission1StepPrepareApproval({
+    operationId,
+    env,
+    storeDir: dirOf(env, storeDir),
+  });
+  if (!prep.ok) {
+    return {
+      ok: false,
+      reason: prep.reason || "prepare_failed",
+      capabilities: caps,
+      runner,
+      mutations_invoked: false,
+    };
+  }
+  const op = prep.operation_id || prep.record?.operation_id;
+  let quote = null;
+  if (deps.quoteResult || allowFundedQuote || testHarness) {
+    quote = await mission1StepQuoteAttest({
+      operationId: op,
+      env,
+      storeDir: dirOf(env, storeDir),
+      testHarness,
+      allowFundedQuote,
+      adapters,
+      deps,
+    });
+  }
+  return {
+    ok: runner.ok && (quote ? quote.ok : true),
+    stage: "MISSION1_DRY_REHEARSAL_COMPLETE",
+    operation_id: op,
+    capabilities: caps,
+    runner,
+    quote,
+    mutations_invoked: false,
+    hard_stop: true,
+    note: "No Ledger/propose/sign/broadcast/swap/reconcile. Financial approval still required separately.",
+  };
+}
+
 
 /**
  * Map step name → function for readiness / operator CLI.
@@ -1087,11 +1920,28 @@ export const MISSION1_STEP_HANDLERS = Object.freeze({
 });
 
 export function assertMission1RunnerComplete() {
-  const missing = MISSION1_RUNNER_STEPS.filter((s) => typeof MISSION1_STEP_HANDLERS[s] !== "function");
+  const missing = MISSION1_RUNNER_STEPS.filter(
+    (s) => typeof MISSION1_STEP_HANDLERS[s] !== "function"
+  );
+  const wiring = {
+    live_adapters: typeof createMission1LiveAdapters === "function",
+    view_adapters: typeof createMission1ViewAdapters === "function",
+    dry_rehearsal: typeof runMission1DryRehearsal === "function",
+    safety_confirm: typeof confirmMission1Phase === "function",
+    signed_raw_verify: typeof verifyMission1SignedRaw === "function",
+    independent_of_j8b: true,
+    eth_chain_id: MISSION1_CHAIN_ID,
+  };
+  const wiringGaps = Object.entries(wiring)
+    .filter(([, v]) => v !== true && v !== MISSION1_CHAIN_ID)
+    .map(([k]) => k);
   return {
-    ok: missing.length === 0,
+    ok: missing.length === 0 && wiringGaps.length === 0,
     missing,
+    wiring,
+    wiring_gaps: wiringGaps,
     steps: listMission1RunnerSteps(),
     capabilities: mission1RunnerCapabilities(),
+    cli_entry: "scripts/mainnet/mission1-operator.mjs",
   };
 }

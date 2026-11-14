@@ -1,0 +1,438 @@
+{
+  "kind": "mission1_j9_hardening_rehearsal_v1",
+  "started_at": "2026-11-14T04:26:18.053Z",
+  "finished_at": "2026-11-14T04:26:27.965Z",
+  "baseline": "8769c4d98018c0492ad4ff39a7f31f520fe492f7",
+  "hard_stop": {
+    "ledger_signing": false,
+    "policy_unpause": false,
+    "near_propose": false,
+    "request_signature": false,
+    "evm_broadcast": false,
+    "swap": false,
+    "reconcile": false,
+    "expiring_approval_created": false,
+    "mutations_invoked": false
+  },
+  "network": {
+    "interfaces": {
+      "vEthernet (WSL (Hyper-V firewall))": [
+        "172.24.144.1"
+      ],
+      "Ethernet 5": [
+        "192.168.56.1"
+      ],
+      "Wi-Fi": [
+        "10.151.103.39"
+      ],
+      "Loopback Pseudo-Interface 1": [
+        "127.0.0.1"
+      ]
+    },
+    "tls": {
+      "ok": true,
+      "status": 200,
+      "bind": null,
+      "error": null,
+      "fortinet_mitm": false,
+      "tls_authorized": true,
+      "peer_issuer": {
+        "C": "US",
+        "O": "Google Trust Services",
+        "CN": "WE1"
+      }
+    }
+  },
+  "wiring": {
+    "runner": {
+      "ok": true,
+      "missing": [],
+      "wiring": {
+        "live_adapters": true,
+        "view_adapters": true,
+        "dry_rehearsal": true,
+        "safety_confirm": true,
+        "signed_raw_verify": true,
+        "independent_of_j8b": true,
+        "eth_chain_id": 1
+      },
+      "wiring_gaps": [],
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "capabilities": {
+        "ok": true,
+        "kind": "mission1_eth_near_executor_v1",
+        "independent_of_j8b": true,
+        "rejects_j8b_operator": true,
+        "chain_id": 1,
+        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "recipient": "nishanthb.near",
+        "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "amount": "1000000",
+        "steps": [
+          "prepareApproval",
+          "quoteAttest",
+          "verifyUnpaused",
+          "propose",
+          "requestSignature",
+          "persistSignedRaw",
+          "broadcast",
+          "settle",
+          "reconcilePending",
+          "verifyPaused"
+        ],
+        "invoke_default": false,
+        "hard_stop_without_financial_approval": true
+      },
+      "cli_entry": "scripts/mainnet/mission1-operator.mjs"
+    },
+    "capabilities": {
+      "ok": true,
+      "kind": "mission1_eth_near_executor_v1",
+      "independent_of_j8b": true,
+      "rejects_j8b_operator": true,
+      "chain_id": 1,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "amount": "1000000",
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "invoke_default": false,
+      "hard_stop_without_financial_approval": true
+    },
+    "steps": [
+      "prepareApproval",
+      "quoteAttest",
+      "verifyUnpaused",
+      "propose",
+      "requestSignature",
+      "persistSignedRaw",
+      "broadcast",
+      "settle",
+      "reconcilePending",
+      "verifyPaused"
+    ],
+    "cli_path": "scripts/mainnet/mission1-operator.mjs",
+    "cli_exists": true,
+    "cli_capabilities": {
+      "ok": true,
+      "kind": "mission1_eth_near_executor_v1",
+      "independent_of_j8b": true,
+      "rejects_j8b_operator": true,
+      "chain_id": 1,
+      "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "amount": "1000000",
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "invoke_default": false,
+      "hard_stop_without_financial_approval": true
+    },
+    "adapters_kind": "mission1_view_adapters_v1",
+    "adapters_eth_rpc": "https://ethereum-rpc.publicnode.com",
+    "independent_of_j8b": true,
+    "fixture_injection_blocked_in_prod": true,
+    "path_audit": {
+      "ok": true,
+      "gaps": [],
+      "ready": [
+        "verifySourceUsdcTransfer_parameterized_for_ethereum",
+        "verifyNearNep141Delta_production_nep141",
+        "monitorOneClickByDeposit_by_deposit_address",
+        "mission1_settlement_wrapper_wired",
+        "near_usdc_before_snapshot_required",
+        "durable_tx_journal_sqlite_available",
+        "journal_duplicate_idempotency_blocked",
+        "j8b_defaults_isolated_from_mission1_module",
+        "mission1_approval_kind_separate_store",
+        "mission1_transaction_plan_documented",
+        "mission1_step_runner_complete",
+        "mission1_executor_independent_of_j8b_arb"
+      ]
+    }
+  },
+  "live_policy": {
+    "paused": true,
+    "epoch": 2,
+    "limits": {
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 100,
+      "allowed_assets": [
+        "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "nep141:usdt.tether-token.near",
+        "nep141:wrap.near",
+        "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near",
+        "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near",
+        "nep141:base-0x4200000000000000000000000000000000000006.omft.near"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "valid_until": "1798761600000000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "2500000000000000"
+    },
+    "pending_count": 1
+  },
+  "funding_and_quote": {
+    "ok": true,
+    "verdict": "READY_FOR_OWNER_APPROVAL",
+    "mutations_invoked": false,
+    "route": {
+      "id": "m1_eth_usdc_to_near_usdc",
+      "label": "Ethereum USDC → NEAR USDC",
+      "amount": "1000000",
+      "amount_label": "1 USDC",
+      "source_chain_id": 1,
+      "source_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "destination_kind": "nep141",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "signer_mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "quote_slippage_bps": 50,
+      "expected_actions": [
+        "ERC-20 transfer USDC (Ethereum) from MPC → 1Click deposit",
+        "1Click fill to NEP-141 NEAR USDC at nishanthb.near",
+        "NEAR reconcile_pending after verified destination delta (owner Ledger if reconciler unset)"
+      ]
+    },
+    "tokens": {
+      "ok": true,
+      "eth_usdc": true,
+      "near_usdc": true,
+      "wrap_near_listed": true,
+      "near_usdc_decimals": 6,
+      "distinction": "Destination is NEP-141 USDC contract on NEAR — not native NEAR, not wrap.near, not an intents ledger balance id"
+    },
+    "policy": {
+      "paused": true,
+      "mandate_epoch": 2,
+      "max_trade_value": "5000000",
+      "max_slippage_bps": 100,
+      "max_gas_budget": "2500000000000000",
+      "chain_ok": true,
+      "asset_in_ok": true,
+      "asset_out_ok": true,
+      "recipient_ok": true,
+      "refund_ok": true
+    },
+    "ethereum": {
+      "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "native_wei": "600000000000000",
+      "native_eth": 0.0006,
+      "usdc_raw": "1200535",
+      "nonce_latest": 0,
+      "nonce_pending": 0,
+      "gas_price": {
+        "ok": true,
+        "gas_price_wei": "108335595",
+        "gas_price_gwei": 0.108335595
+      },
+      "gas_estimate": {
+        "ok": true,
+        "estimated": true,
+        "gas_limit": "54360",
+        "eth_estimate": "45300"
+      },
+      "economics": {
+        "gas_price_wei": "108335595",
+        "gas_limit": "54360",
+        "fee_wei": "5889122944200",
+        "fee_eth": 0.0000058891229442,
+        "fee_usd_approx": 0.01884519342144,
+        "trade_usdc": 1,
+        "within_gas_price_ceiling": true,
+        "within_max_gas_budget": true,
+        "verdict": "OK",
+        "note": null
+      }
+    },
+    "near_destination": {
+      "recipient": "nishanthb.near",
+      "storage": {
+        "ok": true,
+        "registered": true,
+        "storage_balance": {
+          "total": "1250000000000000000000",
+          "available": "0"
+        },
+        "storage_bounds": {
+          "min": "1250000000000000000000",
+          "max": "1250000000000000000000"
+        },
+        "account_id": "nishanthb.near",
+        "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "note": null
+      },
+      "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+    },
+    "quote": {
+      "ok": true,
+      "dry": true,
+      "amount_in": "1000000",
+      "amount_out": "999798",
+      "min_amount_out": "994799",
+      "deposit_address": null,
+      "deadline": "2026-11-14T04:41:26.518Z",
+      "refund_fee": "300000",
+      "withdraw_fee": "0",
+      "time_estimate": 45,
+      "policy_fit": {
+        "label": "m1_eth_usdc_to_near_usdc",
+        "amount_in": "1000000",
+        "min_amount_out": "994799",
+        "max_slippage_bps": 100,
+        "policy_floor": "990000",
+        "result": "PASS",
+        "altered_values": false
+      },
+      "decimals": {
+        "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "decimals_in": 6,
+        "decimals_out": 6,
+        "same_decimal_scale": true,
+        "amount_in": "1000000",
+        "min_amount_out": "994799",
+        "policy_floor": "990000",
+        "policy_would_accept": true,
+        "classification": "SAFE_SAME_DECIMALS",
+        "can_safely_validate_value_slippage_exposure": true,
+        "risks": [],
+        "recommendation": "route_ok_for_raw_policy_checks"
+      },
+      "note": "dry quote — deposit_address may be null until funded quote + approval"
+    },
+    "blockers": [],
+    "warnings": [
+      "wrap.near_is_listed_but_not_selected — Mission 1 uses NEP-141 USDC (6 decimals), not wrap.near (24)"
+    ],
+    "approval_boundary": {
+      "stop": true,
+      "requires_explicit_approval_for": [
+        "Fund MPC Ethereum address with USDC + ETH gas (owner funding — not auto)",
+        "NEAR USDC storage_deposit for nishanthb.near (owner)",
+        "Create new Mission 1 operation approval (never reuse J8B)",
+        "Funded 1Click quote + Ledger unpause window",
+        "propose_quoted_evm_transfer / request_signature / broadcast",
+        "reconcile_pending after settlement verify"
+      ],
+      "proposed_trade": {
+        "amount": "1000000",
+        "amount_label": "1 USDC",
+        "source_fee_budget_wei": "5889122944200",
+        "source_fee_eth": 0.0000058891229442,
+        "source_fee_usd_approx": 0.01884519342144,
+        "destination_asset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "min_output": "994799",
+        "signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "recipient": "nishanthb.near",
+        "refund_route": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4 on Ethereum (ORIGIN_CHAIN)",
+        "quote_slippage_bps": 50
+      }
+    }
+  },
+  "dry_rehearsal": {
+    "ok": true,
+    "stage": "MISSION1_DRY_REHEARSAL_COMPLETE",
+    "mutations_invoked": false,
+    "hard_stop": true,
+    "operation_id": "m1-canary-1794630387960-631c79af",
+    "quote_attempted": false
+  },
+  "paper_funded_disabled": {
+    "ok": true,
+    "gates": {
+      "funded_trading": false,
+      "mainnet_broadcast_enabled": false,
+      "autonomous_execution_enabled": false,
+      "observe_only": true,
+      "unlock_attempted_ignored": false,
+      "auth_gates_raw": {
+        "network_is_mainnet": false,
+        "mainnet_mode": false,
+        "allow_sign": false,
+        "allow_broadcast": false,
+        "canary_approved": false,
+        "public_demo_safe": true
+      },
+      "note": "J3 default hard-false; canary one-shot requires fresh disk validation"
+    }
+  },
+  "approval_boundaries": [
+    "Owner separate financial approval for Mission1 Eth→NEAR canary (not yet created)",
+    "Ledger unpause() only after financial approval + attest window",
+    "Operator confirm propose/sign/broadcast at correct lifecycle states only",
+    "Ledger reconcile_pending only after SETTLED + evidence hash verified",
+    "No reuse of J8B Arb approval or Arbitrum operator path",
+    "Autonomous funded paper trading remains DISABLED",
+    "Do not extend expired authorization TTL"
+  ],
+  "defects_fixed": [
+    "propose: require PendingOp verify; ambiguous → RECONCILIATION_REQUIRED, no resubmit",
+    "sign: require observed MPC digest (no default to expected); no repeat on ambiguity",
+    "persist: decode+verify Eth USDC transfer, chainId 1, amount 1e6, lock raw+hash",
+    "broadcast: live nonce, journal binding, quote deadline, auth locks, pending check, UNKNOWN→reconcile-only",
+    "reconcile: require Success + evidence hash + policy pause verify before RECONCILED",
+    "trusted live RPC state; fixtures require testHarness",
+    "phase confirmations state-gated (no advance booking)",
+    "lifecycle advance results checked before claiming stage",
+    "Mission1 CLI + Eth adapters independent of J8B Arb operator"
+  ],
+  "verdict": "READY_FOR_SEPARATE_FINANCIAL_APPROVAL"
+}
