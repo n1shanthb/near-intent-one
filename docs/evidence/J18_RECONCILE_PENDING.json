@@ -1,0 +1,21 @@
+{
+  "kind": "J18_RECONCILE_PENDING",
+  "operation_id": "j17-exec-77cc69",
+  "settlement_state": "Success",
+  "evidence_hash": "0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+  "near_tx": "3uU3cDxnBYAHUtNkrNn1UStZ2g7CndtsQDpKHVhjUGrZ",
+  "explorer": "https://testnet.nearblocks.io/txns/3uU3cDxnBYAHUtNkrNn1UStZ2g7CndtsQDpKHVhjUGrZ",
+  "before_settlement": "None",
+  "after_settlement": "Success",
+  "reserved_after": "1000000",
+  "snap": {
+    "reserved_pending_exposure": "1000000",
+    "realized_exposure": "1000000",
+    "revoked": false,
+    "mandate_epoch": 2,
+    "unresolved_pending": 1,
+    "signing_revoked": false,
+    "economically_settled": false
+  },
+  "ok": true
+}

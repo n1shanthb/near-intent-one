@@ -1,0 +1,64 @@
+{
+  "kind": "J18_SEPOLIA_SETTLEMENT_GO",
+  "baseline": "c898d76",
+  "finished_at": "2026-11-14T12:50:30.000Z",
+  "verdict": "GO",
+  "scenario_label": "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS",
+  "intents_settlement": false,
+  "operation_id": "j17-exec-77cc69",
+  "envelope": {
+    "chain_id": 11155111,
+    "token": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+    "from_mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "to": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "amount_raw": "1000000",
+    "nonce": 0,
+    "digest_hex": "7368a2f9f8a2c6705b2184e0419ce2e1564fad65b93075a9df4e5f3382c02581"
+  },
+  "near": {
+    "propose": "https://testnet.nearblocks.io/txns/HUEj87p5ktWt1ekueXicMyrnFhcZCkriyfVa8A7UZRwo",
+    "request_signature": "https://testnet.nearblocks.io/txns/CgQaL5yDknUQG9AtoNbu2xvEPYF7MPz6W29n3ny3bUxF",
+    "reconcile": "https://testnet.nearblocks.io/txns/3uU3cDxnBYAHUtNkrNn1UStZ2g7CndtsQDpKHVhjUGrZ"
+  },
+  "sepolia": {
+    "tx_hash": "0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+    "explorer": "https://sepolia.etherscan.io/tx/0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+    "status": "0x1",
+    "blockNumber": 12133204,
+    "confirmations_at_verify": 8,
+    "gasUsed": 140830,
+    "transfer_log": {
+      "from": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+      "to": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "value": "1000000"
+    },
+    "balances_after": {
+      "mpc_usdc": "1000000",
+      "recipient_usdc": "1000000"
+    }
+  },
+  "independent_settlement": {
+    "ok": true,
+    "status": "SETTLED",
+    "independently_verified": true,
+    "financial_readiness": true,
+    "label": "REAL_EVM_NODE",
+    "note": "Initial script settle failed on concurrent-run balance snapshot race; independent re-verify of mined receipt + Transfer log + balances PASS"
+  },
+  "policy_reconcile": {
+    "ok": true,
+    "settlement_state": "Success",
+    "reserved_pending_after": "1000000",
+    "realized_exposure_after": "1000000",
+    "remaining_unresolved": "j16-mpc-6890 (pre-existing NEAR-dest Signed/None — left in place)"
+  },
+  "gates": {
+    "J18_TESTNET_PRE_SIGN_GO": "GO",
+    "AUTHENTIC_MPC_TO_EVM_BROADCAST": "PASS",
+    "REAL_SEPOLIA_TOKEN_SETTLEMENT": "PASS",
+    "INDEPENDENT_RECONCILIATION": "PASS",
+    "J18_SEPOLIA_SETTLEMENT_GO": "GO",
+    "INTENTS_SETTLEMENT_VERIFIED": "NOT_APPLICABLE_ERC20_TRANSFER",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  }
+}

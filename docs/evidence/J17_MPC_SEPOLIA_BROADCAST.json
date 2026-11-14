@@ -1,40 +1,119 @@
 {
   "kind": "J17_MPC_SEPOLIA_BROADCAST",
   "baseline": "df3a84b",
-  "started_at": "2026-11-14T12:06:21.404Z",
+  "started_at": "2026-11-14T12:47:47.852Z",
   "hard_stop_mainnet": true,
   "scenario_label": "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS",
   "intents_settlement": false,
   "authorization": {
+    "J17_MPC_SIGN_BROADCAST_AUTHORIZED": true,
     "J17_SEPOLIA_FUNDING_AUTHORIZED": false,
-    "note": "Funding confirmation ≠ broadcast approval."
+    "gate": {
+      "ok": true
+    },
+    "note": "Funding confirmation ≠ MPC sign/broadcast approval. Quote-signer register is a separate auth."
   },
-  "verdict": "PREFLIGHT_ONLY",
-  "preflight_exit": 0,
-  "preflight": {
-    "FUNDING_CONFIRMED": "PASS",
-    "CONTRACT_ABI_MATCH": "PASS",
-    "SIGNATURE_DEPOSIT_CORRECT": "PASS",
-    "DIGEST_BINDING_VALID": "PASS",
-    "GAS_ESTIMATION_VALID": "PASS",
-    "POLICY_STATE_VERIFIED": "PASS",
-    "JOURNAL_AND_REPLAY_SAFE": "FAIL",
-    "PRE_BROADCAST_READY": "READY_PENDING_OWNER_PREREQS",
-    "MAINNET_AUTONOMY_READY": "NO-GO"
+  "live_preflight_exit": 0,
+  "live_preflight_gate": {
+    "ok": true,
+    "blockers": [],
+    "note": "Live preflight must pass immediately before authorized transfer; flags/files/previews are not success"
   },
-  "gates": {
-    "AUTHENTIC_MPC_TO_EVM_BROADCAST": "BLOCKED_NO_AUTH",
-    "PRE_BROADCAST": {
-      "FUNDING_CONFIRMED": "PASS",
-      "CONTRACT_ABI_MATCH": "PASS",
-      "SIGNATURE_DEPOSIT_CORRECT": "PASS",
-      "DIGEST_BINDING_VALID": "PASS",
-      "GAS_ESTIMATION_VALID": "PASS",
-      "POLICY_STATE_VERIFIED": "PASS",
-      "JOURNAL_AND_REPLAY_SAFE": "FAIL",
-      "PRE_BROADCAST_READY": "READY_PENDING_OWNER_PREREQS",
-      "MAINNET_AUTONOMY_READY": "NO-GO"
+  "journal_hydrate": {
+    "ok": true,
+    "source": "path_env",
+    "path": "E:\\near-intent-one\\.nio-secure\\j17\\journal.secret",
+    "fingerprint": "e068c1a0f5f8cc75",
+    "reason": null
+  },
+  "pending_conflict": {
+    "ok": true,
+    "blockers": [],
+    "unresolved_count": 1,
+    "reserved": "1000000",
+    "max_pending_exposure": "2000000",
+    "headroom": "1000000",
+    "next_amount": "1000000",
+    "fits_exposure": true,
+    "id_collision": false,
+    "same_destination_open": false,
+    "destination_overlap_note": "Existing pending destination differs from next EVM recipient (no dest collision)",
+    "pending": [
+      {
+        "operation_id": "j16-mpc-6890",
+        "amount_in": "1000000",
+        "destination": "nio-owner-02b7cf.testnet",
+        "signing_state": "Signed",
+        "settlement_state": "None",
+        "epoch": 2,
+        "payload_commitment": "fac6d1de4a3197e1083d2a273999d7f6e6232f78ee6447f0a0ac7a736d314569",
+        "clear_without_authority": false,
+        "action": "LEAVE_IN_PLACE_UNTIL_RECONCILE_OR_OWNER_CLEAR"
+      }
+    ],
+    "do_not_clear": "Do not clear unresolved pending without verified on-chain evidence and explicit owner authority"
+  },
+  "operation_intent": {
+    "path": "E:\\near-intent-one\\.nio-secure\\j17\\presign\\presign-j17-exec-77cc69.json",
+    "operation_id": "j17-exec-77cc69",
+    "status": "INTENT_LOCKED",
+    "digest_hex": "7368a2f9f8a2c6705b2184e0419ce2e1564fad65b93075a9df4e5f3382c02581"
+  },
+  "propose": {
+    "tx": "HUEj87p5ktWt1ekueXicMyrnFhcZCkriyfVa8A7UZRwo",
+    "explorer": "https://testnet.nearblocks.io/txns/HUEj87p5ktWt1ekueXicMyrnFhcZCkriyfVa8A7UZRwo",
+    "eval": {
+      "action": "ADVANCE",
+      "next_status": "PROPOSED",
+      "may_retry": false,
+      "may_new_operation": false,
+      "may_duplicate": false
     }
   },
-  "finished_at": "2026-11-14T12:06:26.797Z"
+  "mpc_request": {
+    "near_tx": "CgQaL5yDknUQG9AtoNbu2xvEPYF7MPz6W29n3ny3bUxF",
+    "explorer": "https://testnet.nearblocks.io/txns/CgQaL5yDknUQG9AtoNbu2xvEPYF7MPz6W29n3ny3bUxF"
+  },
+  "broadcast": {
+    "first": {
+      "tx_hash": "0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53"
+    },
+    "eval": {
+      "ok": true,
+      "action": "MARK_BROADCAST",
+      "tx_hash": "0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+      "may_retry_broadcast": false,
+      "may_resign": false
+    }
+  },
+  "replay_protection": {
+    "ok": false,
+    "action": "REFUSE_RETRY",
+    "reason": "already_broadcast",
+    "may_retry_broadcast": false,
+    "may_resign": false
+  },
+  "settle": {
+    "ok": false,
+    "reason": "sender_balance_delta_mismatch",
+    "note": "Concurrent second runner raced balance snapshot; independent re-verify PASS — see J18_SEPOLIA_SETTLEMENT_GO.json"
+  },
+  "independent_reverify": {
+    "ok": true,
+    "status": "SETTLED",
+    "tx_hash": "0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+    "transfer_log_value": "1000000",
+    "balances_after": { "mpc": "1000000", "recipient": "1000000" },
+    "reconcile_near_tx": "3uU3cDxnBYAHUtNkrNn1UStZ2g7CndtsQDpKHVhjUGrZ"
+  },
+  "explorer": "https://sepolia.etherscan.io/tx/0xc9826ca6b7dc80f308fad18ff9ee136b9836907eb7df0ccdeb0f1ddf780c8b53",
+  "gates": {
+    "AUTHENTIC_MPC_TO_EVM_BROADCAST": "PASS",
+    "REAL_SEPOLIA_TOKEN_SETTLEMENT": "PASS",
+    "INDEPENDENT_RECONCILIATION": "PASS",
+    "INTENTS_SETTLEMENT_VERIFIED": "NOT_APPLICABLE_ERC20_TRANSFER",
+    "J18_SEPOLIA_SETTLEMENT_GO": "GO"
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-11-14T12:50:30.000Z"
 }
