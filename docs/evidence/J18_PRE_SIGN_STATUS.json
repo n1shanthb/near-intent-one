@@ -1,0 +1,25 @@
+{
+  "kind": "J18_PRE_SIGN_STATUS",
+  "baseline": "8c2dd83",
+  "finished_at": "2026-11-14T12:37:30.000Z",
+  "phase1_journal": "PASS",
+  "phase2_signer_registered": false,
+  "phase2_status": "AWAITING_SEPARATE_EXPLICIT_OWNER_AUTHORIZATION",
+  "live_preflight_blockers": ["trusted_quote_signer_not_registered"],
+  "gates": {
+    "FUNDING_CONFIRMED": "PASS",
+    "PENDING_CONFLICT_SAFE": "PASS",
+    "CONTRACT_ABI_MATCH": "PASS",
+    "GAS_ESTIMATION_FAIL_CLOSED": "PASS",
+    "ATTESTOR_KEY_VERIFIED": "PASS",
+    "JOURNAL_AND_REPLAY_SAFE": "PASS",
+    "ONE_TRANSFER_BOUNDARY": "PASS",
+    "POLICY_STATE_VERIFIED": "PASS",
+    "TRUSTED_QUOTE_SIGNER": "FAIL",
+    "J18_TESTNET_PRE_SIGN_GO": "NO-GO",
+    "J18_SEPOLIA_SETTLEMENT_GO": "NO-GO",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
+  "verdict": "NO-GO — journal ready; stop for owner set_trusted_quote_signer approval",
+  "next": "Owner explicitly approves exact registration in J18_PHASE2_QUOTE_SIGNER_REGISTRATION_PREVIEW.md, then agent executes register + re-runs preflight"
+}

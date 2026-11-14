@@ -70,7 +70,7 @@ Historical 142k fallback: **REFUSED** (`historical_gas_estimate_never_satisfies_
 
 - Provision once per `docs/evidence/J17_2_JOURNAL_SECRET_PROVISIONING.md`
 - Never print, commit, or regenerate on crash recovery
-- Status this run: **MISSING — NIO_TX_JOURNAL_SECRET_required_no_predictable_fallback**
+- Status this run: **CONFIGURED**
 
 ## Pre-sign persistence (required before MPC)
 
@@ -86,7 +86,7 @@ Before `request_signature`, durable record must lock: operation_id, epoch, amoun
   "GAS_ESTIMATION_FAIL_CLOSED": "PASS",
   "ATTESTOR_KEY_VERIFIED": "PASS",
   "JOURNAL_PROVISION_DOCUMENTED": "PASS",
-  "JOURNAL_AND_REPLAY_SAFE": "FAIL",
+  "JOURNAL_AND_REPLAY_SAFE": "PASS",
   "ONE_TRANSFER_BOUNDARY": "PASS",
   "POLICY_STATE_VERIFIED": "PASS",
   "DUAL_AUTH_GATES_DEFINED": "PASS",
