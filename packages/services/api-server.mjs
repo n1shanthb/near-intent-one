@@ -42,6 +42,7 @@ import { loadServicesEnv } from "../gate-j/llm.mjs";
 import {
   getLiveAgentSnapshot,
   getLiveMandateSnapshot,
+  getLiveBalancesSnapshot,
   listDecisions,
   getDecision,
   getProof,
@@ -458,6 +459,7 @@ async function handle(req, res) {
       path.startsWith("/mainnet/decisions/") ||
       path.startsWith("/mainnet/proof/") ||
       path === "/mainnet/transactions" ||
+      path === "/mainnet/balances" ||
       path === "/mainnet/health");
   const isOwnerAuthPublic =
     (req.method === "POST" &&
@@ -524,6 +526,9 @@ async function handle(req, res) {
       }
       if (path === "/mainnet/transactions") {
         return json(req, res, 200, await listTransactions());
+      }
+      if (path === "/mainnet/balances") {
+        return json(req, res, 200, await getLiveBalancesSnapshot());
       }
     }
 

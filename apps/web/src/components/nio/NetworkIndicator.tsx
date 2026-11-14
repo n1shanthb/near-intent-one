@@ -8,6 +8,7 @@ import {
   MAINNET_EVIDENCE,
   hasVerifiedMainnetContract,
 } from "../../data/mainnetEvidence";
+import { useWorkspace } from "../../state/WorkspaceContext";
 
 export function NetworkIndicator({
   healthNetwork,
@@ -16,7 +17,10 @@ export function NetworkIndicator({
   healthNetwork?: string | null;
   compact?: boolean;
 }) {
-  const ctx = workspaceNetworkContext(healthNetwork);
+  const { isPublic } = useWorkspace();
+  const ctx = workspaceNetworkContext(
+    isPublic ? "mainnet" : healthNetwork
+  );
   const mainnetReady = hasVerifiedMainnetContract();
 
   if (compact) {
@@ -35,7 +39,7 @@ export function NetworkIndicator({
           title={
             mainnetReady
               ? "Independently verified NIO mainnet contract proof is available"
-              : "NIO mainnet contract proof not yet verified by Chat 1"
+              : "NIO mainnet contract proof not yet verified"
           }
         >
           <ShieldAlert size={16} strokeWidth={1.8} />
@@ -53,7 +57,8 @@ export function NetworkStatusPanel({
 }: {
   ctx?: WorkspaceNetworkContext;
 }) {
-  const network = ctx ?? workspaceNetworkContext();
+  const { isPublic } = useWorkspace();
+  const network = ctx ?? workspaceNetworkContext(isPublic ? "mainnet" : undefined);
   const ev = MAINNET_EVIDENCE;
   const mainnetReady = hasVerifiedMainnetContract(ev);
 
@@ -63,7 +68,7 @@ export function NetworkStatusPanel({
         <h2>Network status</h2>
         <span
           className={`nio-badge ${
-            network.active === "mainnet" ? "nio-badge-warn" : "nio-badge-recorded"
+            network.active === "mainnet" ? "nio-badge-success" : "nio-badge-recorded"
           }`}
         >
           ACTIVE · {network.label.toUpperCase()}
@@ -71,10 +76,11 @@ export function NetworkStatusPanel({
       </div>
       <dl className="nio-kv">
         <div>
-          <dt>Public demo / Live AI</dt>
+          <dt>Workspace</dt>
           <dd>
-            {network.label} · dry-run only ·{" "}
-            <span className="mono">may_sign=false</span>
+            {isPublic
+              ? "Nishanth public · read-only mainnet"
+              : "Personal · owner-authenticated"}
           </dd>
         </div>
         <div>
@@ -83,7 +89,7 @@ export function NetworkStatusPanel({
             {mainnetReady ? (
               <span className="nio-badge nio-badge-success">VERIFIED</span>
             ) : (
-              <span className="nio-badge nio-badge-idle">AWAITING CHAT 1</span>
+              <span className="nio-badge nio-badge-idle">PENDING</span>
             )}
           </dd>
         </div>
@@ -111,7 +117,7 @@ export function NetworkStatusPanel({
       </div>
       <p className="axis-supporting" style={{ marginTop: 12 }}>
         Network chips reflect live workspace context and independently verified
-        mainnet evidence — not a cosmetic text toggle.
+        mainnet evidence — not a cosmetic text toggle. Permitted chains ≠ proven settlement.
       </p>
     </section>
   );

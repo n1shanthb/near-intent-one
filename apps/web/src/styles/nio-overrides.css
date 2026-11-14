@@ -950,6 +950,43 @@ body,
   margin-top: 2px;
 }
 
+/* Two-workspace switcher — reuse axis-segmented look, no theme change */
+.nio-sidebar-switcher {
+  padding: 8px 12px 4px;
+}
+.nio-sidebar-switcher .axis-segmented,
+.nio-topbar-switcher .axis-segmented {
+  width: 100%;
+  flex-wrap: wrap;
+}
+.nio-sidebar-switcher .axis-segmented button,
+.nio-topbar-switcher .axis-segmented button {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  min-height: 32px;
+}
+.nio-live-chrome {
+  margin: 8px 0 4px;
+}
+.axis-sidebar-footer span.mono {
+  display: block;
+  margin-top: 2px;
+}
+@media (max-width: 900px) {
+  .nio-topbar-switcher {
+    display: none;
+  }
+}
+@media (min-width: 901px) {
+  .nio-sidebar-switcher {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-page *,
   .axis-layout * {

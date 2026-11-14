@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import {
-  fetchMainnetDecisions,
   fetchMainnetProof,
-  fetchMainnetTransactions,
-  fetchMainnetMandate,
   type MainnetDecisionSummary,
 } from "../../adapters/mainnetPublic";
+import {
+  formatLastUpdated,
+  useWorkspace,
+} from "../../state/WorkspaceContext";
+import { LiveDataChrome } from "./WorkspaceSwitcher";
 import type { NavId } from "./nav";
 
 function Badge({ children, kind }: { children: string; kind?: string }) {
@@ -14,64 +16,98 @@ function Badge({ children, kind }: { children: string; kind?: string }) {
   );
 }
 
+function verifiedStatusLabel(proof: Record<string, unknown> | null): string {
+  if (!proof) return "PENDING";
+  if (proof.ok === false) return "UNAVAILABLE";
+  if (proof.hash_match === true && proof.recomputed_ok === true) {
+    return "ONCHAIN_VERIFIED";
+  }
+  if (proof.hash_match === false) return "ONCHAIN_MISMATCH";
+  return String(proof.status || "PENDING");
+}
+
 export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
-  const [txs, setTxs] = useState<Awaited<ReturnType<typeof fetchMainnetTransactions>> | null>(null);
-  const [mandate, setMandate] = useState<Awaited<ReturnType<typeof fetchMainnetMandate>> | null>(null);
-  const [decisions, setDecisions] = useState<MainnetDecisionSummary[]>([]);
+  const { isPublic, live, personalProvisioned, identities } = useWorkspace();
   const [selected, setSelected] = useState<string | null>(null);
   const [proof, setProof] = useState<Record<string, unknown> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const txs = isPublic ? live.transactions : null;
+  const mandate = isPublic ? live.mandate : null;
+  const decisions: MainnetDecisionSummary[] = isPublic ? live.decisions : [];
+  const loading = isPublic && live.status === "loading" && !mandate;
+  const error = isPublic ? live.error : null;
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [t, m, d] = await Promise.all([
-          fetchMainnetTransactions(),
-          fetchMainnetMandate(),
-          fetchMainnetDecisions(30),
-        ]);
-        if (cancelled) return;
-        setTxs(t);
-        setMandate(m);
-        setDecisions(d.decisions || []);
-        if (d.decisions?.[0]?.cycle_id) setSelected(d.decisions[0].cycle_id);
-      } catch (e) {
-        if (!cancelled) setError(String((e as Error).message || e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (decisions[0]?.cycle_id && !selected) {
+      setSelected(decisions[0].cycle_id);
+    }
+  }, [decisions, selected]);
 
   useEffect(() => {
-    if (!selected) return;
+    if (!isPublic || !selected) return;
     let cancelled = false;
     setProof(null);
     fetchMainnetProof(selected)
       .then((p) => {
-        if (!cancelled) setProof(p);
+        if (cancelled) return;
+        // Never claim ONCHAIN_VERIFIED on mismatch / failure
+        if (p && p.hash_match === false) {
+          setProof({ ...p, status: "ONCHAIN_MISMATCH" });
+        } else {
+          setProof(p);
+        }
       })
       .catch((e) => {
-        if (!cancelled) setProof({ ok: false, reason: String(e.message || e) });
+        if (!cancelled)
+          setProof({
+            ok: false,
+            reason: String(e.message || e),
+            status: "UNAVAILABLE",
+          });
       });
     return () => {
       cancelled = true;
     };
-  }, [selected]);
+  }, [selected, isPublic]);
+
+  if (!isPublic) {
+    return (
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Proof &amp; Verify</h2>
+          <span className="nio-badge nio-badge-warn">PERSONAL</span>
+        </div>
+        <p className="axis-supporting">
+          {personalProvisioned
+            ? `Proof history for ${identities.portfolio_id ?? "your portfolio"} appears when your policy emits audit receipts.`
+            : "Personal agent not provisioned — no proof history yet. This page never shows Nishanth's audit trail while you are in personal workspace."}
+        </p>
+        <div className="axis-actions">
+          <button type="button" className="axis-button" onClick={() => onNav("owner")}>
+            Owner auth
+          </button>
+          <button
+            type="button"
+            className="axis-button secondary"
+            onClick={() => onNav("my-portfolio")}
+          >
+            My Portfolio
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="axis-panel">
       <div className="axis-panel-heading">
         <h2>Proof &amp; Verify</h2>
         <p className="axis-supporting">
-          Public mainnet audit trail — no wallet required. Audit receipt ≠ settled swap.
+          Public mainnet audit trail for {identities.policy} — no wallet required.
+          Audit receipt ≠ settled swap. Updated {formatLastUpdated(live.lastUpdated)}.
         </p>
       </div>
+      <LiveDataChrome />
 
       {loading && <p className="axis-supporting">Loading live mainnet proofs…</p>}
       {error && (
@@ -111,6 +147,24 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
                     rel="noreferrer"
                   >
                     Activate mandate
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://nearblocks.io/txns/4oM5UGjwk8vtUzJ6cjo6bhY1zWaaGSMtD8c2LDC2Tb3G"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Audit WASM upgrade
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    NO_TRADE audit proof
                   </a>
                 </li>
               </>
@@ -156,8 +210,7 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
       <div className="nio-decision-list">
         {decisions.length === 0 && (
           <p className="axis-supporting">
-            No anchored decision records in OCI store yet. After audit WASM upgrade +
-            keeper cycle, receipts appear here.
+            No anchored decision records in OCI store yet.
           </p>
         )}
         {decisions.map((d) => (
@@ -183,7 +236,7 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
           <ul className="nio-kv">
             <li>
               Status{" "}
-              <Badge kind="status">{String(proof.status || "UNKNOWN")}</Badge>
+              <Badge kind="status">{verifiedStatusLabel(proof)}</Badge>
             </li>
             <li className="mono">
               Off-chain hash {String(proof.offchain_evidence_hash || "—")}

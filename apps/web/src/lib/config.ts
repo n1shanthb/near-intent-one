@@ -1,4 +1,7 @@
-/** Defaults from live Gate C/D/E evidence. Override via Vite env. */
+/**
+ * Personal / lab defaults (testnet Gate I path).
+ * Nishanth public workspace reads MAINNET_EVIDENCE + /mainnet/* APIs — not these.
+ */
 export const CONFIG = {
   network: "testnet" as const,
   policyContract:

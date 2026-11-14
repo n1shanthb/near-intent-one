@@ -72,7 +72,8 @@ export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
   contract: {
     account_id: "policy.nishanthb.near",
     deploy_tx: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
-    code_hash: "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc",
+    /** Latest audit WASM DeployContract (supersedes initial J14 code hash on-chain). */
+    code_hash: "6HGCPRDiyvMY8TS126c5TDGgFF1L6ReL5hguerbUHHYU",
   },
   policy: {
     active: true,
@@ -137,7 +138,8 @@ export const MAINNET_EVIDENCE: MainnetEvidenceRecord = {
   notes: [
     "Mainnet autonomy activated 2026-11-14 via owner Ledger.",
     "Autonomous LIVE_LLM decision was NO_TRADE — valid refusal, not a settled trade.",
-    "Decision audit WASM (record_decision_cycle) is prepared; on-chain receipts require separate owner Ledger upgrade.",
+    "Audit WASM deployed (4oM5UG…) + migrate_state_v2 (CRUYyj…) → state_version=2.",
+    "First ONCHAIN_VERIFIED NO_TRADE audit: CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s.",
     "Supervised Mission 1/2 canaries must not be labeled autonomous mainnet trades.",
   ],
 };

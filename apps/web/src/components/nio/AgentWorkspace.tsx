@@ -14,11 +14,13 @@ import { GATE_K_FIRST_TRADE } from "../../data/gateKEvidence";
 import { DecisionJourney } from "../DecisionJourney";
 import { MandateFitterPanel } from "../MandateFitter";
 import { NIO_CHAINS, VERIFIED_TOKEN_OPTIONS } from "../../lib/chains";
-import {
-  fetchMainnetDecisions,
-  type MainnetDecisionSummary,
-} from "../../adapters/mainnetPublic";
+import type { MainnetDecisionSummary } from "../../adapters/mainnetPublic";
 import { MAINNET_EVIDENCE } from "../../data/mainnetEvidence";
+import {
+  formatLastUpdated,
+  useWorkspace,
+} from "../../state/WorkspaceContext";
+import { LiveDataChrome } from "./WorkspaceSwitcher";
 import type { NavId } from "./nav";
 
 const SCENARIOS: {
@@ -60,6 +62,7 @@ function stageTone(
 }
 
 export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
+  const { isPublic, live, identities, personalProvisioned } = useWorkspace();
   const publicLiveAi = isPublicLiveAiEnabled();
   const [gateJ, setGateJ] = useState({ available: false, detail: "Checking Live AI…" });
   const [demoStatus, setDemoStatus] = useState<GateJDemoStatus | null>(null);
@@ -68,28 +71,34 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
   const [liveBusy, setLiveBusy] = useState(false);
   const [scenarioBusy, setScenarioBusy] = useState<GateJScenarioId | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [mainnetDecisions, setMainnetDecisions] = useState<MainnetDecisionSummary[]>([]);
+  const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
+  const mainnetDecisions: MainnetDecisionSummary[] = isPublic
+    ? live.decisions
+    : [];
 
   useEffect(() => {
     void gateJHealth().then(setGateJ);
     void fetchGateJHistory(12).then(setHistory);
     if (publicLiveAi) void fetchDemoStatus().then(setDemoStatus);
-    void fetchMainnetDecisions(20)
-      .then((d) => setMainnetDecisions(d.decisions || []))
-      .catch(() => setMainnetDecisions([]));
   }, [publicLiveAi]);
+
+  useEffect(() => {
+    if (mainnetDecisions[0]?.cycle_id && !selectedCycle) {
+      setSelectedCycle(mainnetDecisions[0].cycle_id);
+    }
+  }, [mainnetDecisions, selectedCycle]);
 
   const refresh = async () => {
     setGateJ(await gateJHealth());
     setHistory(await fetchGateJHistory(12));
     if (publicLiveAi) setDemoStatus(await fetchDemoStatus());
-    try {
-      const d = await fetchMainnetDecisions(20);
-      setMainnetDecisions(d.decisions || []);
-    } catch {
-      /* keep prior */
-    }
+    if (isPublic) await live.refresh();
   };
+
+  const selectedDecision =
+    mainnetDecisions.find((d) => d.cycle_id === selectedCycle) ??
+    mainnetDecisions[0] ??
+    null;
 
   const runLive = async () => {
     if (liveBusy) return;
@@ -163,13 +172,58 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
     demoAvailable &&
     !liveBusy;
 
+  const mainnetStages = selectedDecision
+    ? [
+        {
+          name: "Researcher",
+          model: "LIVE_LLM",
+          status: "done",
+          detail: "Market research completed for cycle",
+        },
+        {
+          name: "Strategist",
+          model: "LIVE_LLM",
+          status: "done",
+          detail: selectedDecision.reason_code || "proposal recorded",
+        },
+        {
+          name: "Fitter",
+          model: "deterministic",
+          status: "done",
+          detail: selectedDecision.fitter_verdict,
+        },
+        {
+          name: "Critic",
+          model: "LIVE_LLM",
+          status: "done",
+          detail: selectedDecision.critic_verdict,
+        },
+        {
+          name: "Policy Guard",
+          model: "NEAR policy",
+          status: "done",
+          detail: `epoch ${selectedDecision.mandate_epoch}`,
+        },
+        {
+          name: "Final",
+          model: "enforcement",
+          status: "done",
+          detail: `${selectedDecision.final_action} · ${selectedDecision.status}`,
+        },
+      ]
+    : stages;
+
   return (
     <div className="page-enter nio-agent-page">
       <div className="axis-intro">
         <div>
           <h1>AI Agent</h1>
           <p>
-            Live multi-agent decisions governed by hardware-authorized NEAR policy.
+            {isPublic
+              ? `Live autonomous decisions for ${identities.agent} on NEAR mainnet (read-only).`
+              : personalProvisioned
+                ? "Personal agent workspace — mutations only when authorized."
+                : "Personal agent not provisioned. Switch to Nishanth's agent for the live mainnet showcase."}
           </p>
         </div>
         <div className="axis-actions">
@@ -182,34 +236,89 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
         </div>
       </div>
 
+      {isPublic ? <LiveDataChrome /> : null}
+
+      {isPublic ? (
       <section className="axis-panel">
         <div className="axis-panel-heading">
           <h2>Live autonomous agent (mainnet)</h2>
           <span className="nio-badge nio-badge-success">MAINNET</span>
         </div>
         <p className="axis-supporting">
-          Mandate epoch {MAINNET_EVIDENCE.policy.epoch} · autonomous=
-          {String(MAINNET_EVIDENCE.autonomy.autonomous_trading)} · Last LIVE_LLM decision{" "}
-          <span className="mono">
-            {MAINNET_EVIDENCE.autonomy.live_no_trade_decision_hash?.slice(0, 16)}…
-          </span>{" "}
-          = <strong>NO_TRADE</strong> (not SETTLED).
+          Mandate epoch{" "}
+          {live.mandate?.mandate_epoch ?? MAINNET_EVIDENCE.policy.epoch} ·
+          autonomous=
+          {String(
+            live.mandate?.autonomous_trading ??
+              MAINNET_EVIDENCE.autonomy.autonomous_trading
+          )}{" "}
+          · enforce=
+          {String(
+            live.mandate?.enforce_autonomous_on_agent ??
+              MAINNET_EVIDENCE.autonomy.enforce_autonomous_on_agent
+          )}{" "}
+          · Updated {formatLastUpdated(live.lastUpdated)}
         </p>
+        <div className="nio-pipeline" aria-label="Mainnet decision pipeline">
+          {mainnetStages.map((s, i) => {
+            const tone = stageTone(s.status, s.detail);
+            return (
+              <div key={s.name} className={`nio-pipeline-stage tone-${tone}`}>
+                <div className="nio-pipeline-top">
+                  <span className="nio-pipeline-num">{String(i + 1).padStart(2, "0")}</span>
+                  <span
+                    className={`nio-badge nio-badge-${
+                      tone === "idle"
+                        ? "idle"
+                        : tone === "success"
+                          ? "success"
+                          : tone === "warn"
+                            ? "warn"
+                            : tone === "danger"
+                              ? "danger"
+                              : "running"
+                    }`}
+                  >
+                    {s.status}
+                  </span>
+                </div>
+                <strong>{s.name}</strong>
+                <span className="mono">{s.model}</span>
+                <span className="axis-supporting">{s.detail}</span>
+              </div>
+            );
+          })}
+        </div>
         <ol className="nio-decision-timeline">
           {mainnetDecisions.length === 0 && (
             <li className="axis-supporting">
-              No OCI-indexed audit cycles yet. After <code>record_decision_cycle</code> WASM
-              upgrade, each keeper wake anchors a NEAR receipt here.
+              {live.status === "error"
+                ? `Live decisions unavailable: ${live.error}`
+                : "No OCI-indexed audit cycles yet."}
             </li>
           )}
           {mainnetDecisions.map((d) => (
             <li key={d.cycle_id}>
-              <span className="mono">{new Date(d.timestamp_ms).toISOString()}</span> ·{" "}
-              <span className="nio-badge nio-badge-idle">PROPOSED</span>{" "}
-              <span className="nio-badge nio-badge-warn">FITTER {d.fitter_verdict}</span>{" "}
+              <button
+                type="button"
+                className="axis-inline-link"
+                style={{
+                  fontWeight: selectedDecision?.cycle_id === d.cycle_id ? 700 : 400,
+                }}
+                onClick={() => setSelectedCycle(d.cycle_id)}
+              >
+                <span className="mono">{new Date(d.timestamp_ms).toISOString()}</span>
+              </button>{" "}
+              · <span className="nio-badge nio-badge-warn">FITTER {d.fitter_verdict}</span>{" "}
               <span className="nio-badge nio-badge-idle">CRITIC {d.critic_verdict}</span>{" "}
               <span className="nio-badge nio-badge-danger">{d.final_action}</span> · epoch{" "}
               {d.mandate_epoch} · {d.reason_code} · status {d.status}
+              {d.evidence_hash ? (
+                <>
+                  {" "}
+                  · evidence <span className="mono">{d.evidence_hash.slice(0, 12)}…</span>
+                </>
+              ) : null}
               {d.explorer ? (
                 <>
                   {" "}
@@ -222,7 +331,46 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
             </li>
           ))}
         </ol>
+        {selectedDecision?.explorer?.includes("CXR4ey") ||
+        selectedDecision?.near_tx ===
+          "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s" ? (
+          <p className="axis-supporting">
+            Anchored NO_TRADE proof includes Fitter REJECTED trail on{" "}
+            <a
+              href="https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CXR4ey…
+            </a>
+          </p>
+        ) : null}
       </section>
+      ) : (
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Personal agent</h2>
+            <span className="nio-badge nio-badge-warn">SETUP</span>
+          </div>
+          <p>
+            {personalProvisioned
+              ? "Your portfolio is bound. Autonomous mainnet execution for personal agents is only available when your own policy is provisioned and authorized."
+              : "No personal agent provisioned. Use Owner auth → My Portfolio. This page will not show Nishanth's financial data."}
+          </p>
+          <div className="axis-actions">
+            <button type="button" className="axis-button" onClick={() => onNav("owner")}>
+              Owner auth
+            </button>
+            <button
+              type="button"
+              className="axis-button secondary"
+              onClick={() => onNav("my-portfolio")}
+            >
+              My Portfolio
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="axis-panel">
         <div className="axis-panel-heading">
@@ -268,6 +416,20 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
             </strong>
           </div>
         </div>
+      </section>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>{isPublic ? "Historical / lab dry-run (not mainnet keeper)" : "Live AI dry-run"}</h2>
+          <span className="nio-badge nio-badge-recorded">
+            {isPublic ? "LAB · NOT KEEPER" : "DRY RUN"}
+          </span>
+        </div>
+        <p className="axis-supporting">
+          {isPublic
+            ? "Public dry-run and fixtures are separate from the autonomous mainnet keeper above. They never sign and never mutate Nishanth's policy."
+            : "Dry-run console for personal exploration. Signing stays off."}
+        </p>
       </section>
 
       <section className="nio-live-banner">
@@ -431,8 +593,8 @@ export function AgentWorkspace({ onNav }: { onNav: (id: NavId) => void }) {
 
       <section className="axis-panel nio-gatek-summary">
         <div className="axis-panel-heading">
-          <h2>Real AI-directed execution</h2>
-          <span className="nio-badge nio-badge-warn">OPERATOR OVERRIDE</span>
+          <h2>Historical testnet execution</h2>
+          <span className="nio-badge nio-badge-warn">TESTNET · OPERATOR OVERRIDE</span>
         </div>
         <p>
           24.45 USDC · Sepolia · Tidepool {GATE_K_FIRST_TRADE.execution.tidepool_status} ·

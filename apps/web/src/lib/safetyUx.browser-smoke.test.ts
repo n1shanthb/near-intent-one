@@ -14,9 +14,15 @@ describe("browser E2E safety scenarios (logic)", () => {
       walletConnected: false,
       ownerVerified: false,
     });
-    expect(journey.every((s) => s.status !== "READY" || s.id === "connect_wallet")).toBe(
-      true
+    // verify_contract may be READY from independent Nishanth mainnet proof;
+    // owner/deposit/trade steps stay blocked without authentication.
+    const ownerSteps = journey.filter(
+      (s) =>
+        s.id !== "verify_contract" &&
+        s.id !== "connect_wallet"
     );
+    expect(ownerSteps.every((s) => s.status !== "READY")).toBe(true);
+    expect(journey.find((s) => s.id === "deposit")?.status).toBe("BLOCKED");
     const deposit = evaluateDepositReadiness({
       chain: "mainnet",
       ownerVerified: false,
@@ -44,8 +50,9 @@ describe("browser E2E safety scenarios (logic)", () => {
     expect(deposit.allowed).toBe(false);
   });
 
-  it("mainnet deposit + trading remain blocked", () => {
-    expect(mainnetTradingControlsEnabled()).toBe(false);
+  it("mainnet deposits remain blocked for visitors", () => {
+    // Capability flag reflects Nishanth autonomy; public deposit UX stays locked.
+    expect(mainnetTradingControlsEnabled()).toBe(true);
     const d = evaluateDepositReadiness({
       chain: "ethereum",
       ownerVerified: true,

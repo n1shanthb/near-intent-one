@@ -1,49 +1,52 @@
-import { useEffect, useState } from "react";
 import {
-  fetchMainnetMandate,
   usdcLabel,
   chainBadge,
-  type MainnetMandate,
 } from "../../adapters/mainnetPublic";
+import {
+  formatLastUpdated,
+  useWorkspace,
+} from "../../state/WorkspaceContext";
+import { LiveDataChrome } from "./WorkspaceSwitcher";
 
 /**
- * Live on-chain mandate panel (read-only). Falls back to last-known evidence
- * labels when API is unreachable — never claims PASS without live/on-chain data.
+ * Live on-chain mandate panel (read-only). Uses workspace live feeds in
+ * Nishanth public mode. Personal mode shows honest empty/setup state.
  */
 export function AutonomousMandatePreview() {
-  const [mandate, setMandate] = useState<MainnetMandate | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchMainnetMandate()
-      .then((m) => {
-        if (!cancelled) setMandate(m);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String((e as Error).message || e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { isPublic, live, identities, personalProvisioned } = useWorkspace();
+  const mandate = isPublic ? live.mandate : null;
+  const loading = isPublic && live.status === "loading" && !mandate;
+  const error = isPublic ? live.error : null;
 
   const expiry =
     mandate?.expiry?.expires_in_ms != null
       ? `${Math.floor(mandate.expiry.expires_in_ms / 3600_000)}h remaining`
       : "—";
 
+  if (!isPublic) {
+    return (
+      <section className="nio-card" style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ marginTop: 0 }}>Personal mandate</h2>
+        <p style={{ opacity: 0.85 }}>
+          {personalProvisioned
+            ? `Bound portfolio ${identities.portfolio_id}. Live mandate views appear when your policy contract is provisioned.`
+            : "No personal policy provisioned. This panel does not show Nishanth's mainnet mandate."}
+        </p>
+        <span className="nio-badge nio-badge-warn">
+          {personalProvisioned ? "OWNER BOUND" : "NOT PROVISIONED"}
+        </span>
+      </section>
+    );
+  }
+
   return (
     <section className="nio-card" style={{ marginTop: "1.5rem" }}>
       <h2 style={{ marginTop: 0 }}>Live on-chain mandate</h2>
       <p style={{ opacity: 0.85 }}>
-        Sourced from <code>policy.nishanthb.near</code> views via the hosted API. Read-only —
-        this panel never signs or mutates policy.
+        Sourced from <code>{identities.policy}</code> views via the hosted API.
+        Read-only — this panel never signs or mutates policy.
       </p>
+      <LiveDataChrome />
 
       {loading && <p className="axis-supporting">Loading live mandate…</p>}
       {error && (
@@ -64,6 +67,9 @@ export function AutonomousMandatePreview() {
             </span>{" "}
             <span className="nio-badge nio-badge-idle">
               enforce={String(mandate.enforce_autonomous_on_agent)}
+            </span>{" "}
+            <span className="nio-badge nio-badge-idle">
+              state_version={String(mandate.state_version)}
             </span>
           </p>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
@@ -73,6 +79,10 @@ export function AutonomousMandatePreview() {
                 <td className="mono">
                   {mandate.owner} / {mandate.agent}
                 </td>
+              </tr>
+              <tr>
+                <td>Portfolio</td>
+                <td className="mono">{mandate.portfolio_id}</td>
               </tr>
               <tr>
                 <td>Epoch</td>
@@ -155,7 +165,7 @@ export function AutonomousMandatePreview() {
             </tbody>
           </table>
           <p style={{ marginTop: "1rem", fontSize: "0.85rem", opacity: 0.8 }}>
-            Fetched {mandate.fetched_at}
+            Fetched {mandate.fetched_at || formatLastUpdated(live.lastUpdated)}
             {mandate.fresh ? " (fresh)" : " (cached)"}. Allowlists are PERMITTED BY POLICY —
             not VERIFIED EXECUTION.
           </p>

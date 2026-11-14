@@ -13,8 +13,14 @@ import {
   hasVerifiedMainnetContract,
 } from "../../data/mainnetEvidence";
 import { workspaceNetworkContext } from "../../lib/network";
+import { usdcLabel, chainBadge } from "../../adapters/mainnetPublic";
+import {
+  formatLastUpdated,
+  useWorkspace,
+} from "../../state/WorkspaceContext";
 import { useOwnerSession } from "../../state/OwnerSession";
 import { NetworkStatusPanel } from "./NetworkIndicator";
+import { LiveDataChrome } from "./WorkspaceSwitcher";
 import { OnboardingJourney } from "./OnboardingJourney";
 
 export function OverviewPage({
@@ -31,21 +37,114 @@ export function OverviewPage({
   healthNetwork?: string | null;
 }) {
   const { verified, session } = useOwnerSession();
-  const apiOk = gateIStatus === "available";
-  const network = workspaceNetworkContext(healthNetwork);
+  const {
+    isPublic,
+    identities,
+    live,
+    personalProvisioned,
+    setMode,
+  } = useWorkspace();
+  const network = workspaceNetworkContext(
+    isPublic ? "mainnet" : healthNetwork
+  );
   const mainnetReady = hasVerifiedMainnetContract();
+  const mandate = live.mandate;
+  const latest = live.decisions[0] ?? null;
+
+  if (!isPublic) {
+    return (
+      <div className="page-enter axis-overview">
+        <section className="axis-overview-hero">
+          <div className="axis-overview-hero-copy">
+            <div className="axis-overview-hero-label">
+              <Bot size={16} /> Personal workspace
+            </div>
+            <h1>Set up your own agent</h1>
+            <p>
+              Connect and verify ownership to provision a personal portfolio.
+              This workspace never inherits Nishanth&apos;s mainnet balances or
+              permissions.
+            </p>
+            <div className="axis-actions">
+              <button
+                type="button"
+                className="axis-button axis-overview-explore"
+                onClick={() => onNav(verified ? "my-portfolio" : "owner")}
+              >
+                {verified ? "Open My Portfolio" : "Owner auth"}
+                <ArrowUpRight size={16} />
+              </button>
+              <button
+                type="button"
+                className="axis-button secondary"
+                onClick={() => setMode("nishanth_public")}
+              >
+                View Nishanth&apos;s agent
+              </button>
+            </div>
+          </div>
+          <div className="axis-overview-catalog">
+            <div className="axis-overview-catalog-label">Personal status</div>
+            <dl>
+              <div>
+                <dt>Owner</dt>
+                <dd style={{ fontSize: 18 }}>
+                  {session?.account_id ?? "Not verified"}
+                </dd>
+              </div>
+              <div>
+                <dt>Portfolio</dt>
+                <dd style={{ fontSize: 18 }}>
+                  {personalProvisioned
+                    ? identities.portfolio_id
+                    : "Not provisioned"}
+                </dd>
+              </div>
+              <div>
+                <dt>API</dt>
+                <dd style={{ fontSize: 18 }}>
+                  {gateIStatus === "available" ? "Connected" : "Unreachable"}
+                </dd>
+              </div>
+              <div>
+                <dt>Demo AI</dt>
+                <dd style={{ fontSize: 18 }}>{demoLabel}</dd>
+              </div>
+            </dl>
+            <div className="axis-overview-catalog-note">
+              {personalProvisioned
+                ? gateIDetail
+                : "Honest empty state — no substitute showcase data."}
+            </div>
+          </div>
+        </section>
+        <OnboardingJourney
+          compact
+          input={{
+            walletConnected: verified,
+            ownerVerified: verified,
+            ownerAccountId: session?.account_id,
+            network: network.active,
+            evidence: MAINNET_EVIDENCE,
+          }}
+          onNav={onNav}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter axis-overview">
       <section className="axis-overview-hero">
         <div className="axis-overview-hero-copy">
           <div className="axis-overview-hero-label">
-            <Bot size={16} /> NIO workspace · {network.label}
+            <Bot size={16} /> NIO Mainnet Command Center · {network.label}
           </div>
           <h1>Hardware sets rules. AI decides. NEAR enforces.</h1>
           <p>
-            Browse portfolio evidence without a wallet. Run a public Live AI dry-run when
-            quotas allow. Signing and Gate K execution stay off.
+            Live read-only view of{" "}
+            <span className="mono">{identities.policy}</span> — mandate, AI
+            decisions, and on-chain audit proofs. No wallet required.
           </p>
           <div className="axis-actions">
             <button
@@ -59,35 +158,64 @@ export function OverviewPage({
             <button
               type="button"
               className="axis-button secondary"
-              onClick={() => onNav("evidence")}
+              onClick={() => onNav("verify")}
             >
-              View Verified Execution
+              Proof &amp; Verify
             </button>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <LiveDataChrome />
           </div>
         </div>
         <div className="axis-overview-catalog">
-          <div className="axis-overview-catalog-label">Live status</div>
+          <div className="axis-overview-catalog-label">Live mainnet status</div>
           <dl>
             <div>
-              <dt>API</dt>
-              <dd style={{ fontSize: 22 }}>{apiOk ? "Connected" : "Unreachable"}</dd>
+              <dt>Owner</dt>
+              <dd style={{ fontSize: 16 }} className="mono">
+                {mandate?.owner ?? identities.owner}
+              </dd>
             </div>
             <div>
-              <dt>Network</dt>
-              <dd style={{ fontSize: 22 }}>{network.label}</dd>
-            </div>
-            <div>
-              <dt>Live AI demo</dt>
-              <dd style={{ fontSize: 22 }}>{demoLabel}</dd>
-            </div>
-            <div>
-              <dt>Mainnet proof</dt>
+              <dt>Epoch</dt>
               <dd style={{ fontSize: 22 }}>
-                {mainnetReady ? "Verified" : "Pending"}
+                {mandate?.mandate_epoch ?? MAINNET_EVIDENCE.policy.epoch ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Autonomous</dt>
+              <dd style={{ fontSize: 18 }}>
+                {mandate
+                  ? mandate.autonomous_trading
+                    ? "ON"
+                    : "OFF"
+                  : live.status === "loading"
+                    ? "…"
+                    : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Latest decision</dt>
+              <dd style={{ fontSize: 16 }}>
+                {latest ? (
+                  <>
+                    <span className="nio-badge nio-badge-danger">
+                      {latest.final_action}
+                    </span>{" "}
+                    <span className="nio-badge nio-badge-idle">
+                      {latest.status}
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
               </dd>
             </div>
           </dl>
-          <div className="axis-overview-catalog-note">{gateIDetail}</div>
+          <div className="axis-overview-catalog-note">
+            Updated {formatLastUpdated(live.lastUpdated)}
+            {live.error ? ` · ${live.error}` : ""} · polling every ~20s while visible
+          </div>
         </div>
       </section>
 
@@ -97,42 +225,81 @@ export function OverviewPage({
         }`}
       >
         <div className="axis-panel-heading">
-          <h2>Mainnet proof</h2>
+          <h2>Mainnet agent</h2>
           <span
             className={`nio-badge ${
               mainnetReady ? "nio-badge-success" : "nio-badge-warn"
             }`}
           >
-            {mainnetReady ? "VERIFIED ON-CHAIN" : "AWAITING CHAT 1"}
+            {mainnetReady ? "VERIFIED ON-CHAIN" : "PENDING"}
           </span>
         </div>
-        {mainnetReady ? (
-          <p>
-            Independently verified NIO mainnet contract{" "}
-            <span className="mono">{MAINNET_EVIDENCE.contract.account_id}</span>.
-            Open Mainnet evidence for deploy tx, policy, MPC, and Intents status.
-          </p>
-        ) : (
-          <p>
-            No independently verified NIO mainnet deployment is displayed yet.
-            Capability chips stay honest (all NO) until Chat 1 supplies on-chain
-            proof. Testnet Gate K evidence remains separate.
-          </p>
-        )}
+        <p>
+          Owner <span className="mono">{identities.owner}</span> · Agent{" "}
+          <span className="mono">{identities.agent}</span> · Policy{" "}
+          <span className="mono">{identities.policy}</span> · Portfolio{" "}
+          <span className="mono">{identities.portfolio_id}</span>
+        </p>
+        {mandate?.ok ? (
+          <div
+            className="axis-stats"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+              marginTop: 12,
+            }}
+          >
+            <div className="axis-stat">
+              <span>Max trade</span>
+              <strong style={{ fontSize: 18 }}>
+                {usdcLabel(mandate.limits.max_trade_value)}
+              </strong>
+            </div>
+            <div className="axis-stat">
+              <span>Daily turnover</span>
+              <strong style={{ fontSize: 18 }}>
+                {usdcLabel(mandate.limits.daily_turnover_limit)}
+              </strong>
+            </div>
+            <div className="axis-stat">
+              <span>Pending exposure</span>
+              <strong style={{ fontSize: 18 }}>
+                {usdcLabel(mandate.limits.max_pending_exposure)}
+              </strong>
+            </div>
+            <div className="axis-stat">
+              <span>state_version</span>
+              <strong style={{ fontSize: 18 }}>
+                {String(mandate.state_version)}
+              </strong>
+            </div>
+          </div>
+        ) : null}
+        {mandate?.ok ? (
+          <div className="nio-chain-badges" style={{ marginTop: 12 }}>
+            {(mandate.limits.allowed_chains || []).map((c) => {
+              const b = chainBadge(c);
+              return (
+                <span key={c} className={`nio-badge nio-badge-${b.tone}`}>
+                  {b.label} · permitted
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         <div className="axis-actions" style={{ marginTop: 12 }}>
           <button
             type="button"
             className="axis-button"
-            onClick={() => onNav("mainnet")}
+            onClick={() => onNav("mandate")}
           >
-            <Globe2 size={16} /> Open Mainnet evidence
+            <FileText size={16} /> Live mandate
           </button>
           <button
             type="button"
             className="axis-button secondary"
-            onClick={() => onNav("evidence")}
+            onClick={() => onNav("mainnet")}
           >
-            Testnet Gate K proof
+            <Globe2 size={16} /> Mainnet evidence
           </button>
         </div>
       </section>
@@ -145,21 +312,9 @@ export function OverviewPage({
           <span className="nio-badge nio-badge-danger">BLOCKED</span>
         </div>
         <p className="warn">
-          Mainnet deposits are not enabled. Do not send funds.
+          Mainnet deposits are not enabled for visitors. Do not send funds.
         </p>
       </section>
-
-      <OnboardingJourney
-        compact
-        input={{
-          walletConnected: verified,
-          ownerVerified: verified,
-          ownerAccountId: session?.account_id,
-          network: network.active,
-          evidence: MAINNET_EVIDENCE,
-        }}
-        onNav={onNav}
-      />
 
       <div className="axis-overview-actions">
         <button
@@ -171,22 +326,8 @@ export function OverviewPage({
             <WalletCards size={20} />
           </span>
           <span>
-            <b>Demo portfolio</b>
-            <small>Public balances & limits</small>
-          </span>
-          <ArrowUpRight />
-        </button>
-        <button
-          type="button"
-          className="axis-overview-action"
-          onClick={() => onNav("owner")}
-        >
-          <span className="axis-overview-action-icon">
-            <Shield size={20} />
-          </span>
-          <span>
-            <b>Owner auth</b>
-            <small>Ledger → verify → My Portfolio</small>
+            <b>Portfolio</b>
+            <small>Verified mainnet balances</small>
           </span>
           <ArrowUpRight />
         </button>
@@ -200,7 +341,21 @@ export function OverviewPage({
           </span>
           <span>
             <b>AI Agent</b>
-            <small>Live dry-run console</small>
+            <small>Live autonomous decisions</small>
+          </span>
+          <ArrowUpRight />
+        </button>
+        <button
+          type="button"
+          className="axis-overview-action"
+          onClick={() => onNav("verify")}
+        >
+          <span className="axis-overview-action-icon">
+            <Shield size={20} />
+          </span>
+          <span>
+            <b>Proof &amp; Verify</b>
+            <small>On-chain audit trail</small>
           </span>
           <ArrowUpRight />
         </button>
@@ -223,35 +378,52 @@ export function OverviewPage({
       <div className="axis-overview-collections">
         <section className="axis-panel">
           <div className="axis-panel-heading">
-            <h2>Owner mandate</h2>
+            <h2>Latest audit</h2>
             <button
               type="button"
               className="axis-inline-link"
-              onClick={() => onNav("mandate")}
+              onClick={() => onNav("verify")}
             >
-              Inspect <ArrowUpRight size={14} />
+              Verify <ArrowUpRight size={14} />
             </button>
           </div>
-          <p>
-            Live AI hydrates the demo on-chain mandate. Public UI cannot mutate policy.
-          </p>
-          <div className="axis-stats" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <div className="axis-stat">
-              <span>Network</span>
-              <strong style={{ fontSize: 22 }}>{network.active}</strong>
-            </div>
-            <div className="axis-stat">
-              <span>Signing</span>
-              <strong style={{ fontSize: 22 }}>dry-run</strong>
-            </div>
-          </div>
-          <p className="axis-supporting mono" style={{ marginTop: 10 }}>
-            Technical portfolio id · i-a-a4e7
-          </p>
+          {latest ? (
+            <>
+              <p>
+                <span className="nio-badge nio-badge-danger">
+                  {latest.final_action}
+                </span>{" "}
+                <span className="nio-badge nio-badge-warn">
+                  FITTER {latest.fitter_verdict}
+                </span>{" "}
+                <span className="nio-badge nio-badge-idle">
+                  CRITIC {latest.critic_verdict}
+                </span>
+              </p>
+              <p className="axis-supporting mono">
+                {latest.reason_code} · epoch {latest.mandate_epoch} ·{" "}
+                {latest.status}
+              </p>
+              {latest.explorer ? (
+                <a
+                  className="axis-button secondary"
+                  href={latest.explorer}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Audit tx
+                </a>
+              ) : null}
+            </>
+          ) : (
+            <p className="axis-supporting">
+              Waiting for OCI-indexed decision cycles…
+            </p>
+          )}
         </section>
         <section className="axis-panel">
           <div className="axis-panel-heading">
-            <h2>Gate K evidence</h2>
+            <h2>Historical testnet evidence</h2>
             <button
               type="button"
               className="axis-inline-link"
@@ -261,8 +433,8 @@ export function OverviewPage({
             </button>
           </div>
           <p>
-            {GATE_K_FIRST_TRADE.proposed_usdc} USDC Sepolia execution with operator-override
-            disclosure. Not autonomous safety-approved.
+            Gate K Sepolia ({GATE_K_FIRST_TRADE.proposed_usdc} USDC) is{" "}
+            <strong>historical testnet</strong> — not mainnet activity.
           </p>
           <p className="axis-supporting mono">
             {GATE_K_FIRST_TRADE.execution.sepolia_tx.slice(0, 18)}…
@@ -273,7 +445,7 @@ export function OverviewPage({
             target="_blank"
             rel="noreferrer"
           >
-            <FileText size={16} /> Explorer
+            <FileText size={16} /> Sepolia explorer
           </a>
         </section>
       </div>

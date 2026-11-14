@@ -12,13 +12,20 @@ import {
 } from "./network";
 
 describe("network awareness", () => {
-  it("defaults workspace to testnet and reports mainnet proof pending", () => {
+  it("reports testnet when health says testnet, with mainnet proof ready", () => {
     const ctx = workspaceNetworkContext("testnet");
     expect(ctx.active).toBe("testnet");
     expect(ctx.label).toContain("Testnet");
     expect(ctx.nearblocksBase).toContain("testnet.nearblocks");
-    expect(hasVerifiedMainnetContract()).toBe(false);
-    expect(ctx.mainnetProofReady).toBe(false);
+    expect(hasVerifiedMainnetContract()).toBe(true);
+    expect(ctx.mainnetProofReady).toBe(true);
+  });
+
+  it("reports mainnet when health says mainnet", () => {
+    const ctx = workspaceNetworkContext("mainnet");
+    expect(ctx.active).toBe("mainnet");
+    expect(ctx.label).toContain("Mainnet");
+    expect(ctx.nearblocksBase).toBe("https://nearblocks.io");
   });
 
   it("builds chain-specific explorer links and refuses mismatches", () => {
@@ -35,14 +42,11 @@ describe("network awareness", () => {
     expect(nearAccountExplorerUrl("testnet", "nio.near")).toBeNull();
   });
 
-  it("keeps mainnet trading disabled without verified capabilities", () => {
+  it("reflects live autonomous capability without enabling deposits", () => {
     expect(MAINNET_EVIDENCE.network).toBe("mainnet");
-    expect(MAINNET_EVIDENCE.capabilities.live_trading_enabled).toBe(false);
-    expect(mainnetTradingControlsEnabled()).toBe(false);
+    expect(MAINNET_EVIDENCE.capabilities.live_trading_enabled).toBe(true);
+    expect(mainnetTradingControlsEnabled()).toBe(true);
     expect(MAINNET_EVIDENCE.funded_trade.proven).toBe(false);
-  });
-
-  it("keeps mainnet deposits disabled without verified capabilities", () => {
     expect(MAINNET_EVIDENCE.capabilities.deposit_capability_enabled).toBe(
       false
     );

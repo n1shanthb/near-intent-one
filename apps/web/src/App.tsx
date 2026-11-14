@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useNearWallet } from "near-connect-hooks";
 import { ProductSessionProvider, useProductSession } from "./state/ProductSession";
 import { OwnerSessionProvider, useOwnerSession } from "./state/OwnerSession";
+import { WorkspaceProvider, useWorkspace } from "./state/WorkspaceContext";
 import { Landing } from "./components/nio/Landing";
 import { OverviewPage } from "./components/nio/OverviewPage";
 import { AgentWorkspace } from "./components/nio/AgentWorkspace";
@@ -34,6 +35,7 @@ function AppInner() {
   const { signedAccountId, signIn, signOut, loading } = useNearWallet();
   const { gateI, syncOwner, clearSession } = useProductSession();
   const { verified, session, clearOwner } = useOwnerSession();
+  const { isPublic } = useWorkspace();
 
   useEffect(() => {
     syncOwner(signedAccountId ?? null);
@@ -143,11 +145,12 @@ function AppInner() {
             <h2>Settings</h2>
           </div>
           <p>
-            Public demo mode keeps OpenRouter keys and Gate K signing on the trusted host.
-            Wallet connection is optional for evidence and Live AI dry-run.
+            {isPublic
+              ? "Nishanth public workspace is read-only mainnet. Wallet is optional for browsing live mandate, decisions, and proofs."
+              : "Personal workspace uses owner auth for your own portfolio. OpenRouter keys and Gate K signing stay on the trusted host."}
           </p>
           <p className="axis-supporting mono">
-            {publicApiLabel()} · network {import.meta.env.VITE_NETWORK || "testnet"}
+            {publicApiLabel()} · workspace {isPublic ? "nishanth_public / mainnet" : "personal"}
           </p>
         </section>
       )}
@@ -166,7 +169,9 @@ export default function App() {
   return (
     <ProductSessionProvider>
       <OwnerSessionProvider>
-        <AppInner />
+        <WorkspaceProvider>
+          <AppInner />
+        </WorkspaceProvider>
       </OwnerSessionProvider>
     </ProductSessionProvider>
   );

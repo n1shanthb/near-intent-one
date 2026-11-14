@@ -79,7 +79,7 @@ export function EvidencePage({ onNav }: { onNav?: (id: NavId) => void }) {
               mainnetReady ? "nio-badge-success" : "nio-badge-warn"
             }`}
           >
-            {mainnetReady ? "VERIFIED" : "AWAITING CHAT 1"}
+            {mainnetReady ? "VERIFIED" : "PENDING"}
           </span>
         </div>
         {mainnetReady ? (

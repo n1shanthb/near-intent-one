@@ -31,6 +31,7 @@ const ALLOWED_EXACT = new Set([
   "GET /mainnet/mandate",
   "GET /mainnet/decisions",
   "GET /mainnet/transactions",
+  "GET /mainnet/balances",
 ]);
 
 const ALLOWED_PREFIX = [

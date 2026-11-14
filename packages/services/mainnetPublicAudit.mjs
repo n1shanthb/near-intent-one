@@ -263,6 +263,78 @@ export async function getProof(cycle_id) {
   };
 }
 
+export async function getLiveBalancesSnapshot() {
+  const url = await pickMainnetRpc();
+  async function nearBalance(account_id) {
+    try {
+      const j = await rpc(url, "query", {
+        request_type: "view_account",
+        finality: "final",
+        account_id,
+      });
+      if (j.error) return { amount: null, status: "unavailable", note: String(j.error) };
+      const yocto = j.result?.amount;
+      if (yocto == null) return { amount: null, status: "unavailable" };
+      const near = Number(yocto) / 1e24;
+      return {
+        amount: Number.isFinite(near) ? near.toFixed(4) : String(yocto),
+        status: "verified",
+        raw_yocto: String(yocto),
+      };
+    } catch (e) {
+      return { amount: null, status: "unavailable", note: String(e.message || e) };
+    }
+  }
+  const owner = await nearBalance(MAINNET_IDENTITIES.owner);
+  const agent = await nearBalance(MAINNET_IDENTITIES.agent);
+  const policy = await nearBalance(MAINNET_IDENTITIES.policy);
+  return {
+    ok: true,
+    network: "mainnet",
+    fetched_at: new Date().toISOString(),
+    fresh: true,
+    rows: [
+      {
+        account: MAINNET_IDENTITIES.owner,
+        role: "owner",
+        chain: "near",
+        asset: "NEAR",
+        amount: owner.amount,
+        status: owner.status,
+        note: owner.note,
+      },
+      {
+        account: MAINNET_IDENTITIES.agent,
+        role: "agent",
+        chain: "near",
+        asset: "NEAR",
+        amount: agent.amount,
+        status: agent.status,
+        note: agent.note,
+      },
+      {
+        account: MAINNET_IDENTITIES.policy,
+        role: "policy",
+        chain: "near",
+        asset: "NEAR",
+        amount: policy.amount,
+        status: policy.status,
+        note: policy.note,
+      },
+      {
+        account: MAINNET_IDENTITIES.mpc_evm_address,
+        role: "mpc_evm",
+        chain: "eip155:1",
+        asset: "ETH/USDC",
+        amount: null,
+        status: "unavailable",
+        note: "EVM MPC balances require dedicated RPC reads — not displayed as demo amounts",
+      },
+    ],
+    note: "NEAR native balances verified via mainnet RPC. EVM slices marked unavailable unless independently proven.",
+  };
+}
+
 export async function listTransactions() {
   return {
     ok: true,
@@ -294,6 +366,27 @@ export async function listTransactions() {
         tx: "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
         explorer:
           "https://nearblocks.io/txns/9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
+        label: "MAINNET",
+      },
+      {
+        kind: "DeployContract_audit_wasm",
+        tx: "4oM5UGjwk8vtUzJ6cjo6bhY1zWaaGSMtD8c2LDC2Tb3G",
+        explorer:
+          "https://nearblocks.io/txns/4oM5UGjwk8vtUzJ6cjo6bhY1zWaaGSMtD8c2LDC2Tb3G",
+        label: "MAINNET",
+      },
+      {
+        kind: "migrate_state_v2_decision_audit",
+        tx: "CRUYyjdYMwfKzxpUBvcKXJtn5dvi7CH9zdocUawu2CFj",
+        explorer:
+          "https://nearblocks.io/txns/CRUYyjdYMwfKzxpUBvcKXJtn5dvi7CH9zdocUawu2CFj",
+        label: "MAINNET",
+      },
+      {
+        kind: "record_decision_cycle_NO_TRADE",
+        tx: "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+        explorer:
+          "https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
         label: "MAINNET",
       },
     ],

@@ -109,7 +109,7 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
           <span
             className={`nio-badge ${ready ? "nio-badge-success" : "nio-badge-warn"}`}
           >
-            {ready ? "MAINNET PROOF VERIFIED" : "AWAITING CHAT 1 PROOF"}
+            {ready ? "MAINNET PROOF VERIFIED" : "PROOF PENDING"}
           </span>
         </div>
         {!ready ? (
@@ -313,16 +313,16 @@ export function MainnetEvidencePage({ onNav }: { onNav: (id: NavId) => void }) {
           </span>
         </div>
         <p>
-          Owner-only mainnet trading stays disabled until Chat 1 confirms exact
-          endpoint contracts and security gates. Public BFF allowlists are
-          unchanged — no public execution access.
+          Public visitors cannot mutate Nishanth&apos;s agent or trigger trades from
+          this UI. Autonomous keeper execution is policy-bound on-chain; the public
+          BFF remains read-only.
         </p>
         <div className="axis-actions" style={{ marginTop: 12, flexWrap: "wrap" }}>
           <button
             type="button"
             className="axis-button"
             disabled
-            title="Disabled until Chat 1 verifies mainnet trading gates"
+            title="Public UI never signs or spends for Nishanth's agent"
           >
             Mainnet trade (disabled)
           </button>

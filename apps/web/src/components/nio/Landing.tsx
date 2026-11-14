@@ -175,7 +175,7 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
               </h1>
               <div className="landing-built-signature">
                 <p>Built for NEAR Hackathon 2026.</p>
-                <p>NIO — near-intent-one · testnet only</p>
+                <p>NIO — near-intent-one · mainnet agent live</p>
               </div>
             </div>
             <p>
@@ -186,9 +186,9 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
               <button
                 type="button"
                 className="landing-button"
-                onClick={() => onOpen("agent")}
+                onClick={() => onOpen("overview")}
               >
-                Start 60-second demo
+                Open mainnet command center
                 <ArrowUpRight size={24} />
               </button>
               <a className="landing-hero-how" href="#judge-walkthrough">
@@ -204,9 +204,9 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
             <div className="landing-query-sticker">
               <Sparkles size={24} />
               <strong>
-                Live AI dry-run.
+                Live mainnet agent.
                 <br />
-                No signing.
+                Read-only.
               </strong>
             </div>
             <span className="landing-canvas-corner" aria-hidden="true">
@@ -461,7 +461,7 @@ export function Landing({ onOpen }: { onOpen: (id: NavId) => void }) {
       <footer className="landing-footer">
         <div>
           <NioLogo />
-          <p>NEAR Hackathon 2026 · testnet only</p>
+          <p>NEAR Hackathon 2026 · mainnet showcase · personal setup</p>
         </div>
         <nav aria-label="Footer navigation">
           <button type="button" onClick={() => onOpen("overview")}>

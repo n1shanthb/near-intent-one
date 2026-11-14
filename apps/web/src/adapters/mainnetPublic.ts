@@ -100,6 +100,29 @@ export function fetchMainnetTransactions() {
   }>("/mainnet/transactions");
 }
 
+export type MainnetBalanceRow = {
+  account: string;
+  role: "owner" | "agent" | "policy" | "mpc_evm";
+  chain: string;
+  asset: string;
+  amount: string | null;
+  status: "verified" | "unavailable";
+  note?: string;
+};
+
+export type MainnetBalances = {
+  ok: boolean;
+  network: "mainnet";
+  fetched_at: string;
+  fresh: boolean;
+  rows: MainnetBalanceRow[];
+  note?: string;
+};
+
+export function fetchMainnetBalances() {
+  return getJson<MainnetBalances>("/mainnet/balances");
+}
+
 export function usdcLabel(raw: string | number | undefined | null): string {
   if (raw == null) return "—";
   const n = typeof raw === "string" ? Number(raw) : Number(raw);

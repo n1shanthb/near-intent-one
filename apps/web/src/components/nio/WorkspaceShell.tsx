@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   Bot,
@@ -24,27 +24,38 @@ import {
 } from "lucide-react";
 import { NioBrandMark } from "./NioLogo";
 import { NetworkIndicator } from "./NetworkIndicator";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import { useWorkspace } from "../../state/WorkspaceContext";
 import type { NavId } from "./nav";
 
-const links: { id: NavId; label: string; icon: typeof Activity; separated?: boolean }[] = [
+type LinkDef = {
+  id: NavId;
+  label: string;
+  icon: typeof Activity;
+  separated?: boolean;
+  publicOnly?: boolean;
+  personalOnly?: boolean;
+};
+
+const BASE_LINKS: LinkDef[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "portfolio", label: "Demo portfolio", icon: WalletCards },
-  { id: "owner", label: "Owner auth", icon: KeyRound },
-  { id: "my-portfolio", label: "My Portfolio", icon: UserRound },
   { id: "agent", label: "AI Agent", icon: Bot },
+  { id: "portfolio", label: "Portfolio", icon: WalletCards },
   { id: "mandate", label: "Mandate", icon: FileText },
+  { id: "activity", label: "Transactions", icon: Activity },
   { id: "verify", label: "Proof & Verify", icon: FileSearch },
   { id: "inspect", label: "Inspect agent", icon: ScanSearch },
-  { id: "activity", label: "Transactions", icon: Activity },
   { id: "security", label: "Security", icon: Shield, separated: true },
-  { id: "evidence", label: "Evidence", icon: FolderLock },
-  { id: "mainnet", label: "Mainnet", icon: Globe2 },
+  { id: "owner", label: "Owner auth", icon: KeyRound, personalOnly: true },
+  { id: "my-portfolio", label: "My Portfolio", icon: UserRound, personalOnly: true },
+  { id: "evidence", label: "Historical evidence", icon: FolderLock },
+  { id: "mainnet", label: "Mainnet evidence", icon: Globe2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const titles: Partial<Record<NavId, string>> = {
   overview: "Overview",
-  portfolio: "Demo portfolio",
+  portfolio: "Portfolio",
   owner: "Owner authentication",
   "my-portfolio": "My Portfolio",
   agent: "AI Agent",
@@ -53,7 +64,7 @@ const titles: Partial<Record<NavId, string>> = {
   inspect: "Public agent inspector",
   activity: "Transactions",
   security: "Security",
-  evidence: "Evidence",
+  evidence: "Historical evidence",
   mainnet: "Mainnet evidence",
   settings: "Settings",
   funds: "Deposit / Withdraw",
@@ -77,11 +88,27 @@ export function WorkspaceShell({
   healthNetwork?: string | null;
   children: ReactNode;
 }) {
+  const { isPublic, identities } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const sidebar = useRef<HTMLElement>(null);
   const menu = useRef<HTMLButtonElement>(null);
   const current = titles[active] ?? "Workspace";
+
+  const links = useMemo(
+    () =>
+      BASE_LINKS.filter((item) => {
+        if (item.personalOnly && isPublic) return false;
+        if (item.publicOnly && !isPublic) return false;
+        return true;
+      }),
+    [isPublic]
+  );
+
+  const networkForIndicator = isPublic ? "mainnet" : healthNetwork;
+  const footerNetwork = isPublic
+    ? "MPC · Intents · mainnet"
+    : "MPC · Intents · personal setup";
 
   useEffect(() => {
     if (!open) return;
@@ -108,7 +135,11 @@ export function WorkspaceShell({
   }, [open]);
 
   return (
-    <div className="axis-layout" data-collapsed={collapsed}>
+    <div
+      className="axis-layout"
+      data-collapsed={collapsed}
+      data-workspace={isPublic ? "nishanth_public" : "personal"}
+    >
       <a className="axis-skip" href="#main">
         Skip to content
       </a>
@@ -133,6 +164,9 @@ export function WorkspaceShell({
             <span className="axis-brand-period">.</span>
           </span>
         </button>
+        <div className="nio-sidebar-switcher">
+          <WorkspaceSwitcher onPersonalNeedAuth={() => onNav("owner")} />
+        </div>
         <nav aria-label="Primary">
           {links.map((item) => (
             <button
@@ -157,7 +191,12 @@ export function WorkspaceShell({
           </span>
           <div>
             <b>Powered by NEAR</b>
-            <span>MPC · Intents · testnet</span>
+            <span>{footerNetwork}</span>
+            {isPublic && identities.policy ? (
+              <span className="mono" style={{ fontSize: 11, opacity: 0.85 }}>
+                {identities.policy}
+              </span>
+            ) : null}
           </div>
         </div>
       </aside>
@@ -190,8 +229,11 @@ export function WorkspaceShell({
             </div>
           </div>
           <div className="axis-header-actions">
-            <NetworkIndicator healthNetwork={healthNetwork} compact />
-            {demoStatus ? (
+            <div className="nio-topbar-switcher">
+              <WorkspaceSwitcher onPersonalNeedAuth={() => onNav("owner")} />
+            </div>
+            <NetworkIndicator healthNetwork={networkForIndicator} compact />
+            {demoStatus && !isPublic ? (
               <span className="axis-network-chip" title="Demo status">
                 <Bot size={16} strokeWidth={1.8} />
                 <span>{demoStatus}</span>

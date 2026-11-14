@@ -65,6 +65,8 @@ describe("deposit readiness", () => {
     expect(MAINNET_EVIDENCE.capabilities.deposit_capability_enabled).toBe(
       false
     );
-    expect(MAINNET_EVIDENCE.capabilities.live_trading_enabled).toBe(false);
+    // Autonomy can be live while visitor deposits stay locked.
+    expect(MAINNET_EVIDENCE.capabilities.live_trading_enabled).toBe(true);
+    expect(MAINNET_EVIDENCE.capabilities.funded_settlement_proven).toBe(false);
   });
 });
