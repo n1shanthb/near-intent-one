@@ -1,0 +1,37 @@
+{
+  "checkpoint": "J9_FUNDING_T3",
+  "verdict": "PASS",
+  "mutations_invoked_by_agent": false,
+  "inferred_step": "T3_ETH_NATIVE_TO_MPC",
+  "tx_hash": "0xcabfd62ff51c51bbc7c0ef01fce7b757f950713d3aa57e8ff09a50fb6b7a86e2",
+  "explorer": "https://etherscan.io/tx/0xcabfd62ff51c51bbc7c0ef01fce7b757f950713d3aa57e8ff09a50fb6b7a86e2",
+  "chain_id": 1,
+  "receipt_status": "0x1",
+  "block_number": 26410488,
+  "tx_from": "0x196e429522f151c04b990d1b354c28018ecebe55",
+  "tx_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+  "value_wei": "600000000000000",
+  "value_eth": 0.0006,
+  "need_eth": 0.0005,
+  "mpc_eth_wei": "600000000000000",
+  "mpc_eth": 0.0006,
+  "mpc_usdc_raw": "1200535",
+  "mpc_usdc": 1.200535,
+  "policy_paused": true,
+  "checks": {
+    "status_ok": true,
+    "chain_id_1": true,
+    "to_mpc": true,
+    "value_ge_0_0005": true,
+    "balance_ge_0_0005": true,
+    "paused": true
+  },
+  "blockers": [],
+  "stopped": {
+    "t4": true,
+    "swap": true,
+    "unpause": true,
+    "ledger": true
+  },
+  "recorded_at": "2026-11-14T03:20:18.906Z"
+}
