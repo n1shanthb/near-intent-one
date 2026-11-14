@@ -1,30 +1,33 @@
 {
   "kind": "J17_QUOTE_SIGNER_REGISTER",
-  "started_at": "2026-11-14T12:31:12.691Z",
+  "started_at": "2026-11-14T12:42:54.085Z",
   "network": "testnet",
   "policy": "j16f6890.testnet",
   "actor": "nio-owner-02b7cf.testnet",
   "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh",
   "method": "set_trusted_quote_signer",
   "never_auto_from_broadcast": true,
+  "owner_authorization": "explicit_chat_approval_of_exact_J18_PHASE2_preview",
   "authorization": {
     "env": "J17_QUOTE_SIGNER_REGISTER_AUTHORIZED",
-    "gate": {
-      "ok": false,
-      "reason": "J17_QUOTE_SIGNER_REGISTER_AUTHORIZED_required",
-      "note": "Separate owner authorization for set_trusted_quote_signer — not funding, not broadcast"
-    }
+    "gate": { "ok": true }
   },
-  "ok": false,
-  "action": "REFUSED",
-  "reason": "J17_QUOTE_SIGNER_REGISTER_AUTHORIZED_required",
-  "planned_call": {
-    "contract": "j16f6890.testnet",
-    "method": "set_trusted_quote_signer",
-    "args": {
-      "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh"
-    },
-    "actor": "nio-owner-02b7cf.testnet"
+  "near_tx": "J1RH4W9fZ6m144FxGnub7gQVUrpTjB2eh5ewzHi1UEEc",
+  "receipt": "4kTygrzGZAmPhsfMK6Xye2GvZnPivdErWjdyiTYqKogy",
+  "explorer": "https://testnet.nearblocks.io/txns/J1RH4W9fZ6m144FxGnub7gQVUrpTjB2eh5ewzHi1UEEc",
+  "event_log": "trusted_quote_signer_set",
+  "independent_verify_immediate": {
+    "method": "is_trusted_quote_signer",
+    "result": false,
+    "note": "race_before_finality"
   },
-  "finished_at": "2026-11-14T12:31:12.693Z"
+  "independent_verify_final": {
+    "method": "is_trusted_quote_signer",
+    "public_key": "ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh",
+    "finality": "final",
+    "result": true
+  },
+  "ok": true,
+  "action": "REGISTERED",
+  "finished_at": "2026-11-14T12:43:20.000Z"
 }

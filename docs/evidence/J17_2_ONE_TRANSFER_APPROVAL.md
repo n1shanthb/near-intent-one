@@ -3,7 +3,7 @@
 **Scenario:** `DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS`  
 **Not Intents settlement.** This package does **not** authorize quote-signer registration, MPC `request_signature`, or EVM broadcast.
 
-## Verdict: **NO-GO_PENDING_OWNER_PREREQS**
+## Verdict: **GO**
 
 ## Funding (already complete — do not re-fund)
 
@@ -50,7 +50,7 @@ Historical 142k fallback: **REFUSED** (`historical_gas_estimate_never_satisfies_
 |-------|--------|
 | Expected pk | `ed25519:FpYz8GbzcFDmmHcFVffnVSJfroguqZVudNU6yt6Wuozh` |
 | Local seed derives expected | **PASS** |
-| On-policy trusted | **false** |
+| On-policy trusted | **true** |
 | Seed gitignored | yes (`.gate-i-data/`, `**/attestor*.seed.json`) |
 
 ### Post-test signer revocation plan
@@ -90,7 +90,7 @@ Before `request_signature`, durable record must lock: operation_id, epoch, amoun
   "ONE_TRANSFER_BOUNDARY": "PASS",
   "POLICY_STATE_VERIFIED": "PASS",
   "DUAL_AUTH_GATES_DEFINED": "PASS",
-  "PRE_SIGN_SAFE": "NO-GO_PENDING_OWNER_PREREQS",
+  "PRE_SIGN_SAFE": "PASS",
   "MAINNET_AUTONOMY_READY": "NO-GO"
 }
 ```

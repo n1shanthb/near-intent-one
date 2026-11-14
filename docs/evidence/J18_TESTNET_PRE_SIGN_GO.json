@@ -1,0 +1,30 @@
+{
+  "kind": "J18_TESTNET_PRE_SIGN_GO",
+  "baseline": "394e0f4",
+  "finished_at": "2026-11-14T12:43:40.000Z",
+  "verdict": "GO",
+  "gates": {
+    "FUNDING_CONFIRMED": "PASS",
+    "PENDING_CONFLICT_SAFE": "PASS",
+    "CONTRACT_ABI_MATCH": "PASS",
+    "GAS_ESTIMATION_FAIL_CLOSED": "PASS",
+    "ATTESTOR_KEY_VERIFIED": "PASS",
+    "JOURNAL_AND_REPLAY_SAFE": "PASS",
+    "ONE_TRANSFER_BOUNDARY": "PASS",
+    "POLICY_STATE_VERIFIED": "PASS",
+    "TRUSTED_QUOTE_SIGNER": "PASS",
+    "PRE_SIGN_SAFE": "PASS",
+    "J18_TESTNET_PRE_SIGN_GO": "GO",
+    "J18_SEPOLIA_SETTLEMENT_GO": "NO-GO",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
+  "blockers": [],
+  "register_tx": "https://testnet.nearblocks.io/txns/J1RH4W9fZ6m144FxGnub7gQVUrpTjB2eh5ewzHi1UEEc",
+  "live_preflight": "docs/evidence/J17_2_PRE_SIGN_SAFETY.json",
+  "hard_stop": {
+    "no_mpc_sign": true,
+    "no_sepolia_broadcast": true,
+    "no_mainnet": true,
+    "note": "Settlement requires separate explicit J17_MPC_SIGN_BROADCAST_AUTHORIZED approval"
+  }
+}

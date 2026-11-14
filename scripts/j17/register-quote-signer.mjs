@@ -139,9 +139,16 @@ try {
   report.near_tx = outcome.transaction.hash;
   report.explorer = `https://testnet.nearblocks.io/txns/${outcome.transaction.hash}`;
 
-  const trusted = await nearView(nearRpc, J16_POLICY, "is_trusted_quote_signer", {
-    public_key: EXPECTED_ATTESTOR_PK,
-  });
+  // Finality can lag the receipt log — retry independent view briefly.
+  let trusted = false;
+  for (let i = 0; i < 8; i++) {
+    await new Promise((r) => setTimeout(r, 500 + i * 250));
+    trusted =
+      (await nearView(nearRpc, J16_POLICY, "is_trusted_quote_signer", {
+        public_key: EXPECTED_ATTESTOR_PK,
+      })) === true;
+    if (trusted) break;
+  }
   report.independent_verify = {
     method: "is_trusted_quote_signer",
     public_key: EXPECTED_ATTESTOR_PK,
