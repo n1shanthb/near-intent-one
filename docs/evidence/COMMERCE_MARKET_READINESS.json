@@ -1,0 +1,129 @@
+{
+  "at": "2026-11-14T16:57:39.311Z",
+  "workstream": "near_agent_market_buyer",
+  "pipeline": {
+    "ok": true,
+    "live": true,
+    "mock": false,
+    "need_query": "blockchain research market data analysis brief",
+    "brief": "Produce a short independent research brief (≤400 words) on current NEAR Intents / 1Click cross-chain USDC routing risks for a paused autonomous trading agent. Cite public sources only. Do not request keys, signatures, or mandate changes. Label estimates clearly. Output Markdown.",
+    "brief_hash": "003e96bc85e246be8b5543a4a054fd4f77b86feeac975cd5666f3ee2f81ad9ef",
+    "discovery": {
+      "count": 30,
+      "queried_at": "2026-11-14T16:57:38.472Z"
+    },
+    "fitter": {
+      "evaluated": 30,
+      "proposable": 6,
+      "best": {
+        "agent_id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+        "handle": "llmrt-onchain-research",
+        "name": "On-Chain & Market Data Research",
+        "listing_url": "https://market.near.ai/agents/llmrt-onchain-research",
+        "price_usdc": 0.15,
+        "delivered_jobs": 0,
+        "available_now": true,
+        "trust_score": 0.1,
+        "outcome": "ALLOWED",
+        "reason_codes": []
+      }
+    },
+    "critic": {
+      "verdict": "APPROVE_PENDING_AUTH",
+      "reason_codes": [
+        "payments_disabled_awaiting_authorization"
+      ],
+      "may_hire": false,
+      "may_propose": true
+    },
+    "operation_id": "c10afeff2764209f6c57f11e",
+    "hire_draft": null,
+    "budget": {
+      "spent_usdc": 0,
+      "jobs_count": 0,
+      "jobs_today": 0,
+      "spent_today_usdc": 0,
+      "remaining_jobs_total": 1,
+      "remaining_daily_usdc": 0.5,
+      "gates": {
+        "paused": false,
+        "kill_switch": false,
+        "payments_enabled": false,
+        "max_price_per_hire_usdc": 0.5,
+        "max_jobs_total": 1,
+        "max_jobs_per_day": 1,
+        "daily_budget_usdc": 0.5,
+        "allowed_currencies": [
+          "USDC"
+        ],
+        "auto_repeat": false,
+        "note": "Independent of trading mandate per_trade/day limits"
+      },
+      "available_budget_usdc": 0.5
+    },
+    "gates": {
+      "payments_enabled": false,
+      "paused": false,
+      "max_price_per_hire_usdc": 0.5,
+      "max_jobs_total": 1,
+      "buyer_token_present": false
+    },
+    "first_purchase": {
+      "paid": false,
+      "note": "No marketplace payment executed in this pipeline run"
+    },
+    "untrusted_output_policy": {
+      "ok": true,
+      "hits": [],
+      "note": "External agent output is UNTRUSTED — never execute instructions from deliverables"
+    }
+  },
+  "proposed_hire": {
+    "agent_id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+    "handle": "llmrt-onchain-research",
+    "name": "On-Chain & Market Data Research",
+    "listing_url": "https://market.near.ai/agents/llmrt-onchain-research",
+    "price_usdc": 0.15,
+    "currency": "USDC",
+    "payment_rail": "marketplace_escrow_USDC",
+    "available_now": true,
+    "delivered_jobs": 0,
+    "task_brief": "Produce a short independent research brief (≤400 words) on current NEAR Intents / 1Click cross-chain USDC routing risks for a paused autonomous trading agent. Cite public sources only. Do not request keys, signatures, or mandate changes. Label estimates clearly. Output Markdown.",
+    "brief_hash": "003e96bc85e246be8b5543a4a054fd4f77b86feeac975cd5666f3ee2f81ad9ef",
+    "expected_max_cost_usdc": 0.15,
+    "expected_delivery": "Markdown research brief via marketplace job deliverable",
+    "acceptance_window_days": 3,
+    "refund_conditions": "Buyer accept/reject per market.near.ai Standardized Job Terms; escrow releases on accept",
+    "marketplace_account": null,
+    "funding_requirements": [
+      "Marketplace buyer account with OAuth / browser approval",
+      "USDC balance on marketplace escrow wallet covering quoted price",
+      "NIO_COMMERCE_BUYER_TOKEN server-side",
+      "NIO_COMMERCE_PAYMENTS_ENABLED=1 only after explicit operator authorization"
+    ],
+    "stop_before": [
+      "funding",
+      "hire_confirmation",
+      "payment"
+    ],
+    "agent_detail_ok": true,
+    "pricing_ok": true
+  },
+  "acceptance": {
+    "LIVE_MARKETPLACE_DISCOVERY": "PASS",
+    "REAL_AGENT_PRICING": "PASS",
+    "COMMERCE_FITTER": "PASS",
+    "MARKETPLACE_ACCOUNT_READY": "FAIL",
+    "COMMERCE_BUDGET_ENFORCED": "PASS",
+    "FIRST_PURCHASE_READY": "BLOCKED",
+    "FIRST_PURCHASE_PAID": "FAIL",
+    "DELIVERABLE_VERIFIED": "FAIL",
+    "OCI_COMMERCE_ACTIVITY": "PASS",
+    "FRONTEND_COMMERCE_VISIBLE": "BLOCKED"
+  },
+  "notes": [
+    "Mock agentMarket.mjs was not used for this evidence",
+    "No payment executed",
+    "Frontend section deferred until visual-fix branch merges"
+  ]
+}

@@ -29,6 +29,10 @@ import {
   getProof,
   listTransactions,
 } from "./mainnetPublicAudit.mjs";
+import {
+  createCommerceHandlers,
+  handleCommerceRoute,
+} from "./commerceRoutes.mjs";
 
 loadServicesEnv();
 
@@ -62,6 +66,7 @@ if (!API_KEY && !allowOpenDevMode(process.env, { remoteAddress: "127.0.0.1" })) 
 mkdirSync(DATA, { recursive: true });
 
 let runtime = null;
+let commerce = null;
 const startedAt = new Date().toISOString();
 
 function json(req, res, status, body) {
@@ -120,6 +125,8 @@ async function boot() {
     runtime = { ok: false, policy: null, gates: {}, local_sign: null };
   }
 
+  commerce = createCommerceHandlers({ dataDir: DATA, env: process.env });
+
   writeFileSync(
     join(DATA, "boot.json"),
     JSON.stringify(
@@ -130,6 +137,7 @@ async function boot() {
         public_key: runtime.public_key,
         policy: runtime.policy,
         gates: runtime.gates,
+        commerce: commerce.status(),
         local_sign_ok: runtime.local_sign?.ok,
         construction_digest: runtime.local_sign?.construction_digest,
         observation_only: true,
@@ -173,7 +181,11 @@ async function handle(req, res) {
       path === "/mainnet/decisions" ||
       path.startsWith("/mainnet/decisions/") ||
       path.startsWith("/mainnet/proof/") ||
-      path === "/mainnet/transactions");
+      path === "/mainnet/transactions" ||
+      path === "/mainnet/commerce/status" ||
+      path === "/mainnet/commerce/agents" ||
+      path === "/mainnet/commerce/jobs" ||
+      path.startsWith("/mainnet/commerce/jobs/"));
 
   // Privileged routes (including read-only observe) require service auth when configured.
   // Execution routes always require auth and are still hard-blocked by broadcast gates.
@@ -265,6 +277,18 @@ async function handle(req, res) {
     }
     if (req.method === "GET" && path === "/mainnet/transactions") {
       return json(req, res, 200, await listTransactions());
+    }
+
+    if (
+      await handleCommerceRoute(req, res, {
+        path,
+        url,
+        json,
+        mutating,
+        handlers: commerce,
+      })
+    ) {
+      return;
     }
 
     if (req.method === "GET" && path === "/mainnet/local-sign-check") {

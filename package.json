@@ -33,6 +33,7 @@
     "test:api-auth": "node --test packages/services/apiAuth.test.mjs",
     "test:tx-journal": "node --test packages/execution/txJournal.test.mjs",
     "test:mainnet": "node --test packages/mainnet/mainnet.test.mjs packages/mainnet/agentBackend.test.mjs packages/mainnet/secureFetch.test.mjs packages/mainnet/j5.quotePath.test.mjs packages/mainnet/j5_2.quoteScan.test.mjs",
+    "test:commerce": "node --test packages/commerce/commerce.test.mjs",
     "mainnet:j5": "node scripts/mainnet/checkpoint-j5.mjs",
     "mainnet:j5.2": "node scripts/mainnet/checkpoint-j5-2.mjs",
     "test:j5.2": "node --test packages/mainnet/j5_2.quoteScan.test.mjs",

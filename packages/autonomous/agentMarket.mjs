@@ -1,9 +1,11 @@
 /**
- * Mock Marketplace Adapter
- * Agent service discovery, purchase, delivery, receipts.
- * Separate commerce balance from trading.
- * 
- * NO real HTTP to unknown endpoints unless documented as mock.
+ * MOCK Marketplace Adapter (simulation / unit tests ONLY).
+ * Agent service discovery, purchase, delivery, receipts — all fabricated.
+ *
+ * DO NOT use as live commerce evidence. Real NEAR Agent Market integration:
+ *   packages/commerce/nearAgentMarketClient.mjs
+ *
+ * NO real HTTP. Mock receipts must never be labeled as paid marketplace purchases.
  */
 
 import { createHash } from "node:crypto";
