@@ -153,13 +153,20 @@ export function SecurityPage({
                   />
                   <IdentityRow
                     label="Data quality"
-                    value={
-                      mandate.stale || mandate.data_quality === "LAST_KNOWN_GOOD"
-                        ? `Last-known-good · ${mandate.cached_at || mandate.fetched_at}`
-                        : mandate.fresh
-                          ? `Live · ${mandate.fetched_at}`
-                          : `Cached · ${mandate.fetched_at}`
-                    }
+                    value={(() => {
+                      const raw =
+                        mandate.cached_at || mandate.fetched_at || null;
+                      const when = raw
+                        ? new Date(raw).toLocaleString()
+                        : "—";
+                      if (
+                        mandate.stale ||
+                        mandate.data_quality === "LAST_KNOWN_GOOD"
+                      ) {
+                        return `Last-known-good · ${when}`;
+                      }
+                      return mandate.fresh ? `Live · ${when}` : `Cached · ${when}`;
+                    })()}
                     mono={false}
                   />
                 </div>
