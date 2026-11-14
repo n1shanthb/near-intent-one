@@ -1,0 +1,59 @@
+{
+  "kind": "J13_KEY_ISOLATION_AUDIT",
+  "mode": "READ_ONLY",
+  "audited_at": "2026-11-14T08:27:54.646Z",
+  "rpc": "https://free.rpc.fastnear.com",
+  "classifications": {
+    "ledger_public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+    "ops_public_key": "ed25519:DZUECSrU7kcqzN1PcSBGRgqf6uegsbTFxQ8wbDBxEbgJ"
+  },
+  "accounts": {
+    "nishanthb.near": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess",
+        "classification": "LEDGER_ADMIN",
+        "nonce": 224234974000017
+      }
+    ],
+    "agent.nishanthb.near": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess",
+        "classification": "LEDGER_ADMIN",
+        "nonce": 224310634000001
+      },
+      {
+        "public_key": "ed25519:DZUECSrU7kcqzN1PcSBGRgqf6uegsbTFxQ8wbDBxEbgJ",
+        "permission": "FullAccess",
+        "classification": "SOFTWARE_OPS",
+        "nonce": 224311566000006
+      }
+    ],
+    "policy.nishanthb.near": [
+      {
+        "public_key": "ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58",
+        "permission": "FullAccess",
+        "classification": "LEDGER_ADMIN",
+        "nonce": 224240008000002
+      }
+    ]
+  },
+  "assertions": {
+    "software_ops_only_on_agent": true,
+    "ops_on_agent": true,
+    "software_absent_from_owner": true,
+    "software_absent_from_policy": true,
+    "ledger_fa_on_owner_agent_policy": true,
+    "agent_can_operate_without_owner_software_cred": true
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "code": "SHARED_LEDGER_FA_RECOVERY_BY_DESIGN",
+      "note": "Ledger pubkey on all three is Option A recovery/admin — not software key export"
+    }
+  ],
+  "mutations": false,
+  "verdict": "PASS_SOFTWARE_ISOLATED"
+}

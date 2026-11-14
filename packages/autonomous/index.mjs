@@ -49,3 +49,12 @@ export {
 } from "./simulateCycle.mjs";
 
 export { runKeeperCycles } from "./keeper.mjs";
+
+export {
+  EXEC_MODE,
+  planAutonomousExecution,
+  persistPreBroadcast,
+  evaluateBroadcastAttempt,
+  listOwnerApprovalDependencies,
+  executeShadowPlan,
+} from "./executorAdapter.mjs";

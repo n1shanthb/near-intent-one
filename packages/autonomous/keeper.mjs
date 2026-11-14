@@ -22,6 +22,11 @@ import {
   WORKER_STATE,
 } from "./worker.mjs";
 import { createShadowAgent, runShadowTick, ACTION, LLM_MODE } from "./shadowAgent.mjs";
+import {
+  planAutonomousExecution,
+  executeShadowPlan,
+  EXEC_MODE,
+} from "./executorAdapter.mjs";
 
 /**
  * Run N keeper cycles.
@@ -202,32 +207,44 @@ export async function runKeeperCycles(opts) {
         worker.budget.openrouter_requests_today = agent.state.openrouter_requests_today;
         await persistBudget(worker);
 
-        // Shadow execution only — never live broadcast
-        if (decision.action === ACTION.TRADE) {
+        // Execution adapter (SHADOW default; MAINNET hard-stopped in planner)
+        const plan = planAutonomousExecution({
+          decision,
+          mandate,
+          onChain: {
+            paused: false,
+            revoked: false,
+            autonomous_trading: Boolean(mandate.trading_enabled),
+            enforce_autonomous_on_agent: true,
+          },
+          mode: EXEC_MODE.SHADOW,
+        });
+        cycle.execution_plan = {
+          execute: plan.execute,
+          reason: plan.reason || null,
+          blockers: plan.blockers || null,
+          requires_owner_ledger_per_trade: plan.requires_owner_ledger_per_trade ?? null,
+        };
+
+        if (plan.execute) {
           await transitionState(worker, WORKER_STATE.EXECUTING);
-          const shadow = {
-            kind: "trade",
-            action: "SHADOW_SIMULATED",
-            outcome: "SIMULATED_OK",
-            amount_raw: decision.strategy?.proposed_size_usdc_raw || "0",
-            decision_hash: decision.decision_hash,
-            shadow: true,
-            note: "No broadcast / no MPC / no mainnet mutation",
-          };
-          await appendJournalEntry(worker, shadow);
-          cycle.shadow_execution = shadow;
-          const amt = BigInt(shadow.amount_raw || "0");
-          worker.budget.spent_today_raw = (
-            BigInt(worker.budget.spent_today_raw || "0") + amt
-          ).toString();
-          worker.budget.recent_operation_sizes = [
-            ...(worker.budget.recent_operation_sizes || []),
-            shadow.amount_raw,
-          ].slice(-20);
-          await persistBudget(worker);
+          const exec = await executeShadowPlan(plan, {
+            appendJournal: (e) => appendJournalEntry(worker, e),
+          });
+          cycle.shadow_execution = exec.record || exec;
+          if (exec.record?.amount_raw) {
+            const amt = BigInt(exec.record.amount_raw || "0");
+            worker.budget.spent_today_raw = (
+              BigInt(worker.budget.spent_today_raw || "0") + amt
+            ).toString();
+            worker.budget.recent_operation_sizes = [
+              ...(worker.budget.recent_operation_sizes || []),
+              exec.record.amount_raw,
+            ].slice(-20);
+            await persistBudget(worker);
+          }
           await transitionState(worker, WORKER_STATE.RECONCILING);
         } else {
-          // Cost-aware / NO_TRADE / HOLD → return to IDLE without EXECUTING
           await transitionState(worker, WORKER_STATE.IDLE);
         }
 

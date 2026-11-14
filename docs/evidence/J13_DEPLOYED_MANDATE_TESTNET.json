@@ -1,0 +1,87 @@
+{
+  "kind": "J13_DEPLOYED_MANDATE_TESTNET",
+  "mode": "complete_proof",
+  "started_at": "2026-11-14T08:37:22.503Z",
+  "rpc": "https://test.rpc.fastnear.com",
+  "accounts": {
+    "owner": "nio-owner-02b7cf.testnet",
+    "agent": "nio-agent-02b7cf.testnet",
+    "policy": "j13pol.nio-agent-02b7cf.testnet"
+  },
+  "key_isolation": {
+    "owner_pk": "ed25519:BNfxuDSKD4Vr6fS7w2KufBNrjBVPAfoosaNUBnQybgqq",
+    "agent_pk": "ed25519:5MeCoQWDc2L2mAHhkSp67hPErVBHzvw4Cpc3k12ueVTn",
+    "policy_pk": "ed25519:9AnegkqXvphwJexfDAZLtLbYJj58VSBb4cATY4Pkzfsp",
+    "all_distinct": true
+  },
+  "steps": [
+    {
+      "activate": "already_active",
+      "note": "Owner one-time activation already on-chain"
+    },
+    {
+      "ok": true,
+      "label": "agent_cannot_activate",
+      "error": "{\"index\":0,\"kind\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"WebAssembly trap: An `unreachable` opcode was executed.\"}}}}"
+    },
+    {
+      "ok": true,
+      "label": "agent_cannot_pause",
+      "error": "{\"index\":0,\"kind\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"WebAssembly trap: An `unreachable` opcode was executed.\"}}}}"
+    },
+    {
+      "agent_propose_1": "FCibeA7bGVHUft1PWiziJpr4bXtjamriMzdMn1Mo6PAz",
+      "agent_propose_2": "8pQJhcHUdXbREjsYsXEVTAF4qBaP5udXMSUrGriC8GE4",
+      "owner_signature_requested": false,
+      "explorer_1": "https://testnet.nearblocks.io/txns/FCibeA7bGVHUft1PWiziJpr4bXtjamriMzdMn1Mo6PAz",
+      "explorer_2": "https://testnet.nearblocks.io/txns/8pQJhcHUdXbREjsYsXEVTAF4qBaP5udXMSUrGriC8GE4"
+    },
+    {
+      "ok": true,
+      "label": "over_limit_rejected",
+      "error": "{\"index\":0,\"kind\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"WebAssembly trap: An `unreachable` opcode was executed.\"}}}}"
+    },
+    {
+      "request_signature": {
+        "attempted": true,
+        "tx": "5xEH5uD7BgV1jdq7wMmQwjYBhhnAC6DLixtWkeR1S6FQ",
+        "attached_deposit_yocto": "1",
+        "explorer": "https://testnet.nearblocks.io/txns/5xEH5uD7BgV1jdq7wMmQwjYBhhnAC6DLixtWkeR1S6FQ"
+      }
+    },
+    {
+      "ok": true,
+      "label": "zero_deposit_rejected",
+      "error": "{\"index\":0,\"kind\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"WebAssembly trap: An `unreachable` opcode was executed.\"}}}}"
+    },
+    {
+      "revoke": "BDtD98jdPsujTkpyMkeGPxSEyWu2fiMJ5w4axyraR7G7"
+    },
+    {
+      "ok": true,
+      "label": "propose_after_revoke_blocked",
+      "error": "{\"index\":0,\"kind\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"WebAssembly trap: An `unreachable` opcode was executed.\"}}}}"
+    }
+  ],
+  "verdicts": {
+    "KEY_ISOLATION_TESTNET": "PASS",
+    "MPC_END_TO_END_TESTNET": "PASS_TX_SUBMITTED",
+    "DEPLOYED_MANDATE_TESTNET": "PASS"
+  },
+  "on_chain_before": {
+    "paused": false,
+    "autonomous_trading": true,
+    "enforce": true,
+    "epoch": 2,
+    "owner": "nio-owner-02b7cf.testnet",
+    "agent": "nio-agent-02b7cf.testnet"
+  },
+  "on_chain_after": {
+    "paused": true,
+    "revoked": true,
+    "epoch": 3
+  },
+  "ok": true,
+  "finished_at": "2026-11-14T08:38:11.656Z",
+  "wasm_note": "Deployed earlier this session to j13pol.nio-agent-02b7cf.testnet (J12 activate_autonomous_mandate bytecode)"
+}
