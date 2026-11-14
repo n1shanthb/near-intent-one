@@ -1,0 +1,150 @@
+{
+  "preview": {
+    "kind": "mission2_base_near_transaction_preview_v1",
+    "hard_stop": true,
+    "mutations_invoked": false,
+    "financial_approval": false,
+    "route": {
+      "id": "m2_base_usdc_to_near_usdc",
+      "chain_id": 8453,
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "amount_raw": "997398",
+      "amount_label": "0.997398 USDC (balance-capped)",
+      "mpc": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+    },
+    "live": {
+      "paused": true,
+      "epoch": 2,
+      "base_usdc_raw": "997398",
+      "base_eth": 0.000525245946414409,
+      "nonce_latest": 0,
+      "nonce_pending": 0,
+      "storage_registered": true,
+      "gas_price_wei": "6000000",
+      "gas_limit": "54510",
+      "economics": {
+        "gas_price_wei": "6000000",
+        "gas_limit": "54510",
+        "fee_wei": "327060000000",
+        "fee_eth": 3.2706e-7,
+        "fee_usd_approx": null,
+        "trade_usdc": 1,
+        "within_gas_price_ceiling": true,
+        "within_max_gas_budget": true,
+        "verdict": "OK"
+      },
+      "pending": [
+        {
+          "id": "j8b-canary-1794572720062-8db4f42a",
+          "settlement": "Success"
+        },
+        {
+          "id": "m1-canary-1794631150799-fe3b430a",
+          "settlement": "Success"
+        }
+      ]
+    },
+    "quote": {
+      "available": false,
+      "min_amount_out": "0",
+      "policy_fit": {
+        "result": "SKIPPED"
+      },
+      "blockers": [
+        "no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance"
+      ],
+      "warnings": [
+        "tokens_unavailable:tokens_tls_error",
+        "proceeding_with_canonical_asset_ids_policy_allowlist_still_required"
+      ],
+      "note": "fresh_quote_blocked_tls_or_policy_search"
+    },
+    "engineering": {
+      "runner_ok": true,
+      "audit_ok": true,
+      "paper_funded_disabled": true,
+      "cli": "scripts/mainnet/mission2-operator.mjs",
+      "independent_of_j8b": true,
+      "rejects_eth_operator": true
+    },
+    "verdict": "NO-GO",
+    "approval_boundary": [
+      "No Mission2 expiring approval created",
+      "No unpause/propose/sign/broadcast/reconcile",
+      "Separate owner financial approval required before any Mission2 mutation",
+      "Use mission2-operator only — never J8B or Mission1 Eth operator"
+    ]
+  },
+  "runner": {
+    "ok": true,
+    "missing": [],
+    "wiring": {
+      "live_adapters": true,
+      "view_adapters": true,
+      "dry_rehearsal": true,
+      "safety_confirm": true,
+      "signed_raw_verify": true,
+      "independent_of_j8b": true,
+      "rejects_eth_operator": true,
+      "base_chain_id": 8453
+    },
+    "wiring_gaps": [],
+    "steps": [
+      "prepareApproval",
+      "quoteAttest",
+      "verifyUnpaused",
+      "propose",
+      "requestSignature",
+      "persistSignedRaw",
+      "broadcast",
+      "settle",
+      "reconcilePending",
+      "verifyPaused"
+    ],
+    "capabilities": {
+      "ok": true,
+      "kind": "mission2_base_near_executor_v1",
+      "independent_of_j8b": true,
+      "rejects_j8b_operator": true,
+      "rejects_eth_operator": true,
+      "chain_id": 8453,
+      "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+      "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      "recipient": "nishanthb.near",
+      "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "amount": "1000000",
+      "steps": [
+        "prepareApproval",
+        "quoteAttest",
+        "verifyUnpaused",
+        "propose",
+        "requestSignature",
+        "persistSignedRaw",
+        "broadcast",
+        "settle",
+        "reconcilePending",
+        "verifyPaused"
+      ],
+      "invoke_default": false,
+      "hard_stop_without_financial_approval": true
+    },
+    "cli_entry": "scripts/mainnet/mission2-operator.mjs"
+  },
+  "audit_gaps": [],
+  "preflight_summary": {
+    "ok": false,
+    "verdict": "NO-GO",
+    "blockers": [
+      "no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance"
+    ],
+    "warnings": [
+      "tokens_unavailable:tokens_tls_error",
+      "proceeding_with_canonical_asset_ids_policy_allowlist_still_required"
+    ]
+  }
+}
