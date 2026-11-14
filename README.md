@@ -71,6 +71,86 @@ Judges browse the public UI **without connecting a wallet**.
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph Owner["Owner control"]
+    Ledger["Ledger hardware<br/>nishanthb.near FullAccess"]
+  end
+
+  subgraph NEAR["NEAR mainnet"]
+    Policy["policy.nishanthb.near<br/>mandate · pause/revoke · pending exposure"]
+    Audit["Decision audit WASM<br/>TRADE / NO_TRADE receipts"]
+    MPC["NEAR MPC<br/>Chain Signatures"]
+  end
+
+  subgraph Agent["Autonomous agent"]
+    R["Researcher"]
+    S["Strategist"]
+    F["Deterministic Fitter"]
+    C["Critic"]
+    Journal["Decision journal"]
+  end
+
+  subgraph Settlement["Four-chain settlement"]
+    Intents["NEAR Intents / 1Click"]
+    ETH["Ethereum USDC"]
+    ARB["Arbitrum USDC"]
+    BASE["Base USDC"]
+    NEARUSDC["NEAR USDC"]
+    Recon["Independent reconciler"]
+  end
+
+  subgraph Commerce["Commerce branch · separate budget"]
+    Market["market.near.ai"]
+    Escrow["Hire / escrow USDC"]
+  end
+
+  subgraph Public["Public surface"]
+    UI["near-intent-one.vercel.app<br/>inspect · verify"]
+    API["OCI BFF /mainnet/* reads"]
+  end
+
+  Ledger -->|"bounded mandate"| Policy
+  Policy -->|"gates signing path"| MPC
+  R --> S --> F --> C --> Journal
+  Journal --> Audit
+  F -->|"TRADE under caps"| Policy
+  F -->|"NO_TRADE"| Audit
+  Policy --> MPC --> Intents
+  Intents --> ETH & ARB & BASE & NEARUSDC
+  Intents --> Recon
+  Market --> Escrow
+  API --> UI
+  Policy -.-> API
+  Audit -.-> API
+```
+
+---
+
+## User flow
+
+```mermaid
+flowchart TD
+  A["Owner opens product UI"] --> B["Connect Ledger · nishanthb.near"]
+  B --> C["Write / renew on-chain mandate<br/>epoch caps · allowlists · expiry"]
+  C --> D["policy.nishanthb.near stores mandate"]
+  D --> E["Keeper cycle starts under mandate"]
+  E --> F["Researcher → Strategist → Critic"]
+  F --> G{"Deterministic Fitter"}
+  G -->|"REJECTED / NO_OPPORTUNITY"| H["On-chain NO_TRADE audit receipt"]
+  G -->|"PASS within $5 / $25 / $10"| I["Contract requests MPC signature"]
+  I --> J["NEAR Intents / 1Click settlement<br/>ETH · Arb · Base · NEAR"]
+  J --> K["Independent reconcile"]
+  H --> L["Public /verify + /inspect<br/>no wallet required for judges"]
+  K --> L
+  D --> M["Optional: Agent Market hire<br/>separate commerce escrow"]
+  M --> L
+```
+
+---
+
 ## Demo UI
 <img width="1896" height="907" alt="Screenshot 2026-11-15 004725" src="https://github.com/user-attachments/assets/dc71938b-defc-4045-b8d4-fe26b3b3bb5b" />
 <img width="1917" height="1062" alt="Screenshot 2026-11-15 004918" src="https://github.com/user-attachments/assets/f984d8d6-b858-4920-860d-48c69da54471" />
