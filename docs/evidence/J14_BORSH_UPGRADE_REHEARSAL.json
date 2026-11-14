@@ -1,0 +1,183 @@
+{
+  "kind": "J14_BORSH_UPGRADE_REHEARSAL",
+  "started_at": "2026-11-14T08:56:49.463Z",
+  "network": "testnet",
+  "hard_stop_mainnet": true,
+  "steps": [
+    {
+      "create_account": "j14u95c4.nio-j13-998a-owner.testnet"
+    },
+    {
+      "deploy_old": "Gt1dgKG1hiYFrQqGsqSASYrUH8MT4gWLtCpZyBoFwpGD",
+      "explorer": "https://testnet.nearblocks.io/txns/Gt1dgKG1hiYFrQqGsqSASYrUH8MT4gWLtCpZyBoFwpGD"
+    },
+    {
+      "init_old": "ok"
+    },
+    {
+      "populate_pending": "j14-pending-95c4"
+    },
+    {
+      "old_has_enforce": false,
+      "note": "Contract method is not found"
+    },
+    {
+      "deploy_new": "65oA6KUND1dGyBZoUU929bxtBwVsdwVjjpLJBjVUeFk",
+      "explorer": "https://testnet.nearblocks.io/txns/65oA6KUND1dGyBZoUU929bxtBwVsdwVjjpLJBjVUeFk"
+    },
+    {
+      "migrate_state_v1_autonomy": "3vtHARWjAWMud28PemygaMdzmF5LRzz2X2HH8qq1Cvpj"
+    }
+  ],
+  "snapshots": {
+    "pre_upgrade": {
+      "paused": false,
+      "epoch": 2,
+      "owner": "nio-owner-02b7cf.testnet",
+      "agent": "nio-agent-02b7cf.testnet",
+      "portfolio_id": "j14-migrate-95c4",
+      "derivation_path": "trading/v1/portfolio/j14-migrate-95c4",
+      "intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "verifying_contract": "verifier.tidepool-sandbox.testnet",
+      "policy_hash": "j14-pre-upgrade-policy-hash",
+      "autonomous_trading": false,
+      "limits": {
+        "max_trade_value": "5000000",
+        "daily_turnover_limit": "25000000",
+        "max_pending_exposure": "10000000",
+        "max_slippage_bps": 100,
+        "allowed_assets": [
+          "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+          "USDC",
+          "NEAR"
+        ],
+        "allowed_destinations": [
+          "nio-owner-02b7cf.testnet",
+          "intents.near",
+          "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        ],
+        "valid_until": "1798761600000000000",
+        "token_scope": "allowlist",
+        "allowed_chains": [
+          "near",
+          "eip155:1",
+          "eip155:42161",
+          "eip155:8453"
+        ],
+        "allowed_venues": [
+          "near_intents_1click"
+        ],
+        "max_gas_budget": "2500000000000000"
+      },
+      "daily_turnover": "5",
+      "revocation": {
+        "revoked": false,
+        "mandate_epoch": 2,
+        "active_signing_requests": 0,
+        "unresolved_pending": 1,
+        "fully_revoked": false
+      }
+    },
+    "post_upgrade": {
+      "paused": false,
+      "epoch": 2,
+      "owner": "nio-owner-02b7cf.testnet",
+      "agent": "nio-agent-02b7cf.testnet",
+      "portfolio_id": "j14-migrate-95c4",
+      "derivation_path": "trading/v1/portfolio/j14-migrate-95c4",
+      "intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+      "verifying_contract": "verifier.tidepool-sandbox.testnet",
+      "policy_hash": "j14-pre-upgrade-policy-hash",
+      "autonomous_trading": false,
+      "limits": {
+        "max_trade_value": "5000000",
+        "daily_turnover_limit": "25000000",
+        "max_pending_exposure": "10000000",
+        "max_slippage_bps": 100,
+        "allowed_assets": [
+          "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+          "USDC",
+          "NEAR"
+        ],
+        "allowed_destinations": [
+          "nio-owner-02b7cf.testnet",
+          "intents.near",
+          "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+        ],
+        "valid_until": "1798761600000000000",
+        "token_scope": "allowlist",
+        "allowed_chains": [
+          "near",
+          "eip155:1",
+          "eip155:42161",
+          "eip155:8453"
+        ],
+        "allowed_venues": [
+          "near_intents_1click"
+        ],
+        "max_gas_budget": "2500000000000000"
+      },
+      "daily_turnover": "5",
+      "revocation": {
+        "revoked": false,
+        "mandate_epoch": 2,
+        "active_signing_requests": 0,
+        "unresolved_pending": 1,
+        "fully_revoked": false
+      },
+      "enforce_autonomous_on_agent": false
+    },
+    "after_activate": {
+      "enforce": true,
+      "autonomous": true,
+      "paused": false,
+      "epoch": 3,
+      "portfolio_id": "j14-migrate-95c4",
+      "intents_signer_id": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+    }
+  },
+  "verdict": "PASS",
+  "old_wasm": {
+    "sha256": "3BC7C1120A1F593A4C96FF58171CE9521F780CEEC0427D97F90F0CAC9ECC4F90",
+    "bytes": 625701,
+    "path": "E:\\near-intent-one\\artifacts\\mainnet\\policy.wasm"
+  },
+  "new_wasm": {
+    "sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+    "bytes": 638108,
+    "path": "E:\\near-intent-one\\contracts\\policy\\target\\wasm32-unknown-unknown\\release\\policy.wasm"
+  },
+  "mainnet_deployed_sha256_expected": "3BC7C1120A1F593A4C96FF58171CE9521F780CEEC0427D97F90F0CAC9ECC4F90",
+  "old_matches_mainnet_artifact": true,
+  "rpc": "https://test.rpc.fastnear.com",
+  "sponsor_selection": "auto_funded_faucet",
+  "accounts": {
+    "owner": "nio-owner-02b7cf.testnet",
+    "agent": "nio-agent-02b7cf.testnet",
+    "policy": "j14u95c4.nio-j13-998a-owner.testnet",
+    "sponsor": "nio-j13-998a-owner.testnet"
+  },
+  "preserved": {
+    "owner": true,
+    "agent": true,
+    "portfolio_id": true,
+    "derivation_path": true,
+    "intents_signer_id": true,
+    "verifying_contract": true,
+    "policy_hash": true,
+    "epoch": true,
+    "paused": true,
+    "autonomous_trading": true,
+    "daily_turnover": true,
+    "limits_max_trade": true,
+    "limits_token_scope": true,
+    "unresolved_pending": true,
+    "enforce_default_false": true
+  },
+  "preserved_all": true,
+  "state_version_after_migrate": 1,
+  "activate_ok": true,
+  "migration_model": "ADDITIVE_WASM_UPGRADE_NO_BORSH_REWRITE — PolicyContract/PolicyLimits/PendingOp layout unchanged vs deployed mainnet artifact; new autonomy methods use raw storage keys",
+  "rollback": "Redeploy previous WASM bytes (3bc7c112…) if new methods misbehave; Borsh state remains readable by old code if layout unchanged. If layout ever diverges, DO NOT upgrade — require explicit migrate module.",
+  "finished_at": "2026-11-14T08:57:55.435Z"
+}

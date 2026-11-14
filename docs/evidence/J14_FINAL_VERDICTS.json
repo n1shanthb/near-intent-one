@@ -1,0 +1,35 @@
+{
+  "kind": "J14_FINAL_VERDICTS",
+  "baseline": "4e8ccc8",
+  "finished_at": "2026-11-14T09:10:00.000Z",
+  "hard_stop_mainnet": true,
+  "new_wasm_sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+  "mainnet": {
+    "policy": "policy.nishanthb.near",
+    "code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+    "artifact_sha256": "3BC7C1120A1F593A4C96FF58171CE9521F780CEEC0427D97F90F0CAC9ECC4F90",
+    "paused": true,
+    "mandate_epoch": 2,
+    "unresolved_pending": 0,
+    "activate_autonomous_mandate_deployed": false,
+    "migrate_state_v1_autonomy_deployed": false
+  },
+  "gates": {
+    "MIGRATION_SAFE": "PASS",
+    "FITTER_EXECUTION_BINDING": "PASS",
+    "END_TO_END_TESTNET_SETTLEMENT": "NO-GO",
+    "AUTONOMOUS_KEEPER_EXECUTION": "PARTIAL",
+    "UNKNOWN_RECOVERY": "PASS",
+    "MAINNET_READY_FOR_SEPARATE_OWNER_APPROVAL": "NO-GO"
+  },
+  "evidence": [
+    "docs/evidence/J14_BORSH_UPGRADE_REHEARSAL.json",
+    "docs/evidence/J14_E2E_EXECUTION_SERVICE.json",
+    "docs/evidence/J14_MAINNET_ACTIVATION_READINESS.md"
+  ],
+  "notes": [
+    "unpause_now=false still requires a separate owner unpause signature",
+    "MPC signed event is not settlement",
+    "No mainnet mutation in J14"
+  ]
+}

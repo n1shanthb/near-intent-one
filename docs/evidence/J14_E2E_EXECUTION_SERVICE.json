@@ -1,0 +1,169 @@
+{
+  "kind": "J14_E2E_EXECUTION_SERVICE",
+  "started_at": "2026-11-14T09:03:38.230Z",
+  "network": "testnet",
+  "hard_stop_mainnet": true,
+  "steps": [
+    {
+      "deploy": "7uzNuDevgspKQ66zBUByFPaBeYtb7bVKcHTU5RSNKsev"
+    },
+    {
+      "activate": "ok"
+    }
+  ],
+  "labels": {
+    "evm_routes": "LOCAL_FORK_OR_UNSUPPORTED — not claimed as live EVM settlement",
+    "mpc_signed_alone": "NOT_SETTLEMENT"
+  },
+  "verdict": "PARTIAL_PASS_NO_SETTLEMENT_CLAIM",
+  "rpc": "https://test.rpc.fastnear.com",
+  "accounts": {
+    "owner": "nio-owner-02b7cf.testnet",
+    "agent": "nio-agent-02b7cf.testnet",
+    "policy": "j14e75ae.nio-c-recon-857107.testnet",
+    "sponsor": "nio-c-recon-857107.testnet"
+  },
+  "on_chain": {
+    "paused": false,
+    "revoked": false,
+    "autonomous_trading": true,
+    "enforce_autonomous_on_agent": true,
+    "mandate_epoch": 2,
+    "limits": {
+      "max_trade_value": "1000000",
+      "daily_turnover_limit": "5000000",
+      "max_pending_exposure": "2000000",
+      "max_slippage_bps": 100,
+      "allowed_assets": [
+        "USDC",
+        "NEAR"
+      ],
+      "allowed_destinations": [
+        "intents.near",
+        "nio-owner-02b7cf.testnet"
+      ],
+      "valid_until": "1893456000000000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:11155111"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "300000000000000"
+    }
+  },
+  "execution_trace": {
+    "started_at": "2026-11-14T09:03:57.572Z",
+    "mode": "TESTNET",
+    "steps": [
+      {
+        "plan": "EXECUTE"
+      },
+      {
+        "propose": {
+          "ok": true,
+          "operation_id": "det-op-1000000",
+          "amount_raw": "1000000",
+          "min_amount_out": "990000",
+          "tx": "6APXwmUvCCkR6i4mbuocbJ4mdyGy1n69oKtUmBCrvshC",
+          "explorer": "https://testnet.nearblocks.io/txns/6APXwmUvCCkR6i4mbuocbJ4mdyGy1n69oKtUmBCrvshC",
+          "owner_approval_required": false
+        }
+      },
+      {
+        "request_signature": {
+          "ok": true,
+          "operation_id": "det-op-1000000",
+          "tx": "GfEQas7tGaAUjbVTTVhFuXiT5tqcyUBmmJ8cprRwUnZL",
+          "explorer": "https://testnet.nearblocks.io/txns/GfEQas7tGaAUjbVTTVhFuXiT5tqcyUBmmJ8cprRwUnZL",
+          "attached_deposit_yocto": "1",
+          "signed_raw": "544553544e45545f4d50435f50454e44494e473a4766455161733774476141556a6256545456684675586954357471637955426d6d4a386370725277556e5a4c",
+          "nonce": "1794647047351",
+          "mpc_event": {
+            "logs": [
+              "sign: predecessor=AccountId(\"j14e75ae.nio-c-recon-857107.testnet\"), request=SignRequestArgs { path: \"trading/v1/portfolio/j14-e2e-75ae\", payload: Ecdsa(BoundedVec { inner: [178, 108, 15, 98, 38, 168, 190, 36, 99, 221, 22, 240, 146, 82, 168, 81, 50, 242, 63, 133, 255, 222, 145, 219, 6, 209, 246, 208, 29, 116, 224, 204], witness: NonEmpty(()) }), domain_id: DomainId(0) }",
+              "EVENT_JSON:{\"event\":\"signed\",\"operation_id\":\"det-op-1000000\"}"
+            ],
+            "signed_event_log": "EVENT_JSON:{\"event\":\"signed\",\"operation_id\":\"det-op-1000000\"}"
+          },
+          "note": "MPC request submitted; signed event ≠ cross-chain settlement"
+        }
+      },
+      {
+        "persist": {
+          "ok": true,
+          "operation_id": "det-op-1000000",
+          "local_tx_hash": "439ba127adea8818ae588378cb2adf4214b1a476898c3ecde812141473362c1f",
+          "state": "SIGNED",
+          "note": "Persisted before broadcast; restart must not re-sign"
+        }
+      },
+      {
+        "broadcast": {
+          "ok": true,
+          "simulated": true,
+          "note": "single-broadcast policy armed; not sent in this run"
+        }
+      },
+      {
+        "settle": {
+          "ok": false,
+          "status": "UNSUPPORTED_ROUTE",
+          "label": "LOCAL_FORK_OR_UNSUPPORTED",
+          "operation_id": "det-op-1000000",
+          "tx_hash": null,
+          "note": "No genuine cross-chain settlement claimed; MPC signed ≠ settled"
+        }
+      }
+    ],
+    "ok": false,
+    "plan": {
+      "ok": true,
+      "execute": true,
+      "mode": "TESTNET",
+      "requires_owner_ledger_per_trade": false,
+      "requires_contract_agent_sign": true,
+      "requires_independent_reconcile": true,
+      "amount_raw": "1000000",
+      "fitter_outcome": "ADAPTED",
+      "fitter_operation_id": "det-op-1000000",
+      "execution_binding": {
+        "source": "fitter_fitted_size_raw_only",
+        "amount_raw": "1000000",
+        "rejected_strategist_size": "100000000"
+      },
+      "decision_hash": "det-1000000-2",
+      "mandate_hash": "deterministic-mandate",
+      "mandate_epoch": 2,
+      "steps": [
+        "read_on_chain_policy",
+        "fresh_quote",
+        "attest_quote",
+        "propose_bounded_op",
+        "request_signature_1_yocto",
+        "persist_signed_raw_and_nonce",
+        "broadcast_exactly_once",
+        "verify_settlement_independent",
+        "reconcile_restricted"
+      ]
+    },
+    "error": "settle_failed"
+  },
+  "fitter_binding": {
+    "strategist_proposed": "100000000",
+    "fitter_fitted": "1000000",
+    "plan_amount": "1000000",
+    "bound_ok": true
+  },
+  "owner_per_trade_approval": false,
+  "contract_authority": "propose+request_signature require on-chain mandate; LLM/HTTP cannot replace",
+  "verdicts": {
+    "FITTER_BOUND_PROPOSE": "PASS",
+    "MPC_REQUEST_SIGNATURE": "PASS",
+    "END_TO_END_TESTNET_SETTLEMENT": "NO_GO_UNSUPPORTED_OR_UNSIGNED_SETTLE",
+    "AUTONOMOUS_KEEPER_EXECUTION": "PASS_THROUGH_MPC_PARTIAL"
+  },
+  "finished_at": "2026-11-14T09:04:07.366Z"
+}

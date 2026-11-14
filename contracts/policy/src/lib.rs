@@ -1371,11 +1371,59 @@ impl PolicyContract {
             .unwrap_or(false)
     }
 
+    /// J14: idempotent state-version stamp after an additive WASM upgrade.
+    /// Does NOT rewrite Borsh financial fields. Safe only when PolicyContract /
+    /// PolicyLimits / PendingOp layouts are byte-compatible with the prior WASM.
+    /// Owner-only. Never resets pending/exposure/epoch/hashes.
+    pub fn migrate_state_v1_autonomy(&mut self) -> u32 {
+        self.assert_owner();
+        const TARGET: u32 = 1;
+        let cur = env::storage_read(&Self::state_version_key())
+            .and_then(|b| {
+                if b.len() >= 4 {
+                    Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0);
+        if cur >= TARGET {
+            env::log_str(&format!(
+                "EVENT_JSON:{{\"event\":\"migrate_state_v1_autonomy\",\"status\":\"already\",\"version\":{}}}",
+                cur
+            ));
+            return cur;
+        }
+        env::storage_write(&Self::state_version_key(), &TARGET.to_le_bytes());
+        // Default-off autonomy enforce flag if missing (preserves canary windows).
+        if env::storage_read(&Self::enforce_autonomous_on_agent_key()).is_none() {
+            env::storage_write(&Self::enforce_autonomous_on_agent_key(), &[0]);
+        }
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"event\":\"migrate_state_v1_autonomy\",\"status\":\"applied\",\"version\":{}}}",
+            TARGET
+        ));
+        TARGET
+    }
+
+    pub fn get_state_version(&self) -> u32 {
+        env::storage_read(&Self::state_version_key())
+            .and_then(|b| {
+                if b.len() >= 4 {
+                    Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0)
+    }
+
     /// Atomic owner activation for Autonomous Mandate V1.
     /// ONE owner signature binds: PolicyLimits (+ epoch bump via set_policy semantics),
     /// enforce_autonomous_on_agent, autonomous_trading, and optional unpause.
     /// Agent still cannot exceed limits; pause/revoke remain owner-only.
     /// Does NOT grant owner authority to the agent.
+    /// NOTE: when unpause_now=false, a *separate* owner unpause() is still required.
     pub fn activate_autonomous_mandate(
         &mut self,
         limits: PolicyLimits,
@@ -1477,6 +1525,10 @@ impl PolicyContract {
 
     fn enforce_autonomous_on_agent_key() -> Vec<u8> {
         b"gate_k:enforce_autonomous_on_agent".to_vec()
+    }
+
+    fn state_version_key() -> Vec<u8> {
+        b"nio:state_version".to_vec()
     }
 
     fn trusted_signer_storage_key(public_key: &str) -> Vec<u8> {

@@ -53,8 +53,15 @@ export { runKeeperCycles } from "./keeper.mjs";
 export {
   EXEC_MODE,
   planAutonomousExecution,
+  extractFitterBoundAmount,
+  revalidateAgainstChain,
   persistPreBroadcast,
   evaluateBroadcastAttempt,
   listOwnerApprovalDependencies,
   executeShadowPlan,
 } from "./executorAdapter.mjs";
+
+export {
+  deterministicTradeScenario,
+  runAutonomousExecution,
+} from "./executionService.mjs";

@@ -13,7 +13,8 @@ Owner signs **once** → bounded mandate active → agent executes policy-valid 
 | Method | `activate_autonomous_mandate(limits, policy_hash, strategy_hash, enforce_autonomous_on_agent, autonomous_trading, unpause_now)` |
 | Authority | Owner only |
 | Effect | Atomic PolicyLimits + epoch bump + enforce flag + autonomous flag + optional unpause |
-| Mainnet bytecode | **NOT DEPLOYED** — local SHA256 `E433C6CFB8F61E0E2E873814D21659B379EDE19D97149026702C916773BE2BB2` (`policy.wasm` after J12 build). Owner must re-hash at upgrade time. |
+| Mainnet bytecode | **NOT DEPLOYED** — local SHA256 after J14 build `8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931` (`policy.wasm` with `activate_autonomous_mandate` + `migrate_state_v1_autonomy`). Deployed mainnet remains `52Midc…` / artifact `3BC7C112…`. Owner must re-hash at upgrade time. |
+| Migration | Additive WASM upgrade rehearsed on testnet (`J14_BORSH_UPGRADE_REHEARSAL.json` PASS). Owner-only `migrate_state_v1_autonomy` stamps `nio:state_version=1` without Borsh financial rewrite. |
 
 ### Activation args preview (micro-mandate)
 
