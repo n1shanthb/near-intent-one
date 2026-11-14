@@ -1,0 +1,9 @@
+{
+  "kind": "MAINNET_UNPAUSED",
+  "verdict": "PASS",
+  "near_tx": "9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
+  "explorer": "https://nearblocks.io/txns/9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy",
+  "paused": false,
+  "autonomous": true,
+  "enforce": true
+}

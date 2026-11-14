@@ -1,38 +1,24 @@
-# NIO Mainnet Autonomy Demo — operator notes
+# NIO Mainnet Autonomy Demo — DONE
 
-## Status
+## Gates
 
-**Blocked only on physical Ledger USB** (`LedgerHidError(DeviceNotFound)`). All software prep is ready.
+| Gate | Status | Proof |
+|------|--------|-------|
+| MAINNET_WASM_DEPLOYED | PASS | [7rxXmY…](https://nearblocks.io/txns/7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf) → code `ARJJNXWA…` |
+| MAINNET_MIGRATED | PASS | [3XHBXD…](https://nearblocks.io/txns/3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME) → `state_version=1` |
+| MAINNET_MANDATE_ACTIVE | PASS | [6zQs6C…](https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93) → epoch 3, $1/$5/$2 |
+| MAINNET_UNPAUSED | PASS | [9jaW3j…](https://nearblocks.io/txns/9jaW3jv5z2adx8aV6xXhfvCstxeKrRaQp2e8SEHX61Fy) |
+| AUTONOMOUS_KEEPER_RUNNING | PASS | LIVE_LLM decision `b9cba80b…` |
+| AUTONOMOUS_MAINNET_TRADE_SETTLED | N/A_NO_TRADE | Model chose `NO_TRADE` / `NO_OPPORTUNITY` |
+| DEMO_READY | PASS | Mandate active + unpaused + honest refusal |
 
-| Gate | Status |
-|------|--------|
-| WASM SHA256 = J14 `8BF2AEAF…` | PASS (local artifact) |
-| Destination `policy.nishanthb.near` | PASS |
-| Balance / storage | PASS (~7.995 NEAR) |
-| DeployContract | **BLOCKED — Ledger USB** |
-| migrate / mandate / unpause | waiting on deploy |
-| LIVE_LLM keeper cycle | PASS — `NO_TRADE` / `NO_OPPORTUNITY` |
-| Autonomous mainnet trade settled | N/A until unpaused + TRADE |
+## Demo narrative
 
-## Sequence (Ledger unlocked, NEAR app open)
+1. Owner Ledger → DeployContract (no init) on `policy.nishanthb.near`
+2. Owner Ledger → `migrate_state_v1_autonomy`
+3. Owner Ledger → `activate_autonomous_mandate` (unpause_now=false)
+4. Owner Ledger → `unpause`
+5. Ledger disconnectable — keeper wake with live OpenRouter
+6. LIVE_LLM → Fitter REJECTED → **NO_TRADE** (valid autonomous decision)
 
-```powershell
-node scripts/mainnet/j18-deploy-upgrade.mjs --execute-deploy
-node scripts/mainnet/j18-deploy-upgrade.mjs --execute-migrate
-node scripts/mainnet/activate-mandate.mjs --activate
-node scripts/mainnet/activate-mandate.mjs --unpause
-$env:NIO_MAINNET_AUTONOMOUS_EXEC='1'
-node scripts/mainnet/autonomous-demo-cycle.mjs
-```
-
-Or one script: `scripts\mainnet\ship-autonomy-today.ps1`
-
-Confirm each distinct Ledger prompt. Chat approval ≠ device signature.
-
-## Live decision already captured
-
-- `decision_hash`: `f9d7df6976a6520662e56d1500fad72d78a23c064850819139ba9f4cdb47cd5b`
-- Action: `NO_TRADE` (valid autonomous refusal)
-- Evidence: `docs/evidence/AUTONOMOUS_KEEPER_RUNNING.json`
-
-Prior Mission 1/2 canaries are **supervised**, not autonomous mainnet trades.
+Prior Mission 1/2 canaries were supervised — not claimed as autonomous mainnet trades.

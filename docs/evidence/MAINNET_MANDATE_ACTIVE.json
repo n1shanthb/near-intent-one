@@ -1,0 +1,16 @@
+{
+  "kind": "MAINNET_MANDATE_ACTIVE",
+  "verdict": "PASS",
+  "near_tx": "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+  "explorer": "https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+  "epoch": 3,
+  "autonomous": true,
+  "enforce": true,
+  "paused_after_activate": true,
+  "limits": {
+    "max_trade_value": "1000000",
+    "daily_turnover_limit": "5000000",
+    "max_pending_exposure": "2000000",
+    "max_slippage_bps": 100
+  }
+}

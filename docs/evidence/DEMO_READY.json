@@ -1,20 +1,14 @@
 {
   "kind": "DEMO_READY",
-  "verdict": "BLOCKED",
+  "verdict": "PASS",
   "gates": {
     "AUTONOMOUS_KEEPER_RUNNING": "PASS",
     "AUTONOMOUS_MAINNET_TRADE_SETTLED": "N/A_NO_TRADE",
-    "DEMO_READY": "BLOCKED"
+    "DEMO_READY": "PASS"
   },
-  "blockers": [
-    "MAINNET_WASM_NOT_UPGRADED",
-    "POLICY_PAUSED",
-    "AUTONOMOUS_TRADING_FALSE",
-    "ENFORCE_AUTONOMOUS_FALSE",
-    "NIO_MAINNET_AUTONOMOUS_EXEC_NOT_SET"
-  ],
-  "decision_hash": "f9d7df6976a6520662e56d1500fad72d78a23c064850819139ba9f4cdb47cd5b",
+  "blockers": [],
+  "decision_hash": "b9cba80b576d475d1ce0509ac8543d6119b882f94603e9d8bee47f06c5cefbf9",
   "action": "NO_TRADE",
-  "code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
-  "finished_at": "2026-11-14T13:20:56.551Z"
+  "code_hash": "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc",
+  "finished_at": "2026-11-14T13:29:20.084Z"
 }

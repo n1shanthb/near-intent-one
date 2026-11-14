@@ -1,0 +1,24 @@
+{
+  "kind": "MAINNET_WASM_DEPLOYED",
+  "verdict": "PASS",
+  "policy": "policy.nishanthb.near",
+  "pre_code_hash": "52MidcEUUwVaiNcTtuQbKd1xwVQR8HGer4quihZj8FZZ",
+  "post_code_hash": "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc",
+  "wasm_sha256": "8BF2AEAF72FDF7675630684209FD7EA8BEB9A61CE3021A3B4B795B6E39B12931",
+  "near_tx": "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+  "explorer": "https://nearblocks.io/txns/7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+  "gas_used": "46.4 Tgas",
+  "fee_near": "0.0046137591815844",
+  "preservation_ok": true,
+  "without_init_call": true,
+  "post_views": {
+    "owner": "nishanthb.near",
+    "agent": "agent.nishanthb.near",
+    "portfolio": "nio-mainnet-v1",
+    "paused": true,
+    "epoch": 2,
+    "autonomous": false,
+    "enforce": false,
+    "state_version": 0
+  }
+}

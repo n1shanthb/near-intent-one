@@ -1,0 +1,17 @@
+{
+  "kind": "MAINNET_MIGRATED",
+  "verdict": "PASS",
+  "policy": "policy.nishanthb.near",
+  "method": "migrate_state_v1_autonomy",
+  "near_tx": "3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME",
+  "explorer": "https://nearblocks.io/txns/3XHBXDPWMhmDymZdh4NrVZfxYwp9DqcbekLVVrxVSYME",
+  "state_version": 1,
+  "preservation": {
+    "owner": "nishanthb.near",
+    "agent": "agent.nishanthb.near",
+    "portfolio": "nio-mainnet-v1",
+    "epoch": 2,
+    "paused": true,
+    "code_hash": "ARJJNXWAqrN1fD76rVAFictk1ioasfwSyQaiofWerMpc"
+  }
+}

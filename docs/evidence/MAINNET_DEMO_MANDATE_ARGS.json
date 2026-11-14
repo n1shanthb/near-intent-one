@@ -1,9 +1,5 @@
 {
   "kind": "MAINNET_DEMO_MANDATE_ARGS",
-  "policy": "policy.nishanthb.near",
-  "actor": "nishanthb.near",
-  "method": "activate_autonomous_mandate",
-  "note": "Derived from live on-chain allowlists; spending narrowed for demo. unpause_now=false.",
   "args": {
     "limits": {
       "max_trade_value": "1000000",
@@ -21,10 +17,17 @@
         "nishanthb.near",
         "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
       ],
-      "valid_until": "REPLACE_WITH_NOW_PLUS_24H_NS",
+      "valid_until": "1794749242643000000",
       "token_scope": "allowlist",
-      "allowed_chains": ["near", "eip155:1", "eip155:42161", "eip155:8453"],
-      "allowed_venues": ["near_intents_1click"],
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
       "max_gas_budget": "2500000000000000"
     },
     "policy_hash": "nio-mainnet-demo-mandate-v1",
@@ -33,9 +36,5 @@
     "autonomous_trading": true,
     "unpause_now": false
   },
-  "separate_unpause": {
-    "method": "unpause",
-    "args": {},
-    "actor": "nishanthb.near"
-  }
+  "argsPath": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-demo\\activate_autonomous_mandate.args.json"
 }
