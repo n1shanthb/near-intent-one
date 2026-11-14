@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /**
  * Owner Ledger: activate_autonomous_mandate then optional --unpause.
- * Rebuilds valid_until = now+24h from live allowlists (narrowed demo spend).
  *
+ * Judge-friendly renew (10d, trade-friendlier micro limits):
+ *   node scripts/mainnet/activate-mandate.mjs --activate --days 10 --profile judge
+ *   node scripts/mainnet/activate-mandate.mjs --activate --days 10 --profile judge --unpause-now
+ *
+ * Narrow demo (legacy $1/$5/$2, 24h):
  *   node scripts/mainnet/activate-mandate.mjs --activate
  *   node scripts/mainnet/activate-mandate.mjs --unpause
  */
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
@@ -22,9 +26,39 @@ mkdirSync(EVIDENCE, { recursive: true });
 
 const RPCS = [
   process.env.NIO_MAINNET_RPC,
-  "https://rpc.mainnet.fastnear.com",
   "https://rpc.mainnet.near.org",
+  "https://rpc.mainnet.fastnear.com",
 ].filter(Boolean);
+
+const PROFILES = {
+  /** Original micro-canary — tight for first enable. */
+  demo: {
+    max_trade_value: "1000000", // $1
+    daily_turnover_limit: "5000000", // $5
+    max_pending_exposure: "2000000", // $2
+    max_slippage_bps: 100,
+    days: 1,
+    policy_hash: "nio-mainnet-demo-mandate-v1",
+  },
+  /**
+   * Judge / real-swap window — still micro, but room for Intents quotes.
+   * $5 / $25 / $10 / 200 bps / 10 days.
+   */
+  judge: {
+    max_trade_value: "5000000", // $5
+    daily_turnover_limit: "25000000", // $25
+    max_pending_exposure: "10000000", // $10
+    max_slippage_bps: 200,
+    days: 10,
+    policy_hash: "nio-mainnet-judge-mandate-v1",
+  },
+};
+
+function argValue(flag, fallback = null) {
+  const i = process.argv.indexOf(flag);
+  if (i < 0 || i + 1 >= process.argv.length) return fallback;
+  return process.argv[i + 1];
+}
 
 async function viewFn(url, methodName, args = {}) {
   const res = await fetch(url, {
@@ -54,7 +88,12 @@ async function pickRpc() {
       const res = await fetch(u, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "status", params: [] }),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "status",
+          params: [],
+        }),
       });
       if (!(await res.json()).error) return u;
     } catch {
@@ -80,10 +119,32 @@ function runNear(args) {
   };
 }
 
-function buildArgs(liveLimits) {
+function resolveProfile() {
+  const name = argValue("--profile", "demo");
+  const base = PROFILES[name];
+  if (!base) {
+    throw new Error(`unknown_profile:${name} (use demo|judge)`);
+  }
+  const days = Number(argValue("--days", String(base.days)));
+  if (!Number.isFinite(days) || days < 1 || days > 30) {
+    throw new Error("days must be 1..30");
+  }
+  return {
+    name,
+    days,
+    max_trade_value: argValue("--max-trade", base.max_trade_value),
+    daily_turnover_limit: argValue("--daily", base.daily_turnover_limit),
+    max_pending_exposure: argValue("--pending", base.max_pending_exposure),
+    max_slippage_bps: Number(argValue("--slippage", String(base.max_slippage_bps))),
+    policy_hash: base.policy_hash,
+    unpause_now: process.argv.includes("--unpause-now"),
+  };
+}
+
+function buildArgs(liveLimits, profile) {
   const nowNs = BigInt(Date.now()) * 1_000_000n;
-  const until = nowNs + 24n * 3600n * 1_000_000_000n;
-  // Narrow spend; keep destinations; subset assets from live (never widen).
+  const until = nowNs + BigInt(profile.days) * 24n * 3600n * 1_000_000_000n;
+  // Keep destinations + chains/venues from live; never invent new destinations.
   const demoAssets = [
     "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
     "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
@@ -96,33 +157,49 @@ function buildArgs(liveLimits) {
   if (allowed_assets.length === 0) {
     throw new Error("no_overlapping_assets_with_live_allowlist");
   }
+  const expiresAt = new Date(Number(until / 1_000_000n));
   return {
-    limits: {
-      max_trade_value: "1000000",
-      daily_turnover_limit: "5000000",
-      max_pending_exposure: "2000000",
-      max_slippage_bps: 100,
-      allowed_assets,
-      allowed_destinations: liveLimits.allowed_destinations,
-      valid_until: until.toString(),
-      token_scope: "allowlist",
-      allowed_chains: liveLimits.allowed_chains,
-      allowed_venues: liveLimits.allowed_venues,
-      max_gas_budget: liveLimits.max_gas_budget || "2500000000000000",
+    preview: {
+      profile: profile.name,
+      days: profile.days,
+      expires_at_utc: expiresAt.toISOString(),
+      max_trade_usdc: Number(profile.max_trade_value) / 1e6,
+      daily_usdc: Number(profile.daily_turnover_limit) / 1e6,
+      pending_usdc: Number(profile.max_pending_exposure) / 1e6,
+      slippage_bps: profile.max_slippage_bps,
+      unpause_now: profile.unpause_now,
     },
-    policy_hash: "nio-mainnet-demo-mandate-v1",
-    strategy_hash: "nio-live-llm-fitter-v1",
-    enforce_autonomous_on_agent: true,
-    autonomous_trading: true,
-    unpause_now: false,
+    args: {
+      limits: {
+        max_trade_value: String(profile.max_trade_value),
+        daily_turnover_limit: String(profile.daily_turnover_limit),
+        max_pending_exposure: String(profile.max_pending_exposure),
+        max_slippage_bps: profile.max_slippage_bps,
+        allowed_assets,
+        allowed_destinations: liveLimits.allowed_destinations,
+        valid_until: until.toString(),
+        token_scope: "allowlist",
+        allowed_chains: liveLimits.allowed_chains,
+        allowed_venues: liveLimits.allowed_venues,
+        max_gas_budget: liveLimits.max_gas_budget || "2500000000000000",
+      },
+      policy_hash: profile.policy_hash,
+      strategy_hash: "nio-live-llm-fitter-v1",
+      enforce_autonomous_on_agent: true,
+      autonomous_trading: true,
+      unpause_now: Boolean(profile.unpause_now),
+    },
   };
 }
 
 async function main() {
   const doActivate = process.argv.includes("--activate");
   const doUnpause = process.argv.includes("--unpause");
+  const dryRun = process.argv.includes("--dry-run");
   if (!doActivate && !doUnpause) {
-    console.error("Usage: --activate | --unpause");
+    console.error(
+      "Usage: --activate [--profile judge|demo] [--days N] [--unpause-now] [--dry-run] | --unpause"
+    );
     process.exit(2);
   }
 
@@ -134,7 +211,7 @@ async function main() {
       verdict: "BLOCKED",
       blocker: "WASM_NOT_UPGRADED",
       detail: enforce.error,
-      next: "Deploy J14 WASM + migrate_state_v1_autonomy first",
+      next: "Deploy audit WASM + migrate first",
     };
     writeFileSync(join(EVIDENCE, "MAINNET_MANDATE_ACTIVE.json"), JSON.stringify(blocker, null, 2));
     console.log(JSON.stringify(blocker, null, 2));
@@ -149,17 +226,31 @@ async function main() {
   };
 
   if (doActivate) {
+    const profile = resolveProfile();
     const liveLimits = await viewFn(url, "get_limits");
-    const args = buildArgs(liveLimits);
+    if (liveLimits?.error) throw new Error(JSON.stringify(liveLimits.error));
+    const { preview, args } = buildArgs(liveLimits, profile);
     const argsPath = join(ARGS_DIR, "activate_autonomous_mandate.args.json");
     writeFileSync(argsPath, JSON.stringify(args));
     writeFileSync(
       join(EVIDENCE, "MAINNET_DEMO_MANDATE_ARGS.json"),
-      JSON.stringify({ kind: "MAINNET_DEMO_MANDATE_ARGS", args, argsPath }, null, 2)
+      JSON.stringify({ kind: "MAINNET_DEMO_MANDATE_ARGS", preview, args, argsPath }, null, 2)
     );
+    report.preview = preview;
     report.args = args;
     report.args_path = argsPath;
-    console.error("LEDGER: confirm activate_autonomous_mandate (unpause_now=false)...");
+    console.error(JSON.stringify({ preview, args_path: argsPath }, null, 2));
+
+    if (dryRun) {
+      report.verdict = "DRY_RUN";
+      writeFileSync(join(EVIDENCE, "MAINNET_MANDATE_ACTIVE.json"), JSON.stringify(report, null, 2));
+      console.log(JSON.stringify(report, null, 2));
+      process.exit(0);
+    }
+
+    console.error(
+      `LEDGER: confirm activate_autonomous_mandate (unpause_now=${args.unpause_now})...`
+    );
     const r = runNear([
       "contract",
       "call-function",
@@ -191,11 +282,15 @@ async function main() {
       paused: await viewFn(url, "get_paused"),
       limits: await viewFn(url, "get_limits"),
     };
+    const limitsOk =
+      String(report.post.limits?.max_trade_value) === String(args.limits.max_trade_value) &&
+      String(report.post.limits?.valid_until) === String(args.limits.valid_until);
     report.verdict =
       r.ok &&
       report.post.autonomous === true &&
       report.post.enforce === true &&
-      report.post.paused === true
+      limitsOk &&
+      (args.unpause_now ? report.post.paused === false : true)
         ? "PASS"
         : "FAIL";
     writeFileSync(join(EVIDENCE, "MAINNET_MANDATE_ACTIVE.json"), JSON.stringify(report, null, 2));
@@ -239,7 +334,7 @@ async function main() {
   }
 
   console.log(JSON.stringify(report, null, 2));
-  process.exit(report.verdict === "PASS" ? 0 : 1);
+  process.exit(report.verdict === "PASS" || report.verdict === "DRY_RUN" ? 0 : 1);
 }
 
 main().catch((e) => {

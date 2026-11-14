@@ -40,3 +40,24 @@ vendor/near-hackathon-prompt-examples/
 
 private/
 
+.vercel
+
+# Local IDE / agent tooling
+.cursor/
+.vscode/
+
+# Foundry / hardhat build noise
+cache/
+artifacts/build-info/
+
+# Local journals / WAL (may contain operational detail)
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+docs/evidence/*-run.log
+docs/evidence/gate-k-execute-first-run.log
+docs/evidence/rebalance-canary-run*.log
+docs/evidence/rebroadcast-run.log
+
+# Scratch scripts
+scripts/tmp-*

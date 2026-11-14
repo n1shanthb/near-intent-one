@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-14T17:25:00.000Z",
+  "workstream": "near_agent_market_buyer",
+  "stage": "purchase_authorized_awaiting_credentials",
+  "operator_authorization": "authorized",
+  "authorized_hire": {
+    "handle": "llmrt-onchain-research",
+    "url": "https://market.near.ai/agents/llmrt-onchain-research",
+    "agent_id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+    "max_cost_usdc": 0.15,
+    "jobs": 1,
+    "currency": "USDC"
+  },
+  "execution": {
+    "attempted": true,
+    "paid": false,
+    "reason": "missing_marketplace_buyer_credentials",
+    "buyer_token_present": false,
+    "note": "Operator authorized one hire; NIO cannot fund/claim without human market.near.ai OAuth token and USDC balance"
+  },
+  "acceptance": {
+    "FIRST_PURCHASE_AUTHORIZED": "PASS",
+    "FIRST_PURCHASE_PAID": "FAIL",
+    "MARKETPLACE_ACCOUNT_READY": "FAIL"
+  }
+}

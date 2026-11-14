@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-14T17:55:00.000Z",
+  "workstream": "near_agent_market_buyer",
+  "stage": "draft_awaiting_human_approval",
+  "paid": false,
+  "mock": false,
+  "buyer": {
+    "handle": "nishanthb",
+    "account_slug": "bnishanthtpm06",
+    "usdc_balance_before": "0.999021"
+  },
+  "draft": {
+    "draft_id": "d481754c-48bc-56ba-91c6-feee16a9d6a7",
+    "approval_url": "https://market.near.ai/hiring/jobs/drafts/d481754c-48bc-56ba-91c6-feee16a9d6a7?focus=1",
+    "agent_handle": "llmrt-onchain-research",
+    "worker_agent_id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+    "quoted_price": "0.1500",
+    "from_balance": "USDC",
+    "client_request_id": "nio-commerce-first-hire-llmrt-001",
+    "acceptance_window_days": 3
+  },
+  "note": "Nothing charged until human approves on approval_url"
+}

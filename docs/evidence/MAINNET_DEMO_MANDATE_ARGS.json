@@ -1,11 +1,21 @@
 {
   "kind": "MAINNET_DEMO_MANDATE_ARGS",
+  "preview": {
+    "profile": "judge",
+    "days": 10,
+    "expires_at_utc": "2026-11-24T18:07:56.837Z",
+    "max_trade_usdc": 5,
+    "daily_usdc": 25,
+    "pending_usdc": 10,
+    "slippage_bps": 200,
+    "unpause_now": true
+  },
   "args": {
     "limits": {
-      "max_trade_value": "1000000",
-      "daily_turnover_limit": "5000000",
-      "max_pending_exposure": "2000000",
-      "max_slippage_bps": 100,
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 200,
       "allowed_assets": [
         "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
         "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
@@ -17,7 +27,7 @@
         "nishanthb.near",
         "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
       ],
-      "valid_until": "1794749242643000000",
+      "valid_until": "1795543676837000000",
       "token_scope": "allowlist",
       "allowed_chains": [
         "near",
@@ -30,11 +40,11 @@
       ],
       "max_gas_budget": "2500000000000000"
     },
-    "policy_hash": "nio-mainnet-demo-mandate-v1",
+    "policy_hash": "nio-mainnet-judge-mandate-v1",
     "strategy_hash": "nio-live-llm-fitter-v1",
     "enforce_autonomous_on_agent": true,
     "autonomous_trading": true,
-    "unpause_now": false
+    "unpause_now": true
   },
   "argsPath": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-demo\\activate_autonomous_mandate.args.json"
 }

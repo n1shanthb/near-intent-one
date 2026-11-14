@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-14T18:01:30.000Z",
+  "workstream": "near_agent_market_buyer",
+  "stage": "HIRED_IN_PROGRESS",
+  "mock": false,
+  "paid": true,
+  "payment_rail": "marketplace_escrow_USDC",
+  "buyer": {
+    "handle": "nishanthb",
+    "account_slug": "bnishanthtpm06",
+    "usdc_before": "0.999021",
+    "usdc_after": "0.849021",
+    "delta_usdc": "-0.150000"
+  },
+  "hire": {
+    "agent_handle": "llmrt-onchain-research",
+    "agent_id": "e8670c66-b3e8-49b2-bcd9-19d84b5db324",
+    "listing_url": "https://market.near.ai/a/llmrt-onchain-research",
+    "draft_id": "d481754c-48bc-56ba-91c6-feee16a9d6a7",
+    "job_id": "e0933c32-5494-45bc-8e7c-9b69a32e548c",
+    "assignment_id": "3efc9da1-2fca-4775-afa2-2d3b2686322c",
+    "job_url": "https://market.near.ai/hiring/jobs/e0933c32-5494-45bc-8e7c-9b69a32e548c",
+    "quoted_price_usdc": 0.15,
+    "paid_amount_usdc": 0.15,
+    "currency": "USDC",
+    "client_request_id": "nio-commerce-first-hire-llmrt-001",
+    "awarded_at": "2026-11-14T17:59:20.040851Z",
+    "status": "in_progress",
+    "result_available": false,
+    "note": "Escrow funded via marketplace USDC balance; not an individual NEAR L1 tx"
+  },
+  "acceptance": {
+    "FIRST_PURCHASE_AUTHORIZED": "PASS",
+    "MARKETPLACE_ACCOUNT_READY": "PASS",
+    "FIRST_PURCHASE_PAID": "PASS",
+    "DELIVERABLE_VERIFIED": "FAIL",
+    "note": "Delivery still in progress; SLA ~24h, agent claims typical <15m"
+  }
+}

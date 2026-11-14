@@ -1,16 +1,95 @@
 {
   "kind": "MAINNET_MANDATE_ACTIVE",
-  "verdict": "PASS",
-  "near_tx": "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
-  "explorer": "https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
-  "epoch": 3,
-  "autonomous": true,
-  "enforce": true,
-  "paused_after_activate": true,
-  "limits": {
-    "max_trade_value": "1000000",
-    "daily_turnover_limit": "5000000",
-    "max_pending_exposure": "2000000",
-    "max_slippage_bps": 100
-  }
+  "started_at": "2026-11-14T18:07:53.159Z",
+  "policy": "policy.nishanthb.near",
+  "owner": "nishanthb.near",
+  "preview": {
+    "profile": "judge",
+    "days": 10,
+    "expires_at_utc": "2026-11-24T18:07:56.837Z",
+    "max_trade_usdc": 5,
+    "daily_usdc": 25,
+    "pending_usdc": 10,
+    "slippage_bps": 200,
+    "unpause_now": true
+  },
+  "args": {
+    "limits": {
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 200,
+      "allowed_assets": [
+        "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "nep141:wrap.near"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "valid_until": "1795543676837000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "2500000000000000"
+    },
+    "policy_hash": "nio-mainnet-judge-mandate-v1",
+    "strategy_hash": "nio-live-llm-fitter-v1",
+    "enforce_autonomous_on_agent": true,
+    "autonomous_trading": true,
+    "unpause_now": true
+  },
+  "args_path": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-demo\\activate_autonomous_mandate.args.json",
+  "call": {
+    "ok": true,
+    "status": 0,
+    "stdout": "",
+    "stderr": "├  Unsigned transaction:\n│    signer_id:    nishanthb.near\n│    receiver_id:  policy.nishanthb.near\n│    actions:\n│       -- function call:      \n│                       method name:  activate_autonomous_mandate\n│                       args:         {\n│                                       \"autonomous_trading\": true,\n│                                       \"enforce_autonomous_on_agent\": true,\n│                                       \"limits\": {\n│                                         \"allowed_assets\": [\n│                                           \"nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near\",\n│                                           \"nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near\",\n│                                           \"nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near\",\n│                                           \"nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1\",\n│                                           \"nep141:wrap.near\"\n│                                         ],\n│                                         \"allowed_chains\": [\n│                                           \"near\",\n│                                           \"eip155:1\",\n│                                           \"eip155:42161\",\n│                                           \"eip155:8453\"\n│                                         ],\n│                                         \"allowed_destinations\": [\n│                                           \"nishanthb.near\",\n│                                           \"0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4\"\n│                                         ],\n│                                         \"allowed_venues\": [\n│                                           \"near_intents_1click\"\n│                                         ],\n│                                         \"daily_turnover_limit\": \"25000000\",\n│                                         \"max_gas_budget\": \"2500000000000000\",\n│                                         \"max_pending_exposure\": \"10000000\",\n│                                         \"max_slippage_bps\": 200,\n│                                         \"max_trade_value\": \"5000000\",\n│                                         \"token_scope\": \"allowlist\",\n│                                         \"valid_until\": \"1795543676837000000\"\n│                                       },\n│                                       \"policy_hash\": \"nio-mainnet-judge-mandate-v1\",\n│                                       \"strategy_hash\": \"nio-live-llm-fitter-v1\",\n│                                       \"unpause_now\": true\n│                                     }\n│                       gas:          80.0 Tgas\n│                       deposit:      0 NEAR\n│     \u001b[0m\n├  Opening the NEAR application... Please approve opening the application\u001b[0m\n├  Please allow getting the PublicKey on Ledger device (HD Path: m/44'/397'/0'/0'/1')\n│     \u001b[0m\n├  Your transaction was signed successfully.\n│    Public key: ed25519:7AMsxZH3HdjRj9twcR2aXyVUdYJZNzgy6ZeRajwkBx58\n│    Signature:  ed25519:4Ycqnq5WCwNNddoFEEaJ5PTE4iGS1wRnQ1N4GGweDTXuJ4DocJp5Rt7JYcmYe3nDoJiV4KgGERjz7dH7cZKbD6jP\n│     \u001b[0m\n├  Transaction Execution Info:\n│    Gas used: 3.0 Tgas\n│    Transaction fee: 0.0002734504116177 NEAR (USD equivalent is unavailable due to an error: Failed to parse the response from Coingecko API as JSON: error decoding response body)\n│    Transaction ID: GuBY2n5cH4oBnhQ4UNJXnqhHs4GKYzvsRoyi9jzdqpCt\n│    To see the transaction in the transaction explorer, please open this url in your browser:\n│    https://explorer.near.org/transactions/GuBY2n5cH4oBnhQ4UNJXnqhHs4GKYzvsRoyi9jzdqpCt\n│     \u001b[0m\n├  Function execution logs:\n│    \u001b[36mLogs [policy.nishanthb.near]:\u001b[39m\n│      EVENT_JSON:{\"event\":\"policy_updated\",\"epoch\":4,\"policy_hash\":\"nio-mainnet-judge-mandate-v1\"}\n│      EVENT_JSON:{\"event\":\"activate_autonomous_mandate\",\"epoch\":4,\"enforce\":true,\"autonomous\":true,\"unpaused\":true}\n│    \u001b[36mLogs [nishanthb.near]:\u001b[39m   \u001b[2mNo logs\u001b[0m\n│     \u001b[0m\n├  Function execution return value:\n│    Empty return value\n│     \u001b[0m\n\n\nThe \"activate_autonomous_mandate\" call to <policy.nishanthb.near> on behalf of <nishanthb.near> succeeded.\n\n\n\n\nHere is your console command if you need to script it or re-run:\n    \u001b[33m'C:\\Users\\Nishanth\\bin\\near-cli-rs\\near-cli-rs-x86_64-pc-windows-msvc\\near.exe' contract call-function as-transaction policy.nishanthb.near activate_autonomous_mandate file-args 'C:\\Users\\Nishanth\\.nio-secure\\mainnet-demo\\activate_autonomous_mandate.args.json' prepaid-gas '80.0 Tgas' attached-deposit '0 NEAR' sign-as nishanthb.near network-config mainnet sign-with-ledger --seed-phrase-hd-path 'm/44'\\''/397'\\''/0'\\''/0'\\''/1'\\''' usb send\u001b[39m\n\n"
+  },
+  "post": {
+    "epoch": 4,
+    "autonomous": true,
+    "enforce": true,
+    "paused": false,
+    "limits": {
+      "max_trade_value": "5000000",
+      "daily_turnover_limit": "25000000",
+      "max_pending_exposure": "10000000",
+      "max_slippage_bps": 200,
+      "allowed_assets": [
+        "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "nep141:wrap.near"
+      ],
+      "allowed_destinations": [
+        "nishanthb.near",
+        "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4"
+      ],
+      "valid_until": "1795543676837000000",
+      "token_scope": "allowlist",
+      "allowed_chains": [
+        "near",
+        "eip155:1",
+        "eip155:42161",
+        "eip155:8453"
+      ],
+      "allowed_venues": [
+        "near_intents_1click"
+      ],
+      "max_gas_budget": "2500000000000000"
+    }
+  },
+  "verdict": "PASS"
 }
