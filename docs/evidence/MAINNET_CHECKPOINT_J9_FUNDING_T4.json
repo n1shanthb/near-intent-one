@@ -1,0 +1,43 @@
+{
+  "checkpoint": "J9_FUNDING_T4",
+  "verdict": "PASS",
+  "mutations_invoked_by_agent": false,
+  "inferred_step": "T4_BASE_ETH_TO_MPC",
+  "tx_hash": "0xf94a90519204ab294b227efef1fe851642712b4f901190a02b3a33d7a25c0c0b",
+  "explorer": "https://basescan.org/tx/0xf94a90519204ab294b227efef1fe851642712b4f901190a02b3a33d7a25c0c0b",
+  "chain_id": 8453,
+  "receipt_status": "0x1",
+  "block_number": 57181817,
+  "tx_from": "0x196e429522f151c04b990d1b354c28018ecebe55",
+  "tx_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+  "value_wei": "525245946414409",
+  "value_eth": 0.000525245946414409,
+  "need_eth": 0.0001,
+  "mpc_base_eth_wei": "525245946414409",
+  "mpc_base_eth": 0.000525245946414409,
+  "mpc_base_usdc_raw": "997398",
+  "mpc_base_usdc": 0.997398,
+  "mpc_eth_eth": 0.0006,
+  "mpc_eth_usdc_raw": "1200535",
+  "mpc_eth_usdc": 1.200535,
+  "policy_paused": true,
+  "checks": {
+    "status_ok": true,
+    "chain_id_8453": true,
+    "to_mpc": true,
+    "value_ge_0_0001": true,
+    "balance_ge_0_0001": true,
+    "paused": true
+  },
+  "blockers": [],
+  "stopped": {
+    "swap": true,
+    "unpause": true,
+    "propose": true,
+    "request_signature": true,
+    "broadcast": true,
+    "reconcile": true,
+    "ledger": true
+  },
+  "recorded_at": "2026-11-14T03:30:11.476Z"
+}
