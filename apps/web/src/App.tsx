@@ -140,11 +140,13 @@ function AppInner() {
       {nav === "security" && (
         <>
           <SecurityPage onNav={onNav} onOpenLedger={() => onNav("ledger")} />
-          <Suspense fallback={<p className="axis-supporting">Loading Ledger wizard…</p>}>
-            <div className="legacy-embed" style={{ marginTop: 16 }}>
-              <LedgerWizard />
-            </div>
-          </Suspense>
+          {!isPublic ? (
+            <Suspense fallback={<p className="axis-supporting">Loading Ledger wizard…</p>}>
+              <div className="legacy-embed" style={{ marginTop: 16 }}>
+                <LedgerWizard />
+              </div>
+            </Suspense>
+          ) : null}
         </>
       )}
       {nav === "settings" && (
