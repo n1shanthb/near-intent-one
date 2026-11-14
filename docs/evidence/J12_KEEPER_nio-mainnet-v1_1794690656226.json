@@ -1,0 +1,114 @@
+{
+  "ok": true,
+  "verdict": "PASS",
+  "llm_mode": "LIVE_LLM",
+  "llm_configured": true,
+  "models": {
+    "researcher": "google/gemini-2.5-flash",
+    "strategist": "anthropic/claude-sonnet-4.6",
+    "critic": "openai/gpt-5.2",
+    "copilot": "google/gemini-2.5-flash"
+  },
+  "portfolio_id": "nio-mainnet-v1",
+  "journal_path": "C:\\Users\\Nishanth\\.nio-secure\\mainnet-keeper\\nio-mainnet-v1\\nio-mainnet-v1.jsonl",
+  "started_at": "2026-11-14T21:10:12.644Z",
+  "cycles": [
+    {
+      "index": 1,
+      "started_at": "2026-11-14T21:10:12.645Z",
+      "decision": {
+        "action": "NO_TRADE",
+        "reason": "NO_OPPORTUNITY",
+        "decision_hash": "e98ca6f00448124406c3567d0afb7a63ffeaf9191105b2c282511e0c3bddab0e",
+        "mandate_hash": "55b09e24f20cc97cd3b03c680e22d0c85dd5543705c3408a68455e2dc0c58853",
+        "fitter_outcome": "REJECTED",
+        "models": {
+          "researcher": "google/gemini-2.5-flash",
+          "strategist": "anthropic/claude-sonnet-4.6",
+          "critic": "openai/gpt-5.2"
+        },
+        "spend": {
+          "delta_usd": 0.035935,
+          "session_usd": 0.03593485,
+          "session_calls": 3,
+          "openrouter_spent_usd": 0.035935,
+          "openrouter_requests_today": 3
+        },
+        "enforcement": "NO_TRADE"
+      },
+      "shadow_execution": null,
+      "error": null,
+      "audit": {
+        "cycle_id": "cyc-nio-mainnet-v1-e98ca6f004481244-1794690653035-79412a56",
+        "evidence_hash": "7af62f4b94f029fda94bbfe648e9817e6a4889fdbbec57bd6a646c54932f99d3",
+        "status": "ONCHAIN_VERIFIED",
+        "near_tx": "56Ng1SshtfnMTzsFh7B1325Vbn7Hk63HGQvTKVmwcK5H",
+        "explorer": "https://nearblocks.io/txns/56Ng1SshtfnMTzsFh7B1325Vbn7Hk63HGQvTKVmwcK5H",
+        "fitter_verdict": "REJECTED",
+        "final_action": "NO_TRADE"
+      },
+      "execution_plan": {
+        "execute": false,
+        "reason": "NO_OPPORTUNITY",
+        "blockers": null,
+        "amount_raw": null,
+        "execution_binding": null,
+        "requires_owner_ledger_per_trade": null,
+        "exec_mode": "MAINNET"
+      }
+    }
+  ],
+  "integrity_before": {
+    "ok": true,
+    "broken_at": null,
+    "tip_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "checked": 0
+  },
+  "integrity_after": {
+    "ok": true,
+    "broken_at": null,
+    "tip_hash": "4d2cbb68f25e1c6e206337e390471375eb8a3a680d063d64fd64838fe3307c88",
+    "checked": 8
+  },
+  "errors": [],
+  "finished_at": "2026-11-14T21:10:56.225Z",
+  "replayed_state": {
+    "last_decision": {
+      "seq": 4,
+      "prev_hash": "edcc3200b3dc238af86d64de5895751052a93e9ce176fb50b47b009f0a3a6350",
+      "kind": "decision",
+      "timestamp_ms": 1794690653027,
+      "tick": 1794690653027,
+      "action": "NO_TRADE",
+      "reason": "NO_OPPORTUNITY",
+      "decision_hash": "e98ca6f00448124406c3567d0afb7a63ffeaf9191105b2c282511e0c3bddab0e",
+      "mandate_hash": "55b09e24f20cc97cd3b03c680e22d0c85dd5543705c3408a68455e2dc0c58853",
+      "prompt_version": "nio_autonomous_gate_j_v1",
+      "models": {
+        "researcher": "google/gemini-2.5-flash",
+        "strategist": "anthropic/claude-sonnet-4.6",
+        "critic": "openai/gpt-5.2"
+      },
+      "fitter_outcome": "REJECTED",
+      "openrouter_spent_usd": 0.03593485,
+      "openrouter_requests_today": 3,
+      "evidence_digest": "baf55ba541520347e86eb82219992695",
+      "entry_hash": "16649163ee2dadba55d55b9a9dd907d4cea955115dbddadb28a1a5f9fe7c8472"
+    },
+    "last_trade": null,
+    "spent_today_raw": "0",
+    "commerce_spent_raw": "0",
+    "pending_exposure_raw": "0",
+    "openrouter_spent_usd": 0.03593485,
+    "openrouter_requests_today": 3,
+    "recent_operation_sizes": [],
+    "error_count": 0,
+    "unknown_outcome": false
+  },
+  "health": {
+    "state": "IDLE",
+    "tip_hash": "4d2cbb68f25e1c6e206337e390471375eb8a3a680d063d64fd64838fe3307c88",
+    "entries": 8,
+    "unknown_blocks_spend": false
+  }
+}

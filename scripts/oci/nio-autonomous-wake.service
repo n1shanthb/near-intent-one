@@ -1,0 +1,25 @@
+[Unit]
+Description=NIO autonomous wake loop (10 min OpenRouter + on-chain audit)
+After=network-online.target nio-gate-i.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+WorkingDirectory=/home/opc/near-intent-one
+EnvironmentFile=-/home/opc/near-intent-one/packages/services/.env
+Environment=NIO_WAKE_MS=600000
+Environment=NIO_DECISION_AUDIT_ON_CHAIN=1
+Environment=NIO_MAINNET_AUTONOMOUS_EXEC=1
+Environment=NIO_WAKE_PORTFOLIO_ID=nio-mainnet-v1
+# Ops key path — set in EnvironmentFile if different
+# Environment=NIO_AGENT_OPS_KEY_PATH=/home/opc/.nio-secure/mainnet/agent-ops.json
+ExecStart=/usr/bin/node /home/opc/near-intent-one/scripts/mainnet/autonomous-wake-loop.mjs
+Restart=always
+RestartSec=30
+Nice=10
+# Micro instance: keep footprint low
+MemoryMax=350M
+
+[Install]
+WantedBy=multi-user.target

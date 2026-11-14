@@ -1,0 +1,12 @@
+{
+  "kind": "AUTONOMOUS_WAKE_LOOP",
+  "started_at": "2026-11-14T21:11:33.688Z",
+  "wake_ms": 600000,
+  "once": false,
+  "policy": "policy.nishanthb.near",
+  "portfolio_id": "nio-mainnet-v1",
+  "audit_on_chain": true,
+  "mainnet_exec": true,
+  "llm_configured": true,
+  "meaning": "On-chain autonomous_trading=true is permission. This wake loop is the process that actually calls OpenRouter, Fitters, and optionally anchors decisions."
+}
