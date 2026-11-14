@@ -22,6 +22,12 @@ describe("J4 secureFetch posture", () => {
     );
   });
 
+  it("NIO_BIND_ADDRESS=none disables local bind", () => {
+    assert.equal(detectMobileBindAddress({ NIO_BIND_ADDRESS: "none" }), null);
+    assert.equal(detectMobileBindAddress({ NIO_BIND_ADDRESS: "off" }), null);
+    assert.equal(detectMobileBindAddress({ NIO_BIND_ADDRESS: "-" }), null);
+  });
+
   it("skips college Fortinet 172.18.x when choosing bind", () => {
     // Function only reads os.networkInterfaces — ensure explicit env wins
     assert.equal(

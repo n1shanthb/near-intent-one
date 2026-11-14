@@ -8,8 +8,8 @@
 
 | Mission | Verdict | Why |
 |---------|---------|-----|
-| Mission 1 Eth→NEAR | **NO-GO** | tokens_unavailable:tokens_tls_error; origin_eth_usdc_missing_from_1click; dest_near_usdc_missing_from_1click; dry_quote_failed:quote_tls_error; policy_slippage_floor_rejects_min_out:min=0:floor=990000; oneclick_tls_blocked:unable to verify the first certificate:fortinet_mitm=true |
-| Mission 2 Base→NEAR | **NO-GO** | no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance |
+| Mission 1 Eth→NEAR | **READY** | funding+policy+quote clear |
+| Mission 2 Base→NEAR | **READY** | ok |
 
 ## Live funding / policy
 
@@ -22,24 +22,22 @@
 | NEAR USDC storage | registered=true |
 | Policy paused | true epoch=2 |
 | J8B pending | settlement=Success unresolved=0 |
-| Eth gas fee est | ≈$0.028264920706944 (OK) |
-| Base gas fee est | ≈$0.0010424218294591999 (OK) |
-| 1Click TLS | ok=false fortinet_mitm=true error=unable to verify the first certificate |
+| Eth gas fee est | ≈$0.030317519864448004 (OK) |
+| Base gas fee est | ≈$0.001046592 (OK) |
+| 1Click TLS | ok=true fortinet_mitm=false error=none |
 
 ## Mission 1 approval preview (NOT an authorization)
 
-- Suggested op id: `m1-canary-1794627634279-17954b95` (not persisted)
+- Suggested op id: `m1-canary-1794628040832-99a9376c` (not persisted)
 - Amount: 1 USDC (`1000000`) Eth native USDC → NEP-141 USDC @ `nishanthb.near`
 - Signer: `0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4`
 - Slippage request: 50 bps (policy max 100)
-- Dry min_out: `0`
+- Dry min_out: `994799`
 - Steps: Ledger unpause → propose_quoted_evm_transfer → request_signature → Eth broadcast → settle verify → Ledger reconcile → pause
 
 ## Engineering gaps
 
 - canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR
-- fresh_1click_quotes_require_non_fortinet_path_or_installed_fg_ca
-- no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance
 
 ## Production path components ready
 

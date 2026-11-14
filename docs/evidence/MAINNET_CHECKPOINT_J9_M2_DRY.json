@@ -1,14 +1,14 @@
 {
-  "ok": false,
-  "verdict": "NO-GO",
-  "status": "AWAITING_FUNDING_OR_FIX",
+  "ok": true,
+  "verdict": "READY_FOR_OWNER_APPROVAL",
+  "status": "AWAITING_APPROVAL",
   "mutations_invoked": false,
   "deferred_base_to_eth": true,
   "route": {
     "id": "m2_base_usdc_to_near_usdc",
     "label": "Base USDC → NEAR USDC",
-    "amount": null,
-    "amount_label": null,
+    "amount": "997398",
+    "amount_label": "0.997398 USDC",
     "requested_max": "1000000",
     "source_chain_id": 8453,
     "source_token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
@@ -39,122 +39,156 @@
     "base_eth_wei": "525245946414409",
     "base_eth": 0.000525245946414409,
     "amount_search": {
-      "ok": false,
-      "reason": "no_policy_compliant_amount_within_balance",
-      "balance_raw": "997398",
-      "shortfall_for_1usdc": "2602",
+      "ok": true,
+      "amount_raw": "997398",
+      "amount_usdc": 0.997398,
+      "slip_bps": 50,
+      "quote": {
+        "ok": true,
+        "dry": true,
+        "api": "https://1click.chaindefuser.com",
+        "request": {
+          "dry": true,
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 50,
+          "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "depositType": "ORIGIN_CHAIN",
+          "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+          "amount": "997398",
+          "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "refundType": "ORIGIN_CHAIN",
+          "recipient": "nishanthb.near",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2026-11-14T04:02:16.145Z"
+        },
+        "quote_request": {
+          "dry": true,
+          "depositMode": "SIMPLE",
+          "swapType": "EXACT_INPUT",
+          "slippageTolerance": 50,
+          "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+          "depositType": "ORIGIN_CHAIN",
+          "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+          "amount": "997398",
+          "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+          "refundType": "ORIGIN_CHAIN",
+          "recipient": "nishanthb.near",
+          "recipientType": "DESTINATION_CHAIN",
+          "deadline": "2026-11-14T04:02:16.145Z",
+          "confidentiality": "public",
+          "quoteWaitingTimeMs": 0,
+          "insured": false,
+          "appFees": [
+            {
+              "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+              "fee": 1
+            }
+          ]
+        },
+        "quote": {
+          "amountIn": "997398",
+          "amountInFormatted": "0.997398",
+          "amountInUsd": "0.996957150084",
+          "minAmountIn": "997398",
+          "amountOut": "997196",
+          "amountOutFormatted": "0.997196",
+          "amountOutUsd": "0.996755239368",
+          "minAmountOut": "992210",
+          "timeEstimate": 35,
+          "refundFee": "2400",
+          "withdrawFee": "0"
+        },
+        "one_click_response": {
+          "quoteRequest": {
+            "dry": true,
+            "depositMode": "SIMPLE",
+            "swapType": "EXACT_INPUT",
+            "slippageTolerance": 50,
+            "originAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+            "depositType": "ORIGIN_CHAIN",
+            "destinationAsset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            "amount": "997398",
+            "refundTo": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+            "refundType": "ORIGIN_CHAIN",
+            "recipient": "nishanthb.near",
+            "recipientType": "DESTINATION_CHAIN",
+            "deadline": "2026-11-14T04:02:16.145Z",
+            "confidentiality": "public",
+            "quoteWaitingTimeMs": 0,
+            "insured": false,
+            "appFees": [
+              {
+                "recipient": "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd",
+                "fee": 1
+              }
+            ]
+          },
+          "quote": {
+            "amountIn": "997398",
+            "amountInFormatted": "0.997398",
+            "amountInUsd": "0.996957150084",
+            "minAmountIn": "997398",
+            "amountOut": "997196",
+            "amountOutFormatted": "0.997196",
+            "amountOutUsd": "0.996755239368",
+            "minAmountOut": "992210",
+            "timeEstimate": 35,
+            "refundFee": "2400",
+            "withdrawFee": "0"
+          },
+          "signature": "ed25519:ovwpS3wHGHSNCRDtefP2FxdRkZNQRgP32GuHKxStZEsJkZDDSGWjJbuhrgmL9Zx1mfUfiLtU8MWX8HBiseie7k1",
+          "timestamp": "2026-11-14T03:47:16.493Z",
+          "correlationId": "e24dbc20-f406-46d4-a24d-e4f9c80a1ccb"
+        },
+        "signature": "ed25519:ovwpS3wHGHSNCRDtefP2FxdRkZNQRgP32GuHKxStZEsJkZDDSGWjJbuhrgmL9Zx1mfUfiLtU8MWX8HBiseie7k1",
+        "timestamp": "2026-11-14T03:47:16.493Z",
+        "correlation_id": "e24dbc20-f406-46d4-a24d-e4f9c80a1ccb",
+        "one_click_verify": {
+          "ok": true,
+          "verified": true,
+          "reason": null,
+          "quote_hash": "7GaDA4a8YwG9NthqHehrLWvbZcrW1ayY7965KV2LYE63",
+          "escrow_in_signed_hash": false,
+          "manager_key": "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc",
+          "manager_key_mode": "pinned_official"
+        },
+        "deposit_address": null,
+        "amount_in": "997398",
+        "amount_out": "997196",
+        "min_amount_out": "992210",
+        "deadline": "2026-11-14T04:02:16.145Z",
+        "quoted_at": "2026-11-14T03:47:17.388Z",
+        "bind": null,
+        "tls": "verified",
+        "authenticated": false,
+        "status_label": "DRY_QUOTE_VERIFIED",
+        "note": "Dry quote — no deposit; signature verified against pinned 1Click manager key when present"
+      },
+      "policy": {
+        "label": "m2_base_usdc_to_near_usdc:997398@50",
+        "amount_in": "997398",
+        "min_amount_out": "992210",
+        "max_slippage_bps": 100,
+        "policy_floor": "987424",
+        "result": "PASS",
+        "altered_values": false
+      },
       "attempts": [
         {
           "amount": "997398",
           "slip_bps": 50,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "997398",
-          "slip_bps": 25,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "900000",
-          "slip_bps": 50,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "900000",
-          "slip_bps": 25,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "750000",
-          "slip_bps": 50,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "750000",
-          "slip_bps": 25,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "500000",
-          "slip_bps": 50,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "500000",
-          "slip_bps": 25,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "250000",
-          "slip_bps": 50,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
-        },
-        {
-          "amount": "250000",
-          "slip_bps": 25,
-          "quote_ok": false,
-          "min_out": "0",
-          "amount_out": null,
-          "refund_fee": null,
-          "withdraw_fee": null,
-          "policy": "QUOTE_FAIL",
-          "reason": "quote_tls_error"
+          "quote_ok": true,
+          "min_out": "992210",
+          "amount_out": "997196",
+          "refund_fee": "2400",
+          "withdraw_fee": "0",
+          "policy": "PASS",
+          "floor": "987424",
+          "reason": null
         }
-      ]
+      ],
+      "balance_raw": "997398",
+      "shortfall_for_1usdc": "2602"
     },
     "j8b_note": "J8B delivered 997398 Base USDC; this preflight re-reads live balance and caps amount ≤ balance"
   },
@@ -196,39 +230,45 @@
     "nonce_pending": 0,
     "gas_price": {
       "ok": true,
-      "gas_price_wei": "6004402",
-      "gas_price_gwei": 0.006004402
+      "gas_price_wei": "6000000",
+      "gas_price_gwei": 0.006
     },
     "gas_estimate": {
       "ok": true,
       "estimated": true,
-      "gas_limit": "54253",
-      "eth_estimate": "45211"
+      "gas_limit": "54510",
+      "eth_estimate": "45425"
     },
     "economics": {
-      "gas_price_wei": "6004402",
-      "gas_limit": "54253",
-      "fee_wei": "325756821706",
-      "fee_eth": 3.25756821706e-7,
-      "fee_usd_approx": 0.0010424218294591999,
-      "trade_usdc": 0.5,
+      "gas_price_wei": "6000000",
+      "gas_limit": "54510",
+      "fee_wei": "327060000000",
+      "fee_eth": 3.2706e-7,
+      "fee_usd_approx": 0.001046592,
+      "trade_usdc": 0.997398,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
       "verdict": "OK"
     }
   },
   "quote": {
-    "ok": false,
+    "ok": true,
     "dry": true,
-    "amount_in": null,
-    "amount_out": null,
-    "min_amount_out": "0",
+    "amount_in": "997398",
+    "amount_out": "997196",
+    "min_amount_out": "992210",
     "deposit_address": null,
-    "refund_fee": null,
-    "withdraw_fee": null,
-    "time_estimate": null,
+    "refund_fee": "2400",
+    "withdraw_fee": "0",
+    "time_estimate": 35,
     "policy_fit": {
-      "result": "SKIPPED"
+      "label": "m2_base_usdc_to_near_usdc:997398@50",
+      "amount_in": "997398",
+      "min_amount_out": "992210",
+      "max_slippage_bps": 100,
+      "policy_floor": "987424",
+      "result": "PASS",
+      "altered_values": false
     },
     "decimals": {
       "asset_in": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
@@ -236,22 +276,19 @@
       "decimals_in": 6,
       "decimals_out": 6,
       "same_decimal_scale": true,
-      "amount_in": "1000000",
-      "min_amount_out": "0",
-      "policy_floor": "990000",
-      "policy_would_accept": false,
+      "amount_in": "997398",
+      "min_amount_out": "992210",
+      "policy_floor": "987424",
+      "policy_would_accept": true,
       "classification": "SAFE_SAME_DECIMALS",
       "can_safely_validate_value_slippage_exposure": true,
       "risks": [],
       "recommendation": "route_ok_for_raw_policy_checks"
     }
   },
-  "blockers": [
-    "no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance"
-  ],
+  "blockers": [],
   "warnings": [
-    "tokens_unavailable:tokens_tls_error",
-    "proceeding_with_canonical_asset_ids_policy_allowlist_still_required"
+    "using_balance_capped_amount:997398_live_base_usdc=997398"
   ],
   "approval_boundary": {
     "stop": true,

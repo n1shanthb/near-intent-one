@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "verdict": "NO-GO",
+  "ok": true,
+  "verdict": "READY_FOR_OWNER_APPROVAL",
   "mutations_invoked": false,
   "route": {
     "id": "m1_eth_usdc_to_near_usdc",
@@ -23,10 +23,10 @@
     ]
   },
   "tokens": {
-    "ok": false,
-    "eth_usdc": false,
-    "near_usdc": false,
-    "wrap_near_listed": false,
+    "ok": true,
+    "eth_usdc": true,
+    "near_usdc": true,
+    "wrap_near_listed": true,
     "near_usdc_decimals": 6,
     "distinction": "Destination is NEP-141 USDC contract on NEAR — not native NEAR, not wrap.near, not an intents ledger balance id"
   },
@@ -51,8 +51,8 @@
     "nonce_pending": 0,
     "gas_price": {
       "ok": true,
-      "gas_price_wei": "162486897",
-      "gas_price_gwei": 0.162486897
+      "gas_price_wei": "174286699",
+      "gas_price_gwei": 0.174286699
     },
     "gas_estimate": {
       "ok": true,
@@ -61,11 +61,11 @@
       "eth_estimate": "45300"
     },
     "economics": {
-      "gas_price_wei": "162486897",
+      "gas_price_wei": "174286699",
       "gas_limit": "54360",
-      "fee_wei": "8832787720920",
-      "fee_eth": 0.00000883278772092,
-      "fee_usd_approx": 0.028264920706944,
+      "fee_wei": "9474224957640",
+      "fee_eth": 0.00000947422495764,
+      "fee_usd_approx": 0.030317519864448004,
       "trade_usdc": 1,
       "within_gas_price_ceiling": true,
       "within_max_gas_budget": true,
@@ -93,23 +93,23 @@
     "token_contract": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
   },
   "quote": {
-    "ok": false,
+    "ok": true,
     "dry": true,
     "amount_in": "1000000",
-    "amount_out": null,
-    "min_amount_out": "0",
+    "amount_out": "999798",
+    "min_amount_out": "994799",
     "deposit_address": null,
-    "deadline": null,
-    "refund_fee": null,
-    "withdraw_fee": null,
-    "time_estimate": null,
+    "deadline": "2026-11-14T04:02:12.633Z",
+    "refund_fee": "300000",
+    "withdraw_fee": "0",
+    "time_estimate": 45,
     "policy_fit": {
       "label": "m1_eth_usdc_to_near_usdc",
       "amount_in": "1000000",
-      "min_amount_out": "0",
+      "min_amount_out": "994799",
       "max_slippage_bps": 100,
       "policy_floor": "990000",
-      "result": "BLOCKED",
+      "result": "PASS",
       "altered_values": false
     },
     "decimals": {
@@ -119,9 +119,9 @@
       "decimals_out": 6,
       "same_decimal_scale": true,
       "amount_in": "1000000",
-      "min_amount_out": "0",
+      "min_amount_out": "994799",
       "policy_floor": "990000",
-      "policy_would_accept": false,
+      "policy_would_accept": true,
       "classification": "SAFE_SAME_DECIMALS",
       "can_safely_validate_value_slippage_exposure": true,
       "risks": [],
@@ -129,14 +129,10 @@
     },
     "note": "dry quote — deposit_address may be null until funded quote + approval"
   },
-  "blockers": [
-    "tokens_unavailable:tokens_tls_error",
-    "origin_eth_usdc_missing_from_1click",
-    "dest_near_usdc_missing_from_1click",
-    "dry_quote_failed:quote_tls_error",
-    "policy_slippage_floor_rejects_min_out:min=0:floor=990000"
+  "blockers": [],
+  "warnings": [
+    "wrap.near_is_listed_but_not_selected — Mission 1 uses NEP-141 USDC (6 decimals), not wrap.near (24)"
   ],
-  "warnings": [],
   "approval_boundary": {
     "stop": true,
     "requires_explicit_approval_for": [
@@ -150,11 +146,11 @@
     "proposed_trade": {
       "amount": "1000000",
       "amount_label": "1 USDC",
-      "source_fee_budget_wei": "8832787720920",
-      "source_fee_eth": 0.00000883278772092,
-      "source_fee_usd_approx": 0.028264920706944,
+      "source_fee_budget_wei": "9474224957640",
+      "source_fee_eth": 0.00000947422495764,
+      "source_fee_usd_approx": 0.030317519864448004,
       "destination_asset": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-      "min_output": "0",
+      "min_output": "994799",
       "signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "recipient": "nishanthb.near",
       "refund_route": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4 on Ethereum (ORIGIN_CHAIN)",

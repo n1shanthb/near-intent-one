@@ -9,7 +9,20 @@ import { networkInterfaces } from "node:os";
 import { URL } from "node:url";
 
 export function detectMobileBindAddress(env = process.env) {
-  if (env.NIO_BIND_ADDRESS) return String(env.NIO_BIND_ADDRESS).trim();
+  if (env.NIO_BIND_ADDRESS != null && String(env.NIO_BIND_ADDRESS).trim() !== "") {
+    const forced = String(env.NIO_BIND_ADDRESS).trim().toLowerCase();
+    // Explicit no-bind: use OS default route (needed when mobile is default and
+    // Node localAddress bind to the hotspot IP times out on Windows).
+    if (forced === "none" || forced === "off" || forced === "-" || forced === "default") {
+      return null;
+    }
+    return String(env.NIO_BIND_ADDRESS).trim();
+  }
+  // Windows: auto-binding to hotspot IPs often ETIMEDOUT under Node. Prefer OS
+  // default route unless the operator pins NIO_BIND_ADDRESS explicitly.
+  if (process.platform === "win32") {
+    return null;
+  }
   const nets = networkInterfaces();
   const candidates = [];
   for (const [, addrs] of Object.entries(nets)) {
@@ -40,19 +53,22 @@ export function detectMobileBindAddress(env = process.env) {
  */
 export function secureFetch(url, init = {}) {
   const env = init.env || process.env;
-  const localAddress = init.localAddress || detectMobileBindAddress(env);
+  const localAddress =
+    init.localAddress !== undefined
+      ? init.localAddress
+      : detectMobileBindAddress(env);
   const method = (init.method || "GET").toUpperCase();
   const headers = { ...(init.headers || {}) };
   const body = init.body != null ? String(init.body) : null;
   const u = new URL(url);
 
+  // Only force IPv4 + localAddress when pinning a NIC (dual-home / Fortinet escape).
+  // Unbound requests use Node defaults — forced family:4 currently times out on
+  // some Windows mobile hotspots even though direct A-record IPv4 works.
   const agent = new https.Agent({
     keepAlive: true,
-    // Full verification — never disable
     rejectUnauthorized: true,
-    // Prefer IPv4 (mobile IPv6 to Cloudflare often blackholes)
-    family: 4,
-    ...(localAddress ? { localAddress } : {}),
+    ...(localAddress ? { family: 4, localAddress } : {}),
   });
 
   return new Promise((resolve) => {
@@ -67,8 +83,7 @@ export function secureFetch(url, init = {}) {
         agent,
         servername: u.hostname,
         rejectUnauthorized: true,
-        family: 4,
-        ...(localAddress ? { localAddress } : {}),
+        ...(localAddress ? { family: 4, localAddress } : {}),
         timeout: init.timeoutMs || 60_000,
       },
       (res) => {

@@ -1,7 +1,7 @@
 {
   "checkpoint": "J9_POST_FUNDING_VERIFY",
   "baseline": "b0afa50e0b385f0952f157db427c118efc354263",
-  "recorded_at": "2026-11-14T03:40:34.279Z",
+  "recorded_at": "2026-11-14T03:47:20.833Z",
   "mutations_invoked": false,
   "hard_stop": true,
   "network": {
@@ -10,30 +10,26 @@
       "vEthernet (WSL (Hyper-V firewall))": [
         "172.24.144.1"
       ],
-      "Ethernet": [
-        "172.18.2.45"
-      ],
       "Ethernet 5": [
         "192.168.56.1"
+      ],
+      "Wi-Fi": [
+        "10.151.103.39"
       ],
       "Loopback Pseudo-Interface 1": [
         "127.0.0.1"
       ]
     },
     "oneclick_tls": {
-      "ok": false,
-      "status": 0,
+      "ok": true,
+      "status": 200,
       "bind": null,
-      "error": "unable to verify the first certificate",
-      "fortinet_mitm": true,
+      "error": null,
+      "fortinet_mitm": false,
       "peer_issuer": {
         "C": "US",
-        "ST": "California",
-        "L": "Sunnyvale",
-        "O": "Fortinet",
-        "OU": "Certificate Authority",
-        "CN": "FG7H0GTB26000084",
-        "emailAddress": "support@fortinet.com"
+        "O": "Google Trust Services",
+        "CN": "WE1"
       }
     }
   },
@@ -53,11 +49,11 @@
       "nonce_latest": 0,
       "nonce_pending": 0,
       "gas": {
-        "gas_price_wei": "162486897",
+        "gas_price_wei": "174286699",
         "gas_limit": "54360",
-        "fee_wei": "8832787720920",
-        "fee_eth": 0.00000883278772092,
-        "fee_usd_approx": 0.028264920706944,
+        "fee_wei": "9474224957640",
+        "fee_eth": 0.00000947422495764,
+        "fee_usd_approx": 0.030317519864448004,
         "trade_usdc": 1,
         "within_gas_price_ceiling": true,
         "within_max_gas_budget": true,
@@ -69,12 +65,12 @@
       "usdc_raw": "997398",
       "eth": 0.000525245946414409,
       "gas": {
-        "gas_price_wei": "6004402",
-        "gas_limit": "54253",
-        "fee_wei": "325756821706",
-        "fee_eth": 3.25756821706e-7,
-        "fee_usd_approx": 0.0010424218294591999,
-        "trade_usdc": 0.5,
+        "gas_price_wei": "6000000",
+        "gas_limit": "54510",
+        "fee_wei": "327060000000",
+        "fee_eth": 3.2706e-7,
+        "fee_usd_approx": 0.001046592,
+        "trade_usdc": 0.997398,
         "within_gas_price_ceiling": true,
         "within_max_gas_budget": true,
         "verdict": "OK"
@@ -146,30 +142,25 @@
     "j8b_reconciled_ok": true
   },
   "mission1": {
-    "verdict": "NO-GO",
-    "dry_verdict": "NO-GO",
-    "blockers": [
-      "tokens_unavailable:tokens_tls_error",
-      "origin_eth_usdc_missing_from_1click",
-      "dest_near_usdc_missing_from_1click",
-      "dry_quote_failed:quote_tls_error",
-      "policy_slippage_floor_rejects_min_out:min=0:floor=990000",
-      "oneclick_tls_blocked:unable to verify the first certificate:fortinet_mitm=true"
+    "verdict": "READY",
+    "dry_verdict": "READY_FOR_OWNER_APPROVAL",
+    "blockers": [],
+    "warnings": [
+      "wrap.near_is_listed_but_not_selected — Mission 1 uses NEP-141 USDC (6 decimals), not wrap.near (24)"
     ],
-    "warnings": [],
     "quote": {
-      "ok": false,
-      "amount_out": null,
-      "min_amount_out": "0",
+      "ok": true,
+      "amount_out": "999798",
+      "min_amount_out": "994799",
       "deposit_address": null,
-      "deadline": null,
+      "deadline": "2026-11-14T04:02:12.633Z",
       "policy_fit": {
         "label": "m1_eth_usdc_to_near_usdc",
         "amount_in": "1000000",
-        "min_amount_out": "0",
+        "min_amount_out": "994799",
         "max_slippage_bps": 100,
         "policy_floor": "990000",
-        "result": "BLOCKED",
+        "result": "PASS",
         "altered_values": false
       },
       "dry": true
@@ -190,21 +181,24 @@
     }
   },
   "mission2": {
-    "verdict": "NO-GO",
-    "dry_verdict": "NO-GO",
-    "blockers": [
-      "no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance"
-    ],
+    "verdict": "READY",
+    "dry_verdict": "READY_FOR_OWNER_APPROVAL",
+    "blockers": [],
     "warnings": [
-      "tokens_unavailable:tokens_tls_error",
-      "proceeding_with_canonical_asset_ids_policy_allowlist_still_required"
+      "using_balance_capped_amount:997398_live_base_usdc=997398"
     ],
-    "amount": null,
+    "amount": "997398",
     "quote": {
-      "ok": false,
-      "min_amount_out": "0",
+      "ok": true,
+      "min_amount_out": "992210",
       "policy_fit": {
-        "result": "SKIPPED"
+        "label": "m2_base_usdc_to_near_usdc:997398@50",
+        "amount_in": "997398",
+        "min_amount_out": "992210",
+        "max_slippage_bps": 100,
+        "policy_floor": "987424",
+        "result": "PASS",
+        "altered_values": false
       }
     },
     "settlement_plan": {
@@ -268,16 +262,20 @@
     },
     "shadows": [
       {
-        "ok": false,
-        "reason": "oneclick_tls_blocked"
+        "route": "m1_eth_usdc_to_near_usdc",
+        "decision": "PAPER_TAKE"
+      },
+      {
+        "route": "m2_base_usdc_to_near_usdc",
+        "decision": "PAPER_TAKE"
       }
     ]
   },
   "mission1_approval_preview": {
     "persisted": false,
-    "operation_id_suggested": "m1-canary-1794627634279-17954b95",
+    "operation_id_suggested": "m1-canary-1794628040832-99a9376c",
     "payload": {
-      "operation_id": "m1-canary-1794627634279-17954b95",
+      "operation_id": "m1-canary-1794628040832-99a9376c",
       "owner": "nishanthb.near",
       "policy": "policy.nishanthb.near",
       "agent": "agent.nishanthb.near",
@@ -291,7 +289,7 @@
       "recipient": "nishanthb.near",
       "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
       "attestor_public_key": "ed25519:6oqnd5mBShyMGGHCgrJEEEPtgAEsXzJEPfARf7Fc2CG9",
-      "max_gas_price": "162486897",
+      "max_gas_price": "174286699",
       "max_slippage_bps": 50,
       "quote_hash": null,
       "deposit_address": null,
@@ -332,7 +330,7 @@
             "asset_in": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
             "asset_out": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
             "destination": "nishanthb.near",
-            "min_amount_out": "0",
+            "min_amount_out": "994799",
             "expected_epoch": 2
           }
         },
@@ -354,8 +352,8 @@
           "value_wei": "0",
           "calldata": "ERC20.transfer(depositAddress, 1000000)",
           "nonce": 0,
-          "estimated_fee_eth": 0.00000883278772092,
-          "estimated_fee_usd": 0.028264920706944,
+          "estimated_fee_eth": 0.00000947422495764,
+          "estimated_fee_usd": 0.030317519864448004,
           "explorer": "https://etherscan.io/tx/<tx_hash>"
         },
         {
@@ -390,9 +388,7 @@
     "this_preflight_is_not_trade_approval": true
   },
   "engineering_gaps": [
-    "canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR",
-    "fresh_1click_quotes_require_non_fortinet_path_or_installed_fg_ca",
-    "no_policy_compliant_amount:have=997398:shortfall_1usdc=2602:no_policy_compliant_amount_within_balance"
+    "canaryExecutor_default_steps_still_j8b_arb_bindings — use mission1ExecutionPath + operator confirmations; do not run J8B canary-operator against Eth→NEAR"
   ],
   "approvals_required_before_trade": [
     "Restore non-MITM path for 1Click (mobile hotspot / FortiGate CA) and re-fetch funded quotes",
