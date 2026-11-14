@@ -1,21 +1,40 @@
 {
   "kind": "J17_MPC_SEPOLIA_BROADCAST",
-  "baseline": "ed2bd79",
-  "started_at": "2026-11-14T11:35:09.094Z",
+  "baseline": "df3a84b",
+  "started_at": "2026-11-14T12:06:21.404Z",
   "hard_stop_mainnet": true,
   "scenario_label": "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS",
-  "intents_testnet": "NOT_AVAILABLE",
+  "intents_settlement": false,
   "authorization": {
     "J17_SEPOLIA_FUNDING_AUTHORIZED": false,
-    "note": "Explicit env auth required; mission text alone is not authorization."
+    "note": "Funding confirmation ≠ broadcast approval."
   },
-  "verdict": "STOP_AT_FUNDING_AUTHORIZATION_BOUNDARY",
+  "verdict": "PREFLIGHT_ONLY",
+  "preflight_exit": 0,
+  "preflight": {
+    "FUNDING_CONFIRMED": "PASS",
+    "CONTRACT_ABI_MATCH": "PASS",
+    "SIGNATURE_DEPOSIT_CORRECT": "PASS",
+    "DIGEST_BINDING_VALID": "PASS",
+    "GAS_ESTIMATION_VALID": "PASS",
+    "POLICY_STATE_VERIFIED": "PASS",
+    "JOURNAL_AND_REPLAY_SAFE": "FAIL",
+    "PRE_BROADCAST_READY": "READY_PENDING_OWNER_PREREQS",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
   "gates": {
-    "SEPOLIA_FUNDING_CONFIRMED": "NOT_CHECKED_AUTH_MISSING",
     "AUTHENTIC_MPC_TO_EVM_BROADCAST": "BLOCKED_NO_AUTH",
-    "REAL_SEPOLIA_TOKEN_SETTLEMENT": "BLOCKED_NO_AUTH",
-    "INDEPENDENT_RECONCILIATION": "BLOCKED_NO_AUTH"
+    "PRE_BROADCAST": {
+      "FUNDING_CONFIRMED": "PASS",
+      "CONTRACT_ABI_MATCH": "PASS",
+      "SIGNATURE_DEPOSIT_CORRECT": "PASS",
+      "DIGEST_BINDING_VALID": "PASS",
+      "GAS_ESTIMATION_VALID": "PASS",
+      "POLICY_STATE_VERIFIED": "PASS",
+      "JOURNAL_AND_REPLAY_SAFE": "FAIL",
+      "PRE_BROADCAST_READY": "READY_PENDING_OWNER_PREREQS",
+      "MAINNET_AUTONOMY_READY": "NO-GO"
+    }
   },
-  "blocker": "Set J17_SEPOLIA_FUNDING_AUTHORIZED=1 only after separate owner funding authorization AND confirmed Sepolia balances.",
-  "finished_at": "2026-11-14T11:35:09.098Z"
+  "finished_at": "2026-11-14T12:06:26.797Z"
 }

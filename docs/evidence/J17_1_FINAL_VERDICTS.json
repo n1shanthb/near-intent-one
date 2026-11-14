@@ -1,0 +1,29 @@
+{
+  "kind": "J17_1_FINAL_VERDICTS",
+  "baseline": "df3a84b",
+  "finished_at": "2026-11-14T12:05:00.000Z",
+  "hard_stop_mainnet": true,
+  "hard_stop_no_mpc_no_broadcast_this_run": true,
+  "gates": {
+    "FUNDING_CONFIRMED": "PASS",
+    "CONTRACT_ABI_MATCH": "PASS",
+    "SIGNATURE_DEPOSIT_CORRECT": "PASS",
+    "DIGEST_BINDING_VALID": "PASS",
+    "GAS_ESTIMATION_VALID": "PASS",
+    "POLICY_STATE_VERIFIED": "PASS",
+    "JOURNAL_AND_REPLAY_SAFE": "FAIL",
+    "PRE_BROADCAST_READY": "READY_PENDING_OWNER_PREREQS",
+    "MAINNET_AUTONOMY_READY": "NO-GO"
+  },
+  "owner_prereqs_before_broadcast_approval": [
+    "Owner: set_trusted_quote_signer on j16f6890.testnet (attestor pk in preflight evidence)",
+    "Set NIO_TX_JOURNAL_SECRET (≥32 chars) — no predictable fallback",
+    "Separate explicit approval to set J17_SEPOLIA_FUNDING_AUTHORIZED=1 and run j17:mpc-broadcast"
+  ],
+  "evidence": [
+    "docs/evidence/J17_1_PRE_BROADCAST_READY.json",
+    "docs/evidence/J17_1_ONE_TRANSFER_APPROVAL_PREVIEW.md",
+    "docs/evidence/J17_CLAIM_AND_FUND_MPC.json"
+  ],
+  "tests": "npm run test:j17"
+}

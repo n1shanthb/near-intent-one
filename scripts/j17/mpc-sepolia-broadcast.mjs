@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * J17 — Authentic NEAR MPC → Sepolia ERC-20 transfer (post-funding only).
+ * J17.1 — Authentic NEAR MPC → Sepolia ERC-20 transfer.
  *
- * Refuses unless:
- *   1) J17_SEPOLIA_FUNDING_AUTHORIZED=1
- *   2) Live Sepolia balances meet thresholds for MPC address + preferred token
+ * Without J17_SEPOLIA_FUNDING_AUTHORIZED=1 → preflight only (PRE_BROADCAST_READY).
+ * With auth + NIO_TX_JOURNAL_SECRET → propose_quoted_evm_transfer → request_signature
+ * (1 yocto) → assemble → journal → broadcast once → independent settle.
  *
- * Never reuses an obsolete signature. Fresh nonce + gas + digest each attempt.
- * Broadcast at most once; ambiguous → UNKNOWN, no resign.
- * HARD STOP: no mainnet. This prompt alone does not authorize funding.
+ * Never propose_trade fallback. Never blind retry/resign. ERC-20 ≠ Intents.
+ * HARD STOP: no mainnet.
  */
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash, randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import * as nearAPI from "near-api-js";
 import {
   NETWORK,
@@ -21,13 +21,8 @@ import {
   pickRpc,
   assertNotDemo,
   SEPOLIA_RPC,
-  USDC_SEPOLIA,
 } from "../lib/near-live.mjs";
-import {
-  extractMpcSigFromNearTx,
-  mpcToRsV,
-  recoverFromHash,
-} from "../../packages/gate-k/settle.mjs";
+import { extractMpcSigFromNearTx } from "../../packages/gate-k/settle.mjs";
 import {
   assembleSignedEvmFromMpc,
   validateSignedRawAgainstPolicy,
@@ -39,12 +34,27 @@ import {
   persistPreBroadcast,
   EXEC_MODE,
 } from "../../packages/autonomous/executorAdapter.mjs";
-import {
-  erc20TransferData,
-  eip155UnsignedDigest,
-  digestHex,
-} from "../../packages/intents-codec/quote-auth.mjs";
+import { loadOrCreateAttestor } from "../../packages/services/attestor.mjs";
 import { evmAddressFromNearSecpKey } from "../../packages/intents-codec/eip191.mjs";
+import {
+  SCENARIO_LABEL,
+  CHAIN_ID,
+  J16_POLICY,
+  J16_MPC,
+  USDC_SEPOLIA,
+  TEST_RECIPIENT,
+  AMOUNT_RAW,
+  POLICY_VIEWS,
+  assertProposeQuotedArgs,
+  assertRequestSignatureArgs,
+  refuseProposeTradeEvmFallback,
+  buildDeterministicErc20Attestation,
+  bindEip155DigestFromQuotedTx,
+  validateQuotedTxAgainstAttestation,
+  fitGasLimit,
+  verifyPolicyViews,
+  requireJournalSecret,
+} from "../../packages/autonomous/j17.sepoliaPath.mjs";
 
 const { connect, keyStores, KeyPair, transactions } = nearAPI;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -52,32 +62,21 @@ const CREDS = join(ROOT, ".near-credentials", "testnet");
 const EVIDENCE = join(ROOT, "docs", "evidence");
 mkdirSync(EVIDENCE, { recursive: true });
 
-const J16_MPC = "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55";
-const J16_PATH = "trading/v1/portfolio/j16-mpc-6890";
-const J16_PREDECESSOR = "j16f6890.testnet";
-const DEST = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"; // labeled test recipient
-const AMOUNT = "1000000";
-const MIN_ETH_WEI = 10n ** 16n;
-const MIN_TOKEN_RAW = 1_000_000n;
-const GAS_LIMIT = 100000n;
-
 const report = {
   kind: "J17_MPC_SEPOLIA_BROADCAST",
-  baseline: "ed2bd79",
+  baseline: "df3a84b",
   started_at: new Date().toISOString(),
   hard_stop_mainnet: true,
-  scenario_label: "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS",
-  intents_testnet: "NOT_AVAILABLE",
+  scenario_label: SCENARIO_LABEL,
+  intents_settlement: false,
 };
 
 function loadCred(id) {
   return JSON.parse(readFileSync(join(CREDS, `${id}.json`), "utf8"));
 }
-
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
-
 async function eth(method, params = []) {
   const res = await fetch(SEPOLIA_RPC, {
     method: "POST",
@@ -88,15 +87,7 @@ async function eth(method, params = []) {
   if (j.error) throw new Error(JSON.stringify(j.error));
   return j.result;
 }
-
-async function erc20Balance(token, holder) {
-  const data =
-    "0x70a08231" +
-    holder.replace(/^0x/, "").toLowerCase().padStart(64, "0");
-  return BigInt((await eth("eth_call", [{ to: token, data }, "latest"])) || "0x0");
-}
-
-async function deriveMpcEvm({ rpc, policyId, path }) {
+async function nearView(rpc, accountId, methodName, args = {}) {
   const res = await fetch(rpc, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -107,11 +98,9 @@ async function deriveMpcEvm({ rpc, policyId, path }) {
       params: {
         request_type: "call_function",
         finality: "final",
-        account_id: MPC,
-        method_name: "derived_public_key",
-        args_base64: Buffer.from(
-          JSON.stringify({ path, predecessor: policyId, domain_id: 0 })
-        ).toString("base64"),
+        account_id: accountId,
+        method_name: methodName,
+        args_base64: Buffer.from(JSON.stringify(args)).toString("base64"),
       },
     }),
   });
@@ -120,26 +109,20 @@ async function deriveMpcEvm({ rpc, policyId, path }) {
     throw new Error(JSON.stringify(j.error || j.result.error));
   }
   const raw = Buffer.from(j.result.result).toString("utf8");
-  let key;
   try {
-    key = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch {
-    key = raw.replace(/^"|"$/g, "");
+    return raw;
   }
-  if (typeof key === "object") key = key.public_key || key;
-  return {
-    near_secp_key: key,
-    evm_address: evmAddressFromNearSecpKey(String(key)).toLowerCase(),
-    path,
-    predecessor: policyId,
-  };
 }
-
 function clearAccessKeyCache(account) {
   if (account?.accessKeyByPublicKeyCache) account.accessKeyByPublicKeyCache = {};
 }
-
-async function callOnce(account, receiverId, { methodName, args, gas, deposit = 0n }) {
+async function callOnce(
+  account,
+  receiverId,
+  { methodName, args, gas, deposit = 0n }
+) {
   const actions = [
     transactions.functionCall(
       methodName,
@@ -162,334 +145,333 @@ async function callOnce(account, receiverId, { methodName, args, gas, deposit = 
       return outcome;
     } catch (e) {
       lastErr = e;
-      if (!/InvalidNonce|nonce/i.test(String(e.message || e))) throw e;
+      // NEAR access-key nonce only — never resign EVM / never new digest
+      if (!/InvalidNonce|nonce too (low|high)/i.test(String(e.message || e))) {
+        throw e;
+      }
       clearAccessKeyCache(account);
       await sleep(400 + attempt * 200);
     }
   }
   throw lastErr;
 }
-
+async function erc20Balance(token, holder) {
+  const data =
+    "0x70a08231" +
+    holder.replace(/^0x/, "").toLowerCase().padStart(64, "0");
+  return BigInt(
+    (await eth("eth_call", [{ to: token, data }, "latest"])) || "0x0"
+  );
+}
 function finish(code = 0) {
   report.finished_at = new Date().toISOString();
   const out = join(EVIDENCE, "J17_MPC_SEPOLIA_BROADCAST.json");
   writeFileSync(out, JSON.stringify(report, null, 2));
-  console.log(JSON.stringify({ verdict: report.verdict, gates: report.gates, evidence: out }, null, 2));
+  console.log(
+    JSON.stringify(
+      { verdict: report.verdict, gates: report.gates, evidence: out },
+      null,
+      2
+    )
+  );
   process.exit(code);
 }
 
-// --- Gate 0: funding authorization boundary ---
 const authorized = process.env.J17_SEPOLIA_FUNDING_AUTHORIZED === "1";
 report.authorization = {
   J17_SEPOLIA_FUNDING_AUTHORIZED: authorized,
-  note: "Explicit env auth required; mission text alone is not authorization.",
+  note: "Funding confirmation ≠ broadcast approval.",
 };
 
 if (!authorized) {
-  report.verdict = "STOP_AT_FUNDING_AUTHORIZATION_BOUNDARY";
+  report.verdict = "PREFLIGHT_ONLY";
+  const pre = spawnSync(
+    process.execPath,
+    [join(ROOT, "scripts/j17/mpc-sepolia-preflight.mjs")],
+    { cwd: ROOT, encoding: "utf8", env: process.env }
+  );
+  report.preflight_exit = pre.status;
+  try {
+    report.preflight = JSON.parse(
+      readFileSync(join(EVIDENCE, "J17_1_PRE_BROADCAST_READY.json"), "utf8")
+    ).gates;
+  } catch {
+    report.preflight = { error: "preflight_evidence_missing" };
+  }
   report.gates = {
-    SEPOLIA_FUNDING_CONFIRMED: "NOT_CHECKED_AUTH_MISSING",
     AUTHENTIC_MPC_TO_EVM_BROADCAST: "BLOCKED_NO_AUTH",
-    REAL_SEPOLIA_TOKEN_SETTLEMENT: "BLOCKED_NO_AUTH",
-    INDEPENDENT_RECONCILIATION: "BLOCKED_NO_AUTH",
+    PRE_BROADCAST: report.preflight,
   };
-  report.blocker =
-    "Set J17_SEPOLIA_FUNDING_AUTHORIZED=1 only after separate owner funding authorization AND confirmed Sepolia balances.";
   finish(0);
 }
 
+// -------- EXECUTE path (only with explicit auth) --------
 try {
   assertNotDemo();
-  const nearRpc = await pickRpc();
-  const chainId = Number(BigInt(await eth("eth_chainId", [])));
-  if (chainId !== 11155111) throw new Error(`bad_chain_${chainId}`);
+  const journalOk = requireJournalSecret();
+  if (!journalOk.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = journalOk.reason;
+    finish(1);
+  }
 
-  const derived = await deriveMpcEvm({
-    rpc: nearRpc,
-    policyId: J16_PREDECESSOR,
-    path: J16_PATH,
-  });
-  if (derived.evm_address !== J16_MPC.toLowerCase()) {
-    throw new Error(`derived_mismatch_${derived.evm_address}`);
+  const nearRpc = await pickRpc();
+  const views = {};
+  for (const m of POLICY_VIEWS) views[m] = await nearView(nearRpc, J16_POLICY, m);
+  const policyCheck = verifyPolicyViews(views);
+  if (!policyCheck.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = policyCheck.blockers;
+    finish(1);
   }
 
   const ethBal = BigInt(await eth("eth_getBalance", [J16_MPC, "latest"]));
   const tokenBal = await erc20Balance(USDC_SEPOLIA, J16_MPC);
-  const nonce = Number(
-    BigInt(await eth("eth_getTransactionCount", [J16_MPC, "pending"]))
-  );
-  report.preflight = {
-    mpc: J16_MPC,
-    eth_wei: ethBal.toString(),
-    token: USDC_SEPOLIA.toLowerCase(),
-    token_raw: tokenBal.toString(),
-    nonce,
-  };
-
-  if (ethBal < MIN_ETH_WEI || tokenBal < MIN_TOKEN_RAW) {
-    report.verdict = "STOP_UNFUNDED";
-    report.gates = {
-      SEPOLIA_FUNDING_CONFIRMED: "FAIL",
-      AUTHENTIC_MPC_TO_EVM_BROADCAST: "BLOCKED_UNFUNDED",
-      REAL_SEPOLIA_TOKEN_SETTLEMENT: "BLOCKED_UNFUNDED",
-      INDEPENDENT_RECONCILIATION: "BLOCKED_UNFUNDED",
-    };
-    report.blocker = "Balances below thresholds despite auth env — re-run funding boundary.";
-    finish(0);
-  }
-
-  report.gates = { SEPOLIA_FUNDING_CONFIRMED: "PASS" };
-
-  // Fresh fee + digest — never reuse prior signature
-  const gasPrice = BigInt(await eth("eth_gasPrice", []));
-  const data = erc20TransferData(DEST, AMOUNT);
-  const digestBytes = eip155UnsignedDigest({
-    nonce: BigInt(nonce),
-    gasPrice,
-    gasLimit: GAS_LIMIT,
-    to: USDC_SEPOLIA,
-    data,
-    chainId: 11155111,
-  });
-  const digest_hex = digestHex(digestBytes);
-  report.fresh_tx = {
-    nonce,
-    gasPrice: gasPrice.toString(),
-    gasLimit: GAS_LIMIT.toString(),
-    token: USDC_SEPOLIA.toLowerCase(),
-    dest: DEST,
-    amount: AMOUNT,
-    digest_hex,
-    note: "Fresh nonce/fees/digest — obsolete signatures must not be reused",
-  };
-
-  // NEAR accounts from J16 evidence
-  const ownerId = "nio-owner-02b7cf.testnet";
-  const agentId = "nio-agent-02b7cf.testnet";
-  const policyId = J16_PREDECESSOR;
-  if (!existsSync(join(CREDS, `${ownerId}.json`)) || !existsSync(join(CREDS, `${agentId}.json`))) {
+  if (ethBal < 10n ** 16n || tokenBal < BigInt(AMOUNT_RAW)) {
     report.verdict = "NO_GO";
-    report.blocker = "missing_testnet_credentials";
+    report.blocker = "unfunded";
     finish(1);
   }
 
+  const nonce = Number(
+    BigInt(await eth("eth_getTransactionCount", [J16_MPC, "pending"]))
+  );
+  let gasPrice = BigInt(await eth("eth_gasPrice", []));
+  if (gasPrice < 1_000_000_000n) gasPrice = 1_000_000_000n;
+
+  const previewBind = bindEip155DigestFromQuotedTx({
+    nonce,
+    gasPrice: gasPrice.toString(),
+    gasLimit: 300000,
+    tokenContract: USDC_SEPOLIA,
+    depositAddress: TEST_RECIPIENT,
+    amount: AMOUNT_RAW,
+  });
+  const estHex = await eth("eth_estimateGas", [
+    {
+      from: J16_MPC,
+      to: USDC_SEPOLIA,
+      data: previewBind.data_hex,
+      value: "0x0",
+    },
+  ]);
+  const fitted = fitGasLimit({
+    estimated: BigInt(estHex),
+    gasPrice,
+    maxGasBudget: views.get_limits.max_gas_budget,
+  });
+  if (!fitted.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = fitted;
+    finish(1);
+  }
+
+  const attestor = loadOrCreateAttestor(
+    join(ROOT, ".gate-i-data", "attestor.seed.json")
+  );
+  const trusted = await nearView(nearRpc, J16_POLICY, "is_trusted_quote_signer", {
+    public_key: attestor.publicKey,
+  });
+  if (trusted !== true) {
+    report.verdict = "NO_GO";
+    report.blocker = "trusted_quote_signer_not_registered";
+    finish(1);
+  }
+
+  const built = buildDeterministicErc20Attestation({
+    secretKey64: attestor.secretKey64,
+    depositAddress: TEST_RECIPIENT,
+    tokenContract: USDC_SEPOLIA,
+    amountIn: AMOUNT_RAW,
+    recipient: TEST_RECIPIENT,
+    refundTo: TEST_RECIPIENT,
+    maxGasPrice: gasPrice.toString(),
+    gasLimit: fitted.gas_limit,
+  });
+  const opId = `j17-exec-${randomBytes(3).toString("hex")}`;
+  const tx = {
+    nonce: String(nonce),
+    gas_price: gasPrice.toString(),
+    gas_limit: fitted.gas_limit,
+    chain_id: String(CHAIN_ID),
+    token_contract: USDC_SEPOLIA.toLowerCase(),
+    to: TEST_RECIPIENT.toLowerCase(),
+    amount: AMOUNT_RAW,
+  };
+  const bind = bindEip155DigestFromQuotedTx({
+    nonce,
+    gasPrice: tx.gas_price,
+    gasLimit: tx.gas_limit,
+    tokenContract: tx.token_contract,
+    depositAddress: tx.to,
+    amount: tx.amount,
+  });
+  const vAtt = validateQuotedTxAgainstAttestation({
+    attestation: built.attestation,
+    tx,
+  });
+  if (!vAtt.ok) {
+    report.verdict = "NO_GO";
+    report.blocker = vAtt.blockers;
+    finish(1);
+  }
+
+  const proposeArgs = {
+    operation_id: opId,
+    attestation: built.attestation,
+    attestation_signature: built.attestation_signature,
+    signer_public_key: built.signer_public_key,
+    tx,
+    expected_epoch: views.get_mandate_epoch,
+  };
+  const pCheck = assertProposeQuotedArgs(proposeArgs);
+  const rCheck = assertRequestSignatureArgs({ operation_id: opId });
+  const tradeRefuse = refuseProposeTradeEvmFallback({
+    destination: TEST_RECIPIENT,
+  });
+  if (!pCheck.ok || !rCheck.ok || tradeRefuse.action !== "REFUSE") {
+    report.verdict = "NO_GO";
+    report.blocker = { pCheck, rCheck, tradeRefuse };
+    finish(1);
+  }
+
+  const ownerId = "nio-owner-02b7cf.testnet";
+  const agentId = "nio-agent-02b7cf.testnet";
   const ks = new keyStores.InMemoryKeyStore();
   await ks.setKey(NETWORK, ownerId, KeyPair.fromString(loadCred(ownerId).private_key));
   await ks.setKey(NETWORK, agentId, KeyPair.fromString(loadCred(agentId).private_key));
-  // policy may use agent as signer for propose; load if present
-  if (existsSync(join(CREDS, `${policyId}.json`))) {
-    await ks.setKey(
-      NETWORK,
-      policyId,
-      KeyPair.fromString(loadCred(policyId).private_key)
-    );
-  }
-
   const near = await connect({
     networkId: NETWORK,
     nodeUrl: nearRpc,
     deps: { keyStore: ks },
   });
   const agent = await near.account(agentId);
-  const owner = await near.account(ownerId);
-
-  // Pause/revoke check before spending
-  let viewState;
-  try {
-    const raw = await near.connection.provider.query({
-      request_type: "call_function",
-      account_id: policyId,
-      method_name: "get_state",
-      args_base64: Buffer.from("{}").toString("base64"),
-      finality: "final",
-    });
-    viewState = JSON.parse(Buffer.from(raw.result).toString("utf8"));
-  } catch {
-    viewState = null;
-  }
-  report.on_chain_policy = {
-    paused: viewState?.paused ?? null,
-    autonomous_trading: viewState?.autonomous_trading ?? null,
-  };
-  if (viewState?.paused === true) {
-    report.verdict = "REFUSED_PAUSED";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "REFUSED_PAUSED";
-    finish(0);
-  }
 
   const beforeSender = tokenBal;
-  const beforeDest = await erc20Balance(USDC_SEPOLIA, DEST);
+  const beforeDest = await erc20Balance(USDC_SEPOLIA, TEST_RECIPIENT);
 
-  // Prefer propose_quoted_evm_transfer when available
-  const opId = `j17-${randomBytes(4).toString("hex")}`;
+  // Single authorization method — no fallback
   let proposeOutcome;
   try {
-    proposeOutcome = await callOnce(agent, policyId, {
+    proposeOutcome = await callOnce(agent, J16_POLICY, {
       methodName: "propose_quoted_evm_transfer",
-      args: {
-        operation_id: opId,
-        chain_id: 11155111,
-        token: USDC_SEPOLIA.toLowerCase(),
-        destination: DEST.toLowerCase(),
-        amount: AMOUNT,
-        digest_hex,
-        nonce,
-        gas_price: gasPrice.toString(),
-        gas_limit: GAS_LIMIT.toString(),
-      },
-      gas: BigInt("80000000000000"),
+      args: proposeArgs,
+      gas: BigInt("100000000000000"),
+      deposit: 0n,
     });
   } catch (e) {
-    // Fall back to propose_trade + request_signature path used in J16 if quoted method missing
-    report.propose_quoted_error = String(e.message || e).slice(0, 400);
-    proposeOutcome = await callOnce(agent, policyId, {
-      methodName: "propose_trade",
-      args: {
-        operation_id: opId,
-        size_raw: AMOUNT,
-        destination: DEST.toLowerCase(),
-        asset: `eip155:11155111:${USDC_SEPOLIA.toLowerCase()}`,
-      },
-      gas: BigInt("80000000000000"),
-    });
+    report.verdict = "NO_GO";
+    report.blocker = {
+      propose_failed: String(e.message || e).slice(0, 500),
+      note: "No propose_trade fallback — fix attestation/policy and retry as new operation",
+    };
+    finish(1);
   }
   report.propose = {
     tx: proposeOutcome.transaction.hash,
     explorer: `https://testnet.nearblocks.io/txns/${proposeOutcome.transaction.hash}`,
   };
 
-  const signOutcome = await callOnce(agent, policyId, {
-    methodName: "request_signature",
-    args: {
-      operation_id: opId,
-      path: J16_PATH,
-      payload: digest_hex,
-      domain_id: 0,
-    },
-    gas: BigInt("300000000000000"),
-  });
+  let signOutcome;
+  try {
+    signOutcome = await callOnce(agent, J16_POLICY, {
+      methodName: "request_signature",
+      args: { operation_id: opId },
+      gas: BigInt("300000000000000"),
+      deposit: 1n, // 1 yoctoNEAR — ABI-required
+    });
+  } catch (e) {
+    report.verdict = "NO_GO";
+    report.blocker = {
+      request_signature_failed: String(e.message || e).slice(0, 500),
+      note: "No resign — quarantine; inspect pending via get_pending",
+    };
+    finish(1);
+  }
   const nearTx = signOutcome.transaction.hash;
   report.mpc_request = {
     near_tx: nearTx,
     explorer: `https://testnet.nearblocks.io/txns/${nearTx}`,
   };
 
-  await sleep(2000);
+  await sleep(2500);
   const full = await near.connection.provider.txStatus(nearTx, agentId);
   const extracted = extractMpcSigFromNearTx(full);
-  report.mpc_extract = {
-    found: extracted.found,
-    reason: extracted.reason || null,
-  };
   if (!extracted.found) {
-    report.verdict = "NO_GO";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "FAIL_NO_MPC_SIG";
+    report.verdict = "UNKNOWN_NO_MPC_SIG";
     report.blocker = extracted.reason || "mpc_sig_missing";
-    finish(1);
+    finish(0);
   }
 
   const assembled = assembleSignedEvmFromMpc({
     nearTxFull: full,
     nonce,
-    gasPrice: gasPrice.toString(),
-    gasLimit: GAS_LIMIT.toString(),
+    gasPrice: tx.gas_price,
+    gasLimit: tx.gas_limit,
     token: USDC_SEPOLIA,
-    depositAddress: DEST,
-    amount: AMOUNT,
-    chainId: 11155111,
+    depositAddress: TEST_RECIPIENT,
+    amount: AMOUNT_RAW,
+    chainId: CHAIN_ID,
     expectedMpc: J16_MPC,
-    expectedDigestHex: digest_hex,
+    expectedDigestHex: bind.digest_hex,
   });
-  report.assemble = { ok: assembled.ok, reason: assembled.reason || null };
   if (!assembled.ok) {
     report.verdict = "NO_GO";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "FAIL_ASSEMBLE";
+    report.blocker = assembled;
     finish(1);
   }
 
-  const recovered = assembled.recovered || assembled.from;
-  if (String(recovered).toLowerCase() !== J16_MPC.toLowerCase()) {
-    report.verdict = "NO_GO";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "FAIL_RECOVER_MISMATCH";
-    report.recovered = recovered;
-    finish(1);
-  }
-
-  const v = validateSignedRawAgainstPolicy({
+  const vRaw = validateSignedRawAgainstPolicy({
     signedRawHex: assembled.rawHex,
     expected: {
-      chainId: 11155111,
+      chainId: CHAIN_ID,
       nonce,
       token: USDC_SEPOLIA,
       mpc: J16_MPC,
-      depositAddress: DEST,
-      amount: AMOUNT,
-      digestHex: digest_hex,
+      depositAddress: TEST_RECIPIENT,
+      amount: AMOUNT_RAW,
+      digestHex: bind.digest_hex,
     },
   });
-  report.validate = v;
-  if (!v.ok) {
+  if (!vRaw.ok) {
     report.verdict = "NO_GO";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "FAIL_POLICY_VALIDATE";
+    report.blocker = vRaw;
     finish(1);
   }
 
-  if (!process.env.NIO_TX_JOURNAL_SECRET) {
-    process.env.NIO_TX_JOURNAL_SECRET = createHash("sha256")
-      .update(`j17-${opId}`)
-      .digest("hex");
-  }
   const journalPath = join(EVIDENCE, `j17-sepolia-journal-${opId}.sqlite`);
-  const persisted = await persistPreBroadcast({
+  await persistPreBroadcast({
     journalPath,
     operationId: opId,
     signedRaw: assembled.rawHex,
     nonce: String(nonce),
-    decisionHash: digest_hex,
+    decisionHash: bind.digest_hex,
     network: "sepolia",
     mode: EXEC_MODE.TESTNET,
   });
-  report.journal = { ok: persisted?.ok, path: journalPath };
 
-  // Broadcast at most once
-  const broadcastOnce = async (raw) => {
-    try {
-      const txHash = await eth("eth_sendRawTransaction", [raw]);
-      return { tx_hash: txHash };
-    } catch (e) {
-      return { error: String(e.message || e) };
-    }
-  };
-
-  const first = await broadcastOnce(assembled.rawHex);
+  let first;
+  try {
+    const txHash = await eth("eth_sendRawTransaction", [assembled.rawHex]);
+    first = { tx_hash: txHash };
+  } catch (e) {
+    first = { error: String(e.message || e) };
+  }
   const eval1 = evaluateBroadcastAttempt({
     priorState: TX_STATE.SIGNED,
     rpcResult: first.tx_hash ? first : null,
     transportError: first.error || null,
   });
   report.broadcast = { first, eval: eval1 };
-  if (eval1.action === "UNKNOWN_QUARANTINE") {
+  if (eval1.action === "UNKNOWN_QUARANTINE" || !first.tx_hash) {
     report.verdict = "UNKNOWN_NO_RESIGN";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "UNKNOWN_QUARANTINE";
     finish(0);
   }
-  if (!first.tx_hash) {
-    report.verdict = "NO_GO";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "FAIL_BROADCAST";
-    finish(1);
-  }
-
-  // Refuse second broadcast / resign
-  const replayEval = evaluateBroadcastAttempt({
+  report.replay_protection = evaluateBroadcastAttempt({
     priorState: TX_STATE.BROADCAST,
     rpcResult: { tx_hash: first.tx_hash },
   });
-  report.replay_protection = {
-    second_broadcast_action: replayEval.action,
-    may_resign: replayEval.may_resign === false,
-  };
 
-  // Wait for receipt
   let receipt = null;
   for (let i = 0; i < 45; i++) {
     receipt = await eth("eth_getTransactionReceipt", [first.tx_hash]);
@@ -498,23 +480,20 @@ try {
   }
   if (!receipt) {
     report.verdict = "UNKNOWN_NO_RECEIPT";
-    report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "PASS_BROADCAST";
-    report.gates.REAL_SEPOLIA_TOKEN_SETTLEMENT = "UNKNOWN_NO_RECEIPT";
     finish(0);
   }
-
   receipt.from_node = true;
   receipt.label = "REAL_EVM_NODE";
 
   const afterSender = await erc20Balance(USDC_SEPOLIA, J16_MPC);
-  const afterDest = await erc20Balance(USDC_SEPOLIA, DEST);
+  const afterDest = await erc20Balance(USDC_SEPOLIA, TEST_RECIPIENT);
   const settle = verifySettlementFromReceipt({
     receipt,
     expected: {
       mpc: J16_MPC,
       token: USDC_SEPOLIA,
-      depositAddress: DEST,
-      amount: AMOUNT,
+      depositAddress: TEST_RECIPIENT,
+      amount: AMOUNT_RAW,
     },
     requireRealNode: true,
     balanceDelta: {
@@ -522,35 +501,24 @@ try {
       afterSender: afterSender.toString(),
       beforeDest: beforeDest.toString(),
       afterDest: afterDest.toString(),
-      amount: AMOUNT,
+      amount: AMOUNT_RAW,
     },
   });
-
   report.settle = settle;
-  report.balances = {
-    beforeSender: beforeSender.toString(),
-    afterSender: afterSender.toString(),
-    beforeDest: beforeDest.toString(),
-    afterDest: afterDest.toString(),
-  };
   report.explorer = `https://sepolia.etherscan.io/tx/${first.tx_hash}`;
-
-  report.gates.AUTHENTIC_MPC_TO_EVM_BROADCAST = "PASS";
-  report.gates.REAL_SEPOLIA_TOKEN_SETTLEMENT = settle.ok ? "PASS" : "FAIL";
-  report.gates.INDEPENDENT_RECONCILIATION =
-    settle.independently_verified && settle.financial_readiness
-      ? "PASS"
-      : "FAIL";
+  report.gates = {
+    AUTHENTIC_MPC_TO_EVM_BROADCAST: "PASS",
+    REAL_SEPOLIA_TOKEN_SETTLEMENT: settle.ok ? "PASS" : "FAIL",
+    INDEPENDENT_RECONCILIATION:
+      settle.independently_verified && settle.financial_readiness
+        ? "PASS"
+        : "FAIL",
+    INTENTS_SETTLEMENT_VERIFIED: "NOT_APPLICABLE_ERC20_TRANSFER",
+  };
   report.verdict = settle.ok ? "PASS" : "NO_GO";
   finish(settle.ok ? 0 : 1);
 } catch (e) {
   report.verdict = "NO_GO";
   report.error = String(e.message || e).slice(0, 1200);
-  report.gates = {
-    ...(report.gates || {}),
-    AUTHENTIC_MPC_TO_EVM_BROADCAST: "FAIL",
-    REAL_SEPOLIA_TOKEN_SETTLEMENT: "NO-GO",
-    INDEPENDENT_RECONCILIATION: "NO-GO",
-  };
   finish(1);
 }
