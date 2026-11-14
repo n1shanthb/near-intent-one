@@ -1,0 +1,27 @@
+{
+  "kind": "J15_FINAL_VERDICTS",
+  "baseline": "6285ebe",
+  "finished_at": "2026-11-14T09:45:00.000Z",
+  "hard_stop_mainnet": true,
+  "gates": {
+    "MPC_SIGNATURE_RECOVERY": "PASS",
+    "REAL_SIGNED_EVM_TRANSACTION": "PASS",
+    "REAL_TESTNET_OR_LOCAL_FORK_BROADCAST": "PASS_LOCAL_FORK",
+    "INDEPENDENT_SETTLEMENT_VERIFICATION": "PASS_LOCAL_FORK",
+    "AUTONOMOUS_KEEPER_TO_EXECUTOR": "PASS",
+    "RECONCILIATION_PROOF": "PASS_LOCAL_FORK",
+    "MAINNET_READY_FOR_SEPARATE_OWNER_APPROVAL": "NO-GO"
+  },
+  "notes": [
+    "PASS_LOCAL_FORK is not a mainnet autonomous settlement",
+    "LIVE_LLM produced NO_TRADE without forced TRADE",
+    "Financial modes reject placeholder signed_raw and silent simulateBroadcast",
+    "Mainnet policy remains paused; no mainnet mutation in J15"
+  ],
+  "evidence": [
+    "docs/evidence/J15_LOCAL_FORK_SETTLEMENT_PROOF.json",
+    "docs/evidence/J15_M1_M2_READONLY_REPLAY.json",
+    "docs/evidence/J15_KEEPER_TO_EXECUTOR.json",
+    "docs/evidence/J15_MAINNET_ACTIVATION_READINESS.md"
+  ]
+}

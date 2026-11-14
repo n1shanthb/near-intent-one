@@ -17,6 +17,7 @@ import { ACTION, LLM_MODE } from "./shadowAgent.mjs";
 export const EXEC_MODE = Object.freeze({
   SHADOW: "SHADOW",
   TESTNET: "TESTNET",
+  LOCAL_FORK: "LOCAL_FORK",
   MAINNET: "MAINNET",
 });
 

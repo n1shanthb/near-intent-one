@@ -64,4 +64,15 @@ export {
 export {
   deterministicTradeScenario,
   runAutonomousExecution,
+  EXEC_LABEL,
 } from "./executionService.mjs";
+
+export {
+  assembleSignedEvmFromMpc,
+  signEip155WithLocalKey,
+  validateSignedRawAgainstPolicy,
+  createLocalForkRpc,
+  broadcastSignedRawOnce,
+  verifySettlementFromReceipt,
+  generateLocalForkSigner,
+} from "./signedTxPipeline.mjs";

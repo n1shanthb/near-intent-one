@@ -1,7 +1,8 @@
 /**
- * Unattended autonomous keeper (shadow-capable).
+ * Unattended autonomous keeper.
  * Cross-process lock, durable journal, real OpenRouter pipeline, restart recovery.
- * HARD STOP: never broadcasts, never MPC, never mainnet mutations.
+ * Default: SHADOW execution. Optional execAdapters enable LOCAL_FORK/TESTNET path.
+ * HARD STOP: MAINNET mode refused; no mainnet mutations from this module.
  */
 
 import { strict as assert } from "node:assert";
@@ -27,6 +28,7 @@ import {
   executeShadowPlan,
   EXEC_MODE,
 } from "./executorAdapter.mjs";
+import { runAutonomousExecution } from "./executionService.mjs";
 
 /**
  * Run N keeper cycles.
@@ -40,6 +42,12 @@ import {
  * @param {"fixture"|"LIVE_LLM"} [opts.llmMode]
  * @param {boolean} [opts.liveMarket=true] — fetch live market when LIVE_LLM
  * @param {string} [opts.evidence_dir]
+ * @param {string} [opts.execMode=SHADOW] — SHADOW | LOCAL_FORK | TESTNET (MAINNET refused)
+ * @param {object} [opts.execAdapters] — required for non-SHADOW financial execution
+ * @param {object} [opts.onChain] — live policy snapshot for revalidation
+ * @param {object} [opts.lockedTx]
+ * @param {string} [opts.txJournalPath]
+ * @param {function} [opts.getQuote] — async ({decision,plan})=>quote
  */
 export async function runKeeperCycles(opts) {
   const {
@@ -51,7 +59,22 @@ export async function runKeeperCycles(opts) {
     llmMode = LLM_MODE.LIVE_LLM,
     liveMarket = llmMode === LLM_MODE.LIVE_LLM,
     evidence_dir = null,
+    execMode = EXEC_MODE.SHADOW,
+    execAdapters = null,
+    onChain = null,
+    lockedTx = null,
+    txJournalPath = null,
+    getQuote = null,
   } = opts;
+
+  if (execMode === EXEC_MODE.MAINNET) {
+    return {
+      ok: false,
+      verdict: "FAIL",
+      reason: "mainnet_exec_hard_stopped",
+      cycles: [],
+    };
+  }
 
   assert(mandate, "mandate_required");
   assert(portfolio_id, "portfolio_id_required");
@@ -207,56 +230,131 @@ export async function runKeeperCycles(opts) {
         worker.budget.openrouter_requests_today = agent.state.openrouter_requests_today;
         await persistBudget(worker);
 
-        // Execution adapter (SHADOW default; MAINNET hard-stopped in planner)
+        const chainSnap = onChain || {
+          paused: false,
+          revoked: false,
+          autonomous_trading: Boolean(mandate.trading_enabled),
+          enforce_autonomous_on_agent: true,
+          mandate_epoch: mandate.mandate_epoch,
+          limits: mandate.limits,
+        };
+
         const plan = planAutonomousExecution({
           decision,
           mandate,
-          onChain: {
-            paused: false,
-            revoked: false,
-            autonomous_trading: Boolean(mandate.trading_enabled),
-            enforce_autonomous_on_agent: true,
-          },
-          mode: EXEC_MODE.SHADOW,
+          onChain: chainSnap,
+          mode:
+            execMode === EXEC_MODE.LOCAL_FORK ? EXEC_MODE.TESTNET : execMode,
         });
         cycle.execution_plan = {
           execute: plan.execute,
           reason: plan.reason || null,
           blockers: plan.blockers || null,
+          amount_raw: plan.amount_raw || null,
+          execution_binding: plan.execution_binding || null,
           requires_owner_ledger_per_trade: plan.requires_owner_ledger_per_trade ?? null,
+          exec_mode: execMode,
         };
 
         if (plan.execute) {
           await transitionState(worker, WORKER_STATE.EXECUTING);
-          const exec = await executeShadowPlan(plan, {
-            appendJournal: (e) => appendJournalEntry(worker, e),
-          });
-          cycle.shadow_execution = exec.record || exec;
-          if (exec.record?.amount_raw) {
-            const amt = BigInt(exec.record.amount_raw || "0");
-            worker.budget.spent_today_raw = (
-              BigInt(worker.budget.spent_today_raw || "0") + amt
-            ).toString();
-            worker.budget.recent_operation_sizes = [
-              ...(worker.budget.recent_operation_sizes || []),
-              exec.record.amount_raw,
-            ].slice(-20);
-            await persistBudget(worker);
+
+          if (execMode === EXEC_MODE.SHADOW || !execAdapters) {
+            const exec = await executeShadowPlan(plan, {
+              appendJournal: (e) => appendJournalEntry(worker, e),
+            });
+            cycle.shadow_execution = exec.record || exec;
+            if (exec.record?.amount_raw) {
+              const amt = BigInt(exec.record.amount_raw || "0");
+              worker.budget.spent_today_raw = (
+                BigInt(worker.budget.spent_today_raw || "0") + amt
+              ).toString();
+              worker.budget.recent_operation_sizes = [
+                ...(worker.budget.recent_operation_sizes || []),
+                exec.record.amount_raw,
+              ].slice(-20);
+              await persistBudget(worker);
+            }
+            await transitionState(worker, WORKER_STATE.RECONCILING);
+          } else {
+            const quote = getQuote
+              ? await getQuote({ decision, plan })
+              : null;
+            const execTrace = await runAutonomousExecution({
+              decision,
+              mandate,
+              onChain: chainSnap,
+              quote,
+              mode: execMode,
+              adapters: execAdapters,
+              journalPath: txJournalPath,
+              simulateBroadcast: false,
+              lockedTx,
+            });
+            cycle.execution_service = {
+              ok: execTrace.ok,
+              error: execTrace.error || null,
+              unknown: execTrace.unknown || false,
+              label: execTrace.label || execMode,
+              amount_raw: execTrace.plan?.amount_raw || null,
+              steps: (execTrace.steps || []).map((s) => Object.keys(s)[0]),
+            };
+            await appendJournalEntry(worker, {
+              kind: "execution_service",
+              mode: execMode,
+              decision_hash: decision.decision_hash,
+              ok: execTrace.ok,
+              error: execTrace.error || null,
+              unknown: execTrace.unknown || false,
+              amount_raw: execTrace.plan?.amount_raw || null,
+            });
+            if (execTrace.unknown) {
+              await markUnknownOutcome(worker, {
+                reason: execTrace.error || "execution_unknown",
+              });
+              results.cycles.push(cycle);
+              break;
+            }
+            if (execTrace.ok && execTrace.plan?.amount_raw) {
+              const amt = BigInt(execTrace.plan.amount_raw || "0");
+              worker.budget.spent_today_raw = (
+                BigInt(worker.budget.spent_today_raw || "0") + amt
+              ).toString();
+              await persistBudget(worker);
+            }
+            if (execTrace.ok) {
+              await transitionState(worker, WORKER_STATE.RECONCILING);
+            } else {
+              await transitionState(worker, WORKER_STATE.IDLE);
+            }
           }
-          await transitionState(worker, WORKER_STATE.RECONCILING);
         } else {
+          // HOLD / NO_TRADE is a correct autonomous outcome — do not force TRADE
+          await appendJournalEntry(worker, {
+            kind: "decision_no_exec",
+            action: decision.action,
+            reason: plan.reason || decision.reason || plan.blockers,
+            decision_hash: decision.decision_hash,
+            llm_mode: decision.llm_mode,
+          });
           await transitionState(worker, WORKER_STATE.IDLE);
         }
 
         if (worker.state === WORKER_STATE.RECONCILING) {
           await appendJournalEntry(worker, {
             kind: "reconcile",
-            mode: "shadow",
+            mode: execMode === EXEC_MODE.SHADOW ? "shadow" : execMode,
             decision_hash: decision.decision_hash,
-            status: "SHADOW_RECONCILED",
+            status:
+              execMode === EXEC_MODE.SHADOW
+                ? "SHADOW_RECONCILED"
+                : "EXECUTOR_RECONCILED",
           });
           await transitionState(worker, WORKER_STATE.IDLE);
-        } else {
+        } else if (
+          !cycle.execution_service &&
+          execMode === EXEC_MODE.SHADOW
+        ) {
           await appendJournalEntry(worker, {
             kind: "reconcile",
             mode: "shadow",

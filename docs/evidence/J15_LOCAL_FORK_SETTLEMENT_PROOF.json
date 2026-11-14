@@ -1,0 +1,249 @@
+{
+  "kind": "J15_LOCAL_FORK_SETTLEMENT_PROOF",
+  "started_at": "2026-11-14T09:19:50.054Z",
+  "hard_stop_mainnet": true,
+  "label": "LOCAL_FORK",
+  "note": "Not a mainnet autonomous settlement. Local JSON-RPC fork only.",
+  "signer": {
+    "address": "0x5bc8576e15449339027dcbd6b31998e53915c254",
+    "label": "LOCAL_FORK_EPHEMERAL_KEY"
+  },
+  "assembled": {
+    "ok": true,
+    "digest_hex": "14a770efdeb8ff47c1cf694856564c2d95a6a44d6353f706cbe2dc3c6102e08b",
+    "recovered": "0x5bc8576e15449339027dcbd6b31998e53915c254",
+    "raw_prefix": "0xf8ab80843b9aca0083",
+    "raw_len": 348
+  },
+  "gates": {
+    "MPC_SIGNATURE_RECOVERY": "PASS",
+    "REAL_SIGNED_EVM_TRANSACTION": "PASS",
+    "REAL_TESTNET_OR_LOCAL_FORK_BROADCAST": "PASS_LOCAL_FORK",
+    "INDEPENDENT_SETTLEMENT_VERIFICATION": "PASS_LOCAL_FORK",
+    "RECONCILIATION_PROOF": "PASS_LOCAL_FORK"
+  },
+  "validate": {
+    "ok": true,
+    "blockers": [],
+    "decoded": {
+      "ok": true,
+      "nonce": 0,
+      "gasPrice": "1000000000",
+      "gasLimit": "100000",
+      "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "value": "0",
+      "data": {
+        "type": "Buffer",
+        "data": [
+          169,
+          5,
+          156,
+          187,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          64,
+          122,
+          124,
+          64,
+          19,
+          238,
+          189,
+          62,
+          93,
+          57,
+          138,
+          118,
+          184,
+          217,
+          67,
+          196,
+          244,
+          156,
+          113,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          15,
+          66,
+          64
+        ]
+      },
+      "chainId": 31337,
+      "recoveryId": 0,
+      "r": {
+        "type": "Buffer",
+        "data": [
+          132,
+          187,
+          22,
+          181,
+          242,
+          234,
+          99,
+          45,
+          65,
+          198,
+          7,
+          162,
+          223,
+          122,
+          246,
+          209,
+          183,
+          235,
+          126,
+          8,
+          93,
+          78,
+          179,
+          153,
+          222,
+          12,
+          232,
+          240,
+          12,
+          219,
+          0,
+          72
+        ]
+      },
+      "s": {
+        "type": "Buffer",
+        "data": [
+          63,
+          115,
+          30,
+          104,
+          234,
+          139,
+          105,
+          16,
+          96,
+          130,
+          226,
+          56,
+          120,
+          156,
+          187,
+          1,
+          103,
+          230,
+          176,
+          77,
+          189,
+          214,
+          212,
+          211,
+          127,
+          235,
+          5,
+          64,
+          154,
+          159,
+          243,
+          193
+        ]
+      },
+      "digest_hex": "14a770efdeb8ff47c1cf694856564c2d95a6a44d6353f706cbe2dc3c6102e08b",
+      "recovered": "0x5bc8576e15449339027dcbd6b31998e53915c254",
+      "transfer": {
+        "recipient": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+        "amount": "1000000"
+      },
+      "rawHex": "0xf8ab80843b9aca00830186a094a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4880b844a9059cbb000000000000000000000000407a7c4013eebd3e5d398a76b8d943c4f49c710000000000000000000000000000000000000000000000000000000000000f424082f4f5a084bb16b5f2ea632d41c607a2df7af6d1b7eb7e085d4eb399de0ce8f00cdb0048a03f731e68ea8b69106082e238789cbb0167e6b04dbdd6d4d37feb05409a9ff3c1"
+    }
+  },
+  "replay_rejected": true,
+  "execution_trace": {
+    "ok": true,
+    "label": "LOCAL_FORK",
+    "error": null,
+    "steps": [
+      {
+        "plan": "EXECUTE"
+      },
+      {
+        "propose": {
+          "ok": true
+        }
+      },
+      {
+        "assemble_signed_raw": {
+          "ok": true,
+          "recovered": "0x5bc8576e15449339027dcbd6b31998e53915c254"
+        }
+      },
+      {
+        "validate_signed_raw": {
+          "ok": true,
+          "blockers": [],
+          "recovered": "0x5bc8576e15449339027dcbd6b31998e53915c254"
+        }
+      },
+      {
+        "persist": {
+          "ok": true
+        }
+      },
+      {
+        "broadcast": {
+          "tx_hash": "0x567ac340cc5e1c409fac1fe3d6763e782953dbdb818d222a07b3ee09205c7dae"
+        }
+      },
+      {
+        "settle": {
+          "ok": true,
+          "status": "SETTLED",
+          "tx_hash": "0x567ac340cc5e1c409fac1fe3d6763e782953dbdb818d222a07b3ee09205c7dae"
+        }
+      },
+      {
+        "reconcile": {
+          "ok": true,
+          "status": "RECONCILED"
+        }
+      }
+    ],
+    "amount_raw": "1000000",
+    "rejected_strategist": "100000000"
+  },
+  "verdict": "PASS_LOCAL_FORK",
+  "finished_at": "2026-11-14T09:19:50.079Z"
+}

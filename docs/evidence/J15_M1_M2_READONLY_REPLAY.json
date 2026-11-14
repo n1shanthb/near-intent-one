@@ -1,0 +1,40 @@
+{
+  "kind": "J15_M1_M2_READONLY_REPLAY",
+  "started_at": "2026-11-14T09:19:30.283Z",
+  "hard_stop_mainnet": true,
+  "mode": "READ_ONLY",
+  "note": "Recorded canaries are NOT new autonomous mainnet settlements",
+  "missions": {
+    "mission1": {
+      "ok": true,
+      "label": "MISSION1_ETH",
+      "path": "E:\\near-intent-one\\docs\\evidence\\MAINNET_CHECKPOINT_J9_M1_RECONCILED.json",
+      "lifecycle": "RECONCILED",
+      "broadcast_hash": null,
+      "decoded": {
+        "chainId": 1,
+        "nonce": 0,
+        "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "recovered": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+        "transfer": {
+          "recipient": "0x407a7c4013eebd3e5d398a76b8d943c4f49c7100",
+          "amount": "1000000"
+        },
+        "digest_hex": "33ccf724a7d9810091bcb2fd594e630bb7297a374afc1971cfcb43f849bb78ac"
+      },
+      "validate_blockers": [],
+      "note": "READ_ONLY — no broadcast performed"
+    },
+    "mission2": {
+      "ok": true,
+      "label": "MISSION2_BASE",
+      "path": "E:\\near-intent-one\\docs\\evidence\\MAINNET_CHECKPOINT_J9_M2_RECONCILED.json",
+      "lifecycle": "RECONCILED",
+      "broadcast_hash": "0xdfbaf42bae71c74efce65f2be1f6553a2c424003e5386be82b70af828d6140e2",
+      "digest_hex": "93aa532ca82c2a1bae6fb7be78b5d1c02b16a54e250e5d0dafc751640df7e958",
+      "note": "READ_ONLY lifecycle replay — signed_raw not embedded in this evidence file; not a new settlement"
+    }
+  },
+  "verdict": "PASS_READONLY",
+  "finished_at": "2026-11-14T09:19:30.335Z"
+}

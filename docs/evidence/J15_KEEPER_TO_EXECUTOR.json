@@ -1,0 +1,68 @@
+{
+  "kind": "J15_KEEPER_TO_EXECUTOR",
+  "started_at": "2026-11-14T09:17:08.763Z",
+  "hard_stop_mainnet": true,
+  "llm_configured": true,
+  "models": {
+    "researcher": "google/gemini-2.5-flash",
+    "strategist": "anthropic/claude-sonnet-4.6",
+    "critic": "openai/gpt-5.2",
+    "copilot": "google/gemini-2.5-flash"
+  },
+  "live_openrouter": {
+    "ok": true,
+    "verdict": "PASS",
+    "cycles": [
+      {
+        "action": "NO_TRADE",
+        "reason": "NO_OPPORTUNITY",
+        "fitter": "REJECTED",
+        "execute": false,
+        "llm_mode": "LIVE_LLM"
+      },
+      {
+        "action": "NO_TRADE",
+        "reason": "NO_OPPORTUNITY",
+        "fitter": "REJECTED",
+        "execute": false,
+        "llm_mode": "LIVE_LLM"
+      }
+    ],
+    "note": "HOLD/NO_TRADE is a valid autonomous outcome; TRADE not forced"
+  },
+  "fixture_hold": {
+    "ok": true,
+    "action": "NO_TRADE",
+    "execute": false,
+    "note": "trading_enabled=false → no exec; fixture labeled"
+  },
+  "keeper_executor_fixture_trade": {
+    "ok": true,
+    "label": "LOCAL_FORK",
+    "amount_raw": "1000000",
+    "rejected_strategist": "100000000",
+    "steps": [
+      "plan",
+      "propose",
+      "assemble_signed_raw",
+      "validate_signed_raw",
+      "persist",
+      "broadcast",
+      "settle",
+      "reconcile"
+    ],
+    "deterministic_scenario": true,
+    "llm_mode": "fixture",
+    "note": "Explicit FIXTURE TRADE for executor wiring — not a forced LIVE_LLM TRADE"
+  },
+  "mainnet_refused": {
+    "ok": true,
+    "reason": "mainnet_exec_hard_stopped"
+  },
+  "gates": {
+    "AUTONOMOUS_KEEPER_TO_EXECUTOR": "PASS",
+    "LIVE_LLM_NO_FORCED_TRADE": "PASS"
+  },
+  "verdict": "PASS",
+  "finished_at": "2026-11-14T09:18:30.780Z"
+}
