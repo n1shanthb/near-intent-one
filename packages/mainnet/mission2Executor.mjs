@@ -1,5 +1,5 @@
 /**
- * Mission 1 production step runner — Ethereum USDC → NEAR NEP-141 USDC.
+ * Mission 2 production step runner — Base USDC → NEAR NEP-141 USDC.
  * Independent of J8B Arb and Mission 1 Eth operators. Default invoke=false (no mutations).
  */
 import { createHash } from "node:crypto";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
+import { MAINNET } from "../networks/profiles.mjs";
 import {
   MAINNET_IDENTITIES,
   MAINNET_USDC,
@@ -1624,6 +1625,15 @@ export async function mission2StepSettle({
     return { ok: false, reason: "broadcast_or_deposit_missing" };
   }
 
+  let nearRpcUrl = deps.nearRpc;
+  if (!nearRpcUrl) {
+    // Production settle must reach NEAR for NEP-141 delta; never silently skip.
+    const a = deps.adapters || null;
+    nearRpcUrl = a?.rpc || MAINNET.near?.rpcs?.[0] || null;
+  }
+  if (!nearRpcUrl) {
+    return { ok: false, reason: "near_rpc_required" };
+  }
   const settled = await verifyMission2Settlement({
     txHash,
     depositAddress: deposit,
@@ -1631,7 +1641,7 @@ export async function mission2StepSettle({
     minAmountOut: minOut,
     nearUsdcBefore: record.near_usdc_before,
     baseRpcUrl: deps.baseRpc || MAINNET_EVM_RPCS.base,
-    nearRpcUrl: deps.nearRpc,
+    nearRpcUrl,
     deps: {
       sourceVerify: deps.sourceVerify,
       oneClick: deps.oneClick,
@@ -1755,22 +1765,37 @@ export async function mission2StepReconcilePending({
 
   if (deps.reconcileFn) {
     const res = await deps.reconcileFn({
+      operationId,
       operation_id: operationId,
+      settlementState: "Success",
       settlement_state: "Success",
+      evidenceHash: hash,
       evidence_hash: hash,
     });
     if (!res?.ok) return { ok: false, reason: "reconcile_failed", detail: res };
+  } else if (deps.ledgerReconcileDone === true) {
+    // Owner already submitted Ledger reconcile_pending; verify on-chain only.
   } else if (a?.reconcilePending) {
     const res = await a.reconcilePending({
-      operation_id: operationId,
-      settlement_state: "Success",
-      evidence_hash: hash,
+      operationId,
+      settlementState: "Success",
+      evidenceHash: hash,
     });
     if (!res?.ok) return { ok: false, reason: "reconcile_failed", detail: res };
   } else {
     return { ok: false, reason: "reconcile_adapter_missing_use_ledger" };
   }
 
+  const onchainDeps = {};
+  if (Object.prototype.hasOwnProperty.call(deps, "pendingAfter")) {
+    onchainDeps.pending = deps.pendingAfter;
+  }
+  if (Object.prototype.hasOwnProperty.call(deps, "evidenceOnchain")) {
+    onchainDeps.evidenceOnchain = deps.evidenceOnchain;
+  }
+  if (Object.prototype.hasOwnProperty.call(deps, "pausedAfter")) {
+    onchainDeps.pausedAfter = deps.pausedAfter;
+  }
   const onchain = await verifyMission2ReconcileOnchain({
     adapters: a || {
       getPending: deps.getPending,
@@ -1782,11 +1807,7 @@ export async function mission2StepReconcilePending({
     operationId,
     evidenceHash: hash,
     testHarness,
-    deps: {
-      pending: deps.pendingAfter,
-      evidenceOnchain: deps.evidenceOnchain,
-      pausedAfter: deps.pausedAfter,
-    },
+    deps: onchainDeps,
   });
   if (!onchain.ok) {
     return {

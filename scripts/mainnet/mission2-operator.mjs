@@ -7,6 +7,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { homedir } from "node:os";
 import {
   mission2RunnerCapabilities,
   assertMission2RunnerComplete,
@@ -28,11 +29,35 @@ import {
   createMission2LiveAdapters,
   createMission2ViewAdapters,
 } from "../../packages/mainnet/mission2Adapters.mjs";
-import { mission2StoreDir, MISSION2_LIVE_AMOUNT_CAP } from "../../packages/mainnet/mission2ExecutionPath.mjs";
-import { getLifecycleState } from "../../packages/mainnet/canaryOneShot.mjs";
+import {
+  mission2StoreDir,
+  MISSION2_LIVE_AMOUNT_CAP,
+} from "../../packages/mainnet/mission2ExecutionPath.mjs";
+import {
+  getLifecycleState,
+  CANARY_ATTESTOR_PK,
+} from "../../packages/mainnet/canaryOneShot.mjs";
 import { openTxJournal } from "../../packages/execution/txJournal.mjs";
 import { redactSecrets } from "../../packages/mainnet/agentCredentials.mjs";
-import { homedir } from "node:os";
+import { publicKeyEd25519 } from "../../packages/intents-codec/quote-auth.mjs";
+
+function loadMission2Attestor() {
+  const latest = join(
+    homedir(),
+    ".nio-secure",
+    "mainnet-attestor",
+    "LATEST_ATTESTOR_PATH.txt"
+  );
+  if (!existsSync(latest)) throw new Error("attestor_not_generated");
+  const seedPath = readFileSync(latest, "utf8").trim();
+  const seed = JSON.parse(readFileSync(seedPath, "utf8"));
+  const sk = Buffer.from(seed.secretKey64, "base64");
+  const pk = publicKeyEd25519(sk);
+  if (pk !== seed.publicKey || pk !== CANARY_ATTESTOR_PK) {
+    throw new Error("attestor_key_mismatch");
+  }
+  return { publicKey: pk, secretKey64: sk };
+}
 
 function arg(name, def = null) {
   const i = process.argv.indexOf(`--${name}`);
@@ -122,9 +147,11 @@ HARD STOP without financial approval: never pass --invoke for live mutations.
   }
 
   if (cmd === "prepare") {
+    const ttlRaw = arg("ttl-ms");
     const r = mission2StepPrepareApproval({
       operationId: op || undefined,
       amount: arg("amount") || MISSION2_LIVE_AMOUNT_CAP,
+      ttlMs: ttlRaw != null ? Number(ttlRaw) : undefined,
     });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     return;
@@ -133,10 +160,12 @@ HARD STOP without financial approval: never pass --invoke for live mutations.
   if (cmd === "quote") {
     if (!op) throw new Error("--op required");
     const adapters = await createMission2ViewAdapters({});
+    const attestor = loadMission2Attestor();
     const r = await mission2StepQuoteAttest({
       operationId: op,
       adapters,
       allowFundedQuote: flag("allow-funded-quote"),
+      deps: { attestor },
     });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     if (!r.ok) process.exitCode = 1;
@@ -232,7 +261,11 @@ HARD STOP without financial approval: never pass --invoke for live mutations.
 
   if (cmd === "settle") {
     if (!op) throw new Error("--op required");
-    const r = await mission2StepSettle({ operationId: op });
+    const adapters = await createMission2ViewAdapters({});
+    const r = await mission2StepSettle({
+      operationId: op,
+      deps: { adapters, nearRpc: adapters.rpc },
+    });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     if (!r.ok) process.exitCode = 1;
     return;
@@ -248,6 +281,7 @@ HARD STOP without financial approval: never pass --invoke for live mutations.
       invoke,
       adapters,
       evidenceHash: arg("evidence"),
+      deps: flag("ledger-done") ? { ledgerReconcileDone: true } : {},
     });
     console.log(JSON.stringify(redactSecrets(r), null, 2));
     if (!r.ok) process.exitCode = 1;

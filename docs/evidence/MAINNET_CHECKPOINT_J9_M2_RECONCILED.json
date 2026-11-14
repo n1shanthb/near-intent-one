@@ -1,0 +1,38 @@
+{
+  "kind": "mission2_base_near_complete_v1",
+  "operation_id": "m2-canary-1794636150765-ed31a108",
+  "lifecycle": "RECONCILED",
+  "used": true,
+  "paused": true,
+  "onchain": {
+    "settlement_state": "Success",
+    "evidence_hash": "4650691cb08cfdc69b31e4bb3777dab94d3ab6eab57d308edc7a972ff285fc18",
+    "evidence_match": true,
+    "signing_state": "Signed"
+  },
+  "amounts": {
+    "amount_in": "997398",
+    "min_out": "992210",
+    "near_delta": "997196",
+    "near_usdc_before": "999798"
+  },
+  "txs": {
+    "unpause": "3EyQEuxQZ4MKy5n1pMiGiJssqP5DBzBh21Pm355uLmnC",
+    "propose": "G4eytRAy8ktqFzJSqPpah6KLKuCxry21rJj77uMTfYGN",
+    "sign": "JChcSuAsz73yswAcMbUJwTkQ2vLzbg7dCGWLj5mECPhr",
+    "base_broadcast": "0xdfbaf42bae71c74efce65f2be1f6553a2c424003e5386be82b70af828d6140e2",
+    "pause": "HVFfEsaJXQGjQKhvyF5wG3dpBYgo7sB6oSkzU8wp2qoe",
+    "reconcile": "E3g711GASJVM492hzeudRrfWjJrig4B9bh29nDFBqhK5"
+  },
+  "deposit_address": "0x16ec400b6dfd911c419305b4954fcee6ed33f4af",
+  "digest_hex": "93aa532ca82c2a1bae6fb7be78b5d1c02b16a54e250e5d0dafc751640df7e958",
+  "post_balances": {
+    "base_usdc": "0",
+    "base_eth": 0.000524728288336797
+  },
+  "priors": {
+    "j8b": "Success",
+    "m1": "Success"
+  },
+  "checked_at": "2026-11-14T06:12:54.707Z"
+}

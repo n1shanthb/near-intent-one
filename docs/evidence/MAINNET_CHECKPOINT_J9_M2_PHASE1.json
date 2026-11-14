@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "phase": "PHASE_2_AWAITING_OWNER_LEDGER_UNPAUSE",
+  "baseline": "d389b664d7115ee50c3422418671c31f85ac1991",
+  "started_at": "2026-11-14T06:02:30.000Z",
+  "hard_stop_before": "propose/sign/broadcast",
+  "mutations_invoked": false,
+  "near_mutations_pending": true,
+  "financial_approval": true,
+  "operation_id": "m2-canary-1794636150765-ed31a108",
+  "authorization_expires_at": "2026-11-14T06:22:30.767Z",
+  "lifecycle": "ATTESTED",
+  "transaction": {
+    "chain_id": 8453,
+    "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "amount": "997398",
+    "amount_label": "0.997398 USDC (balance-capped)",
+    "mpc_signer": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "deposit_address": "0x16Ec400b6DfD911C419305b4954fCee6Ed33f4aF",
+    "recipient": "nishanthb.near",
+    "refund_to": "0xee82d6327a929cc3feb1dd10b71b3553a19c7cd4",
+    "min_amount_out": "992210",
+    "quote_hash": "C3t5pDeMgnT1dEDk2H3zLhxM8TdC93PduRUNASfDjM26",
+    "correlation_id": "88878b07-1ec8-4ce6-b0bf-7f544a4504b8",
+    "digest_hex": "93aa532ca82c2a1bae6fb7be78b5d1c02b16a54e250e5d0dafc751640df7e958",
+    "nonce": 0,
+    "gas_price": "9000000",
+    "gas_limit": "75531",
+    "near_usdc_before": "999798",
+    "independent_of_j8b": true,
+    "independent_of_m1_eth": true
+  },
+  "required_next": [
+    "1) Owner Ledger unpause() on policy.nishanthb.near",
+    "2) mission2-operator verify-unpaused --op m2-canary-1794636150765-ed31a108",
+    "3) confirm --phase propose; propose --invoke (exactly once)",
+    "4) confirm --phase sign; sign --invoke (exactly once)",
+    "5) persist signed raw; broadcast --invoke (exactly once)",
+    "6) Ledger pause() when safe; settle; reconcile with separate confirm"
+  ]
+}
