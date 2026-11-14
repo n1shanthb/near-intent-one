@@ -84,7 +84,7 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
 
   if (isPublic) {
     return (
-      <div className="page-enter nio-mandate-page">
+      <div className="page-enter nio-page-shell nio-mandate-page">
         <div className="axis-intro">
           <div>
             <h1>Mandate</h1>
@@ -94,19 +94,19 @@ export function MandatePage({ onNav }: { onNav: (id: NavId) => void }) {
               workspace — no compiler preview, no demo limits.
             </p>
           </div>
+          <button
+            type="button"
+            className="axis-button secondary"
+            onClick={() => onNav("security")}
+          >
+            Open security
+          </button>
         </div>
         <AutonomousMandatePreview />
-        <p className="axis-supporting" style={{ marginTop: 12 }}>
+        <p className="axis-supporting">
           Personal mandate composer is available only in{" "}
           <strong>Set up your own</strong> workspace.
         </p>
-        <button
-          type="button"
-          className="axis-button secondary"
-          onClick={() => onNav("security")}
-        >
-          Open security
-        </button>
       </div>
     );
   }

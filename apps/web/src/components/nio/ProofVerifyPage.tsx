@@ -9,6 +9,12 @@ import {
   useWorkspace,
 } from "../../state/WorkspaceContext";
 import { LiveDataChrome } from "./WorkspaceSwitcher";
+import {
+  EvidenceTimeline,
+  MetricCard,
+  StatusBadge,
+  governanceTitle,
+} from "./uiPrimitives";
 import type { NavId } from "./nav";
 
 function Badge({ children, kind }: { children: string; kind?: string }) {
@@ -147,17 +153,25 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
   }
 
   const status = verifiedStatusLabel(proof);
+  const govItems = (txs?.governance || []).map((g) => ({
+    id: g.tx,
+    title: governanceTitle(g.kind),
+    hash: g.tx,
+    href: g.explorer,
+  }));
 
   return (
-    <section className="axis-panel">
-      <div className="axis-panel-heading">
-        <h2>Proof &amp; Verify</h2>
-        <p className="axis-supporting">
-          Public mainnet audit trail for {identities.policy} — no wallet required.
-          Audit receipt ≠ settled swap. Updated {formatLastUpdated(live.lastUpdated)}.
-        </p>
+    <div className="page-enter nio-page-shell">
+      <div className="axis-intro">
+        <div>
+          <h1>Proof &amp; Verify</h1>
+          <p>
+            Public mainnet audit trail for {identities.policy} — no wallet required.
+            Audit receipt ≠ settled swap. Updated {formatLastUpdated(live.lastUpdated)}.
+          </p>
+        </div>
+        <LiveDataChrome />
       </div>
-      <LiveDataChrome />
 
       {loading && <p className="axis-supporting">Loading live mainnet proofs…</p>}
       {error && (
@@ -167,86 +181,77 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
         </p>
       )}
 
-      <div className="nio-proof-grid">
-        <div>
-          <h3>Governance transactions</h3>
-          <ul className="nio-tx-list">
-            {(txs?.governance || []).map((g) => (
-              <li key={g.tx}>
-                <Badge kind="mainnet">{g.label}</Badge> {g.kind}{" "}
-                <a href={g.explorer} target="_blank" rel="noreferrer" className="mono">
-                  {g.tx.slice(0, 12)}…
-                </a>
-              </li>
-            ))}
-            {!txs?.governance?.length && (
-              <>
-                <li>
-                  <a
-                    href="https://nearblocks.io/txns/7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Deploy WASM
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Activate mandate
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://nearblocks.io/txns/4oM5UGjwk8vtUzJ6cjo6bhY1zWaaGSMtD8c2LDC2Tb3G"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Audit WASM upgrade
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    NO_TRADE audit proof
-                  </a>
-                </li>
-              </>
-            )}
-          </ul>
-          <p className="axis-supporting">{txs?.supervised_canaries_note}</p>
+      {mandate?.ok ? (
+        <div
+          className="axis-stats nio-metric-row"
+          style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}
+        >
+          <MetricCard label="Epoch" value={String(mandate.mandate_epoch ?? "—")} />
+          <MetricCard
+            label="Autonomy"
+            value={flagLabel(mandate.autonomous_trading)}
+          />
+          <MetricCard
+            label="Max trade (raw)"
+            value={String(mandate.limits.max_trade_value ?? "—")}
+          />
+          <MetricCard
+            label="Daily (raw)"
+            value={String(mandate.limits.daily_turnover_limit ?? "—")}
+          />
         </div>
+      ) : null}
 
-        <div>
-          <h3>Live mandate snapshot</h3>
+      <div className="nio-two-col">
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Governance transactions</h2>
+            <StatusBadge tone="success">MAINNET</StatusBadge>
+          </div>
+          <EvidenceTimeline
+            items={
+              govItems.length
+                ? govItems
+                : [
+                    {
+                      id: "deploy",
+                      title: "Deploy WASM",
+                      hash: "7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+                      href: "https://nearblocks.io/txns/7rxXmYqbDL7HyBtG2EKo4g1xHbJYptphg9jMLU7Konrf",
+                    },
+                    {
+                      id: "activate",
+                      title: "Activate mandate",
+                      hash: "6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+                      href: "https://nearblocks.io/txns/6zQs6C56tdPYz5BYY9Ca2T4XusU5oavt1gDw3tdDaW93",
+                    },
+                    {
+                      id: "audit",
+                      title: "NO_TRADE audit proof",
+                      hash: "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+                      href: "https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+                    },
+                  ]
+            }
+            collapsedCount={4}
+          />
+          <p className="axis-supporting">{txs?.supervised_canaries_note}</p>
+        </section>
+
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Live mandate</h2>
+            <StatusBadge tone={mandate?.paused === true ? "warn" : "success"}>
+              {mandate
+                ? flagLabel(mandate.paused, "PAUSED", "UNPAUSED")
+                : "PENDING"}
+            </StatusBadge>
+          </div>
           {mandate?.ok ? (
-            <ul className="nio-kv">
-              <li>
-                Epoch <strong>{mandate.mandate_epoch ?? "—"}</strong>{" "}
-                <Badge kind={mandate.paused === true ? "warn" : "ok"}>
-                  {flagLabel(mandate.paused, "PAUSED", "UNPAUSED")}
-                </Badge>
-              </li>
-              <li>
-                <Badge kind="autonomous">
-                  {`AUTONOMY ${flagLabel(mandate.autonomous_trading)}`}
-                </Badge>{" "}
-                <Badge kind="enforce">
-                  {`enforce=${flagLabel(mandate.enforce_autonomous_on_agent)}`}
-                </Badge>
-              </li>
-              <li>
-                Max trade {String(mandate.limits.max_trade_value ?? "—")} raw · Daily{" "}
-                {String(mandate.limits.daily_turnover_limit ?? "—")}
-              </li>
-              <li className="mono">Policy {mandate.policy}</li>
-            </ul>
+            <p className="axis-supporting">
+              Policy <span className="mono">{mandate.policy}</span> · enforce{" "}
+              {flagLabel(mandate.enforce_autonomous_on_agent)}
+            </p>
           ) : (
             <p className="axis-supporting">Mandate view pending live API.</p>
           )}
@@ -257,7 +262,7 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
           >
             Open mandate
           </button>
-        </div>
+        </section>
       </div>
 
       <h3>Decision cycles</h3>
@@ -286,15 +291,15 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
       </div>
 
       {proof && (
-        <div className="nio-proof-detail">
-          <h3>Selected proof</h3>
+        <section className="axis-panel nio-proof-detail">
+          <div className="axis-panel-heading">
+            <h2>Selected proof</h2>
+            <Badge kind="status">{status}</Badge>
+          </div>
+          <p>{statusExplain(status, proof)}</p>
           <ul className="nio-kv">
-            <li>
-              Status <Badge kind="status">{status}</Badge>
-            </li>
-            <li className="axis-supporting">{statusExplain(status, proof)}</li>
             <li className="mono">
-              Off-chain hash {String(proof.offchain_evidence_hash || "—")}
+              Off-chain hash {String(proof.offchain_evidence_hash || "—").slice(0, 18)}…
             </li>
             <li>Recompute OK: {String(proof.recomputed_ok)}</li>
             <li>On-chain hash match: {String(proof.hash_match)}</li>
@@ -307,8 +312,8 @@ export function ProofVerifyPage({ onNav }: { onNav: (id: NavId) => void }) {
             ) : null}
             <li className="axis-supporting">{String(proof.note || "")}</li>
           </ul>
-        </div>
+        </section>
       )}
-    </section>
+    </div>
   );
 }

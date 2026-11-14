@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   fetchMainnetAgent,
   fetchMainnetDecisions,
@@ -12,12 +12,26 @@ import {
   type MainnetDecisionSummary,
 } from "../../adapters/mainnetPublic";
 import type { NavId } from "./nav";
+import {
+  EmptyState,
+  EvidenceTimeline,
+  IdentityRow,
+  MetricCard,
+  StatusBadge,
+  explainReasonCode,
+  governanceTitle,
+} from "./uiPrimitives";
 
-const AUDIT_RECEIPT =
-  "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s";
+const AUDIT_RECEIPT = "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s";
 const AUDIT_EXPLORER = `https://nearblocks.io/txns/${AUDIT_RECEIPT}`;
 
 type PartialErr = { source: string; message: string };
+
+function autonomyTone(v: boolean | null | undefined) {
+  if (v === true) return "success" as const;
+  if (v === false) return "danger" as const;
+  return "idle" as const;
+}
 
 export function AgentInspectorPage({
   onNav,
@@ -34,6 +48,7 @@ export function AgentInspectorPage({
   > | null>(null);
   const [loading, setLoading] = useState(true);
   const [partialErrors, setPartialErrors] = useState<PartialErr[]>([]);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +66,8 @@ export function AgentInspectorPage({
       const errs: PartialErr[] = [];
       const [m, a, d, t] = settled;
 
-      if (m.status === "fulfilled" && m.value?.ok) {
-        setMandate(m.value);
-      } else {
+      if (m.status === "fulfilled" && m.value?.ok) setMandate(m.value);
+      else {
         errs.push({
           source: "mandate",
           message:
@@ -65,19 +79,15 @@ export function AgentInspectorPage({
 
       if (a.status === "fulfilled" && a.value) {
         setAgent(a.value as Record<string, unknown>);
-      } else {
+      } else if (a.status === "rejected") {
         errs.push({
           source: "agent",
-          message:
-            a.status === "rejected"
-              ? String((a.reason as Error)?.message || a.reason)
-              : "unavailable",
+          message: String((a.reason as Error)?.message || a.reason),
         });
       }
 
-      if (d.status === "fulfilled") {
-        setDecisions(d.value.decisions || []);
-      } else {
+      if (d.status === "fulfilled") setDecisions(d.value.decisions || []);
+      else {
         errs.push({
           source: "decisions",
           message: String((d.reason as Error)?.message || d.reason),
@@ -85,19 +95,16 @@ export function AgentInspectorPage({
         setDecisions([]);
       }
 
-      if (t.status === "fulfilled" && t.value) {
-        setTxs(t.value);
-      } else {
+      if (t.status === "fulfilled" && t.value) setTxs(t.value);
+      else if (t.status === "rejected") {
         errs.push({
           source: "transactions",
-          message:
-            t.status === "rejected"
-              ? String((t.reason as Error)?.message || t.reason)
-              : "unavailable",
+          message: String((t.reason as Error)?.message || t.reason),
         });
       }
 
       setPartialErrors(errs);
+      setFetchedAt(new Date().toLocaleTimeString());
       setLoading(false);
     })();
     return () => {
@@ -107,173 +114,54 @@ export function AgentInspectorPage({
 
   const last = decisions[0] ?? null;
   const identities = (agent?.identities || {}) as Record<string, string>;
-  const provenance = (agent?.provenance || {}) as Record<string, string>;
-  const auditTx =
-    provenance.no_trade_audit_tx ||
-    txs?.governance?.find((g) => g.kind.includes("record_decision"))?.tx ||
-    AUDIT_RECEIPT;
+  const owner = identities.owner || mandate?.owner || "nishanthb.near";
+  const agentId = identities.agent || mandate?.agent || "agent.nishanthb.near";
+  const policy = identities.policy || mandate?.policy || "policy.nishanthb.near";
+  const portfolio =
+    identities.portfolio_id || mandate?.portfolio_id || "nio-mainnet-v1";
+
+  const provenanceItems = useMemo(() => {
+    const gov = txs?.governance || [];
+    if (gov.length) {
+      return gov.map((g) => ({
+        id: g.tx,
+        title: governanceTitle(g.kind),
+        hash: g.tx,
+        href: g.explorer,
+      }));
+    }
+    return [
+      {
+        id: AUDIT_RECEIPT,
+        title: "NO_TRADE audit receipt",
+        hash: AUDIT_RECEIPT,
+        href: AUDIT_EXPLORER,
+      },
+    ];
+  }, [txs]);
+
+  const verifyHref =
+    last?.explorer ||
+    (last?.near_tx ? `https://nearblocks.io/txns/${last.near_tx}` : AUDIT_EXPLORER);
 
   return (
-    <div className="page-enter nio-inspect-page">
-      <section className="axis-panel">
-        <div className="axis-panel-heading">
-          <h2>Public agent inspector</h2>
-          <span className="nio-badge nio-badge-success">MAINNET</span>
-        </div>
-        <p className="axis-supporting mono">/inspect/{accountSlug}</p>
-
-        {loading ? (
-          <div className="nio-skeleton-stack" aria-busy="true">
-            <div className="nio-skeleton" />
-            <div className="nio-skeleton" />
-            <div className="nio-skeleton short" />
+    <div className="page-enter nio-page-shell nio-inspect-page">
+      <header className="nio-page-header">
+        <div>
+          <div className="nio-page-kicker">
+            <StatusBadge tone="success">NEAR Mainnet</StatusBadge>
+            <StatusBadge tone={autonomyTone(mandate?.autonomous_trading ?? null)}>
+              {`Autonomous ${flagLabel(mandate?.autonomous_trading ?? null)}`}
+            </StatusBadge>
           </div>
-        ) : null}
-
-        {partialErrors.length > 0 ? (
-          <div className="nio-disclosure" style={{ marginTop: 8 }}>
-            Partial API failure — page remains usable.{" "}
-            {partialErrors.map((e) => `${e.source}: ${e.message}`).join(" · ")}
-          </div>
-        ) : null}
-
-        <div className="nio-inspect-grid">
-          <div>
-            <h3>Identities</h3>
-            <ul className="nio-kv mono">
-              <li>
-                Owner:{" "}
-                {identities.owner || mandate?.owner || "nishanthb.near"}
-              </li>
-              <li>
-                Agent:{" "}
-                {identities.agent || mandate?.agent || "agent.nishanthb.near"}
-              </li>
-              <li>
-                Policy:{" "}
-                {identities.policy || mandate?.policy || "policy.nishanthb.near"}
-              </li>
-              <li>
-                Portfolio:{" "}
-                {identities.portfolio_id ||
-                  mandate?.portfolio_id ||
-                  "nio-mainnet-v1"}
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Permissions</h3>
-            {mandate?.ok ? (
-              <>
-                <p>
-                  Epoch {safeText(mandate.mandate_epoch)} ·{" "}
-                  {flagLabel(mandate.paused, "PAUSED", "LIVE")} · AUTONOMY{" "}
-                  {flagLabel(mandate.autonomous_trading)} · enforce=
-                  {flagLabel(mandate.enforce_autonomous_on_agent)}
-                </p>
-                <p>
-                  Max trade {usdcLabel(mandate.limits.max_trade_value)} · Daily{" "}
-                  {usdcLabel(mandate.limits.daily_turnover_limit)} · Pending{" "}
-                  {usdcLabel(mandate.limits.max_pending_exposure)} · Slippage{" "}
-                  {mandate.limits.max_slippage_bps != null
-                    ? `${mandate.limits.max_slippage_bps} bps`
-                    : "—"}
-                </p>
-                <div className="nio-chain-badges">
-                  {(mandate.limits.allowed_chains || []).map((c) => {
-                    const b = chainBadge(c);
-                    return (
-                      <span key={c} className={`nio-badge nio-badge-${b.tone}`}>
-                        {b.label}
-                      </span>
-                    );
-                  })}
-                </div>
-                <p className="axis-supporting">
-                  PERMITTED BY POLICY — not the same as VERIFIED EXECUTION
-                </p>
-              </>
-            ) : (
-              <p className="axis-supporting">
-                {loading
-                  ? "Loading mandate…"
-                  : "Mandate temporarily unavailable."}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <h3>Last decision</h3>
-        {last ? (
-          <ul className="nio-kv">
-            <li className="mono">{last.cycle_id}</li>
-            <li>
-              {last.final_action} · Fitter {last.fitter_verdict} ·{" "}
-              {last.reason_code}
-            </li>
-            <li>Status {last.status}</li>
-            {last.explorer ? (
-              <li>
-                <a href={last.explorer} target="_blank" rel="noreferrer">
-                  Nearblocks audit receipt
-                </a>
-              </li>
-            ) : null}
-          </ul>
-        ) : (
-          <p className="axis-supporting">
-            No decision records in the live store yet. Verified NO_TRADE audit
-            receipt remains independently checkable below.
+          <h1>Nishanth&apos;s AI Agent</h1>
+          <p>
+            Public read-only inspector for{" "}
+            <span className="mono">{agentId}</span>
+            {fetchedAt ? ` · Updated ${fetchedAt}` : ""}
           </p>
-        )}
-
-        <h3>Verified audit receipt</h3>
-        <p className="axis-supporting">
-          On-chain <code>record_decision_cycle</code> (NO_TRADE) for the public
-          agent:
-        </p>
-        <p>
-          <a
-            href={
-              auditTx === AUDIT_RECEIPT
-                ? AUDIT_EXPLORER
-                : `https://nearblocks.io/txns/${auditTx}`
-            }
-            target="_blank"
-            rel="noreferrer"
-            className="mono"
-          >
-            {auditTx}
-          </a>
-        </p>
-
-        <h3>Provenance</h3>
-        <ul className="nio-tx-list">
-          {(txs?.governance || []).map((g) => (
-            <li key={g.tx}>
-              {g.kind}:{" "}
-              <a
-                href={g.explorer}
-                target="_blank"
-                rel="noreferrer"
-                className="mono"
-              >
-                {g.tx}
-              </a>
-            </li>
-          ))}
-          {!txs?.governance?.length ? (
-            <li>
-              <a href={AUDIT_EXPLORER} target="_blank" rel="noreferrer" className="mono">
-                {AUDIT_RECEIPT}
-              </a>{" "}
-              (static Nearblocks fallback)
-            </li>
-          ) : null}
-        </ul>
-
-        <div className="nio-inspect-actions">
+        </div>
+        <div className="axis-actions">
           <button
             type="button"
             className="axis-button secondary"
@@ -284,18 +172,206 @@ export function AgentInspectorPage({
           <button
             type="button"
             className="axis-button secondary"
-            onClick={() => onNav("agent")}
-          >
-            AI Agent
-          </button>
-          <button
-            type="button"
-            className="axis-button secondary"
             onClick={() => onNav("mandate")}
           >
             Mandate
           </button>
         </div>
+      </header>
+
+      {loading ? (
+        <div className="nio-skeleton-stack" aria-busy="true">
+          <div className="nio-skeleton" />
+          <div className="nio-skeleton" />
+          <div className="nio-skeleton short" />
+        </div>
+      ) : null}
+
+      {partialErrors.length > 0 ? (
+        <div className="nio-disclosure">
+          Partial API failure — page remains usable.{" "}
+          {partialErrors.map((e) => `${e.source}: ${e.message}`).join(" · ")}
+        </div>
+      ) : null}
+
+      <div
+        className="axis-stats nio-metric-row"
+        style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}
+      >
+        <MetricCard
+          label="Max trade"
+          value={usdcLabel(mandate?.limits.max_trade_value)}
+        />
+        <MetricCard
+          label="Daily limit"
+          value={usdcLabel(mandate?.limits.daily_turnover_limit)}
+        />
+        <MetricCard
+          label="Pending cap"
+          value={usdcLabel(mandate?.limits.max_pending_exposure)}
+        />
+        <MetricCard
+          label="Mandate epoch"
+          value={safeText(mandate?.mandate_epoch)}
+          hint={
+            mandate?.limits.max_slippage_bps != null
+              ? `${mandate.limits.max_slippage_bps} bps slippage`
+              : undefined
+          }
+        />
+      </div>
+
+      <section className="axis-panel nio-featured-card">
+        <div className="axis-panel-heading">
+          <h2>Latest decision</h2>
+          {last ? (
+            <StatusBadge
+              tone={
+                last.status === "ONCHAIN_VERIFIED"
+                  ? "success"
+                  : last.final_action === "TRADE"
+                    ? "warn"
+                    : "idle"
+              }
+            >
+              {last.status}
+            </StatusBadge>
+          ) : (
+            <StatusBadge tone="idle">PENDING</StatusBadge>
+          )}
+        </div>
+
+        {last ? (
+          <>
+            <p className="nio-decision-action">{last.final_action}</p>
+            <p className="nio-decision-summary">
+              Fitter <strong>{last.fitter_verdict}</strong>
+              {last.critic_verdict ? (
+                <>
+                  {" "}
+                  · Critic <strong>{last.critic_verdict}</strong>
+                </>
+              ) : null}
+            </p>
+            <p>{explainReasonCode(last.reason_code)}</p>
+            <p className="axis-supporting">
+              {last.timestamp_ms
+                ? new Date(last.timestamp_ms).toLocaleString()
+                : "Timestamp unavailable"}{" "}
+              · cycle{" "}
+              <span className="mono">
+                {last.cycle_id.length > 28
+                  ? `${last.cycle_id.slice(0, 20)}…`
+                  : last.cycle_id}
+              </span>
+            </p>
+            <div className="axis-actions" style={{ marginTop: 12 }}>
+              <a
+                className="axis-button"
+                href={verifyHref}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Verify on NEAR
+              </a>
+              <button
+                type="button"
+                className="axis-button secondary"
+                onClick={() => onNav("verify")}
+              >
+                Open Proof &amp; Verify
+              </button>
+            </div>
+          </>
+        ) : (
+          <EmptyState
+            title="No live decision records indexed yet"
+            detail="The verified NO_TRADE audit receipt remains independently checkable under Governance proofs."
+            action={
+              <a
+                className="axis-button"
+                href={AUDIT_EXPLORER}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Verify on NEAR
+              </a>
+            }
+          />
+        )}
+      </section>
+
+      <div className="nio-two-col">
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Identities</h2>
+          </div>
+          <div className="nio-identity-stack">
+            <IdentityRow label="Owner" value={owner} />
+            <IdentityRow label="Agent" value={agentId} />
+            <IdentityRow label="Policy" value={policy} />
+            <IdentityRow label="Portfolio" value={portfolio} />
+          </div>
+        </section>
+
+        <section className="axis-panel">
+          <div className="axis-panel-heading">
+            <h2>Permissions</h2>
+            <StatusBadge tone={mandate?.paused === true ? "warn" : "running"}>
+              {flagLabel(mandate?.paused ?? null, "PAUSED", "LIVE")}
+            </StatusBadge>
+          </div>
+          {mandate?.ok ? (
+            <>
+              <div className="nio-identity-stack">
+                <IdentityRow
+                  label="Enforce on agent"
+                  value={flagLabel(mandate.enforce_autonomous_on_agent)}
+                  mono={false}
+                />
+                <IdentityRow
+                  label="Revoked"
+                  value={flagLabel(mandate.revoked, "REVOKED", "NOT_REVOKED")}
+                  mono={false}
+                />
+                <IdentityRow
+                  label="Slippage"
+                  value={
+                    mandate.limits.max_slippage_bps != null
+                      ? `${mandate.limits.max_slippage_bps} bps`
+                      : "—"
+                  }
+                  mono={false}
+                />
+              </div>
+              <div className="nio-chain-badges" style={{ marginTop: 12 }}>
+                {(mandate.limits.allowed_chains || []).map((c) => {
+                  const b = chainBadge(c);
+                  return (
+                    <span key={c} className={`nio-badge nio-badge-${b.tone}`}>
+                      {b.label}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="axis-supporting" style={{ marginTop: 10 }}>
+                Chains are permitted by policy — not verified execution.
+              </p>
+            </>
+          ) : (
+            <p className="axis-supporting">
+              {loading ? "Loading mandate…" : "Mandate temporarily unavailable."}
+            </p>
+          )}
+        </section>
+      </div>
+
+      <section className="axis-panel">
+        <div className="axis-panel-heading">
+          <h2>Governance proofs</h2>
+          <StatusBadge tone="recorded">MAINNET</StatusBadge>
+        </div>
+        <EvidenceTimeline items={provenanceItems} collapsedCount={4} />
       </section>
     </div>
   );
