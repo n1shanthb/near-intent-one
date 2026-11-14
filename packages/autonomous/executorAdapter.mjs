@@ -333,6 +333,8 @@ export function evaluateBroadcastAttempt({ priorState, rpcResult, transportError
       ok: false,
       action: "REFUSE_RETRY",
       reason: "already_broadcast",
+      may_retry_broadcast: false,
+      may_resign: false,
     };
   }
   if (transportError && !rpcResult?.tx_hash) {

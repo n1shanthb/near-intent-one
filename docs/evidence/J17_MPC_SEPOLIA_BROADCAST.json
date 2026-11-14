@@ -1,0 +1,21 @@
+{
+  "kind": "J17_MPC_SEPOLIA_BROADCAST",
+  "baseline": "ed2bd79",
+  "started_at": "2026-11-14T11:35:09.094Z",
+  "hard_stop_mainnet": true,
+  "scenario_label": "DETERMINISTIC_TESTNET_ERC20_TRANSFER_NOT_INTENTS",
+  "intents_testnet": "NOT_AVAILABLE",
+  "authorization": {
+    "J17_SEPOLIA_FUNDING_AUTHORIZED": false,
+    "note": "Explicit env auth required; mission text alone is not authorization."
+  },
+  "verdict": "STOP_AT_FUNDING_AUTHORIZATION_BOUNDARY",
+  "gates": {
+    "SEPOLIA_FUNDING_CONFIRMED": "NOT_CHECKED_AUTH_MISSING",
+    "AUTHENTIC_MPC_TO_EVM_BROADCAST": "BLOCKED_NO_AUTH",
+    "REAL_SEPOLIA_TOKEN_SETTLEMENT": "BLOCKED_NO_AUTH",
+    "INDEPENDENT_RECONCILIATION": "BLOCKED_NO_AUTH"
+  },
+  "blocker": "Set J17_SEPOLIA_FUNDING_AUTHORIZED=1 only after separate owner funding authorization AND confirmed Sepolia balances.",
+  "finished_at": "2026-11-14T11:35:09.098Z"
+}

@@ -1,0 +1,151 @@
+{
+  "kind": "J17_SEPOLIA_FUNDING_BOUNDARY",
+  "baseline": "ed2bd79",
+  "started_at": "2026-11-14T11:35:06.949Z",
+  "hard_stop_mainnet": true,
+  "hard_stop_testnet_transfer_without_funding_auth": true,
+  "note": "This prompt alone does not authorize Sepolia funding or transfers.",
+  "j16_target": {
+    "mpc_evm": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "path": "trading/v1/portfolio/j16-mpc-6890",
+    "predecessor": "j16f6890.testnet",
+    "chain_id": 11155111,
+    "prior_near_mpc_tx": "https://testnet.nearblocks.io/txns/9eaSHcVf1vCDHp9tntxFx4LvVLdzp7zxNfUs4uG362X"
+  },
+  "readonly_verify": {
+    "sepolia_rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+    "chain_id": 11155111,
+    "mpc_address": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "explorer": "https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "eth_wei": "0",
+    "eth_ether": 0,
+    "nonce": 0,
+    "gas_price_wei": "18",
+    "derived_live": {
+      "near_secp_key": "secp256k1:2pz2W4ZmSadFUBVVLUxPqXqh1mhqh5ytJ3Zc3vSFMqWogTYdF92Q6x8qpQwc5inv4WbKA5G9CgYnbWNLb1fksTK",
+      "evm_address": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+      "path": "trading/v1/portfolio/j16-mpc-6890",
+      "predecessor": "j16f6890.testnet"
+    },
+    "derived_matches_j16_address": true,
+    "tokens": {
+      "tidepool_j16_pin": {
+        "address": "0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2",
+        "code_bytes": 2635,
+        "name": "Tidepool Testnet USDC (no value)",
+        "symbol": "USDC",
+        "decimals": 6,
+        "mpc_balance_raw": "0",
+        "provenance": "Tidepool community testnet USDC (name on-chain). NOT Circle official USDC. Used by Gate-K / J16 allowlists.",
+        "explorer": "https://sepolia.etherscan.io/token/0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2"
+      },
+      "circle_official_sepolia": {
+        "address": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+        "code_bytes": 1798,
+        "name": "USDC",
+        "symbol": "USDC",
+        "decimals": 6,
+        "mpc_balance_raw": "0",
+        "provenance": "Circle-listed Sepolia USDC (developers.circle.com). Faucet: https://faucet.circle.com — NOT the J16 mandate pin without allowlist update.",
+        "explorer": "https://sepolia.etherscan.io/token/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+      }
+    }
+  },
+  "funding_plan": {
+    "destination": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "network": "Ethereum Sepolia",
+    "chain_id": 11155111,
+    "never_use": [
+      "mainnet ETH",
+      "mainnet USDC",
+      "any mainnet asset"
+    ],
+    "preferred_token": {
+      "label": "Tidepool Testnet USDC (J16 continuity)",
+      "address": "0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2",
+      "amount_raw": "2000000",
+      "amount_human": "2.0 (6 decimals)",
+      "how": "Obtain from Tidepool testnet faucet/ops for Sepolia ERC-20. Not mintable via Circle faucet. Confirm name() == Tidepool Testnet USDC before transfer."
+    },
+    "alternate_token": {
+      "label": "Circle official Sepolia USDC",
+      "address": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+      "amount_raw": "2000000",
+      "faucet": "https://faucet.circle.com",
+      "caveat": "Requires separate mandate allowlist / asset pin update — do not treat as drop-in for J16 Tidepool pin."
+    },
+    "gas": {
+      "asset": "Sepolia ETH only",
+      "recommended_amount_eth": "0.05",
+      "min_confirm_wei": "10000000000000000",
+      "estimated_erc20_transfer_gas_limit": 100000,
+      "faucets": [
+        {
+          "name": "Alchemy Sepolia",
+          "url": "https://www.alchemy.com/faucets/ethereum-sepolia",
+          "typical_drip": "0.1 ETH / 24h",
+          "notes": "Often requires ≥0.001 ETH mainnet balance + activity on the claiming wallet — claim to owner wallet then send Sepolia ETH to MPC address."
+        },
+        {
+          "name": "Google Cloud Sepolia",
+          "url": "https://cloud.google.com/application/web3/faucet/ethereum/sepolia",
+          "typical_drip": "~0.05 ETH / rate-limited",
+          "notes": "May require Google account; may check mainnet balance on claimer."
+        },
+        {
+          "name": "Infura Sepolia",
+          "url": "https://docs.infura.io/how-to/get-testnet-tokens/",
+          "typical_drip": "~0.05 ETH / 24h",
+          "notes": "Account required; mainnet activity often required on claimer."
+        }
+      ],
+      "procedure": [
+        "1. Owner authorizes TESTNET funding in a separate explicit message (this file is not authorization).",
+        "2. Claim Sepolia ETH to a disposable owner-controlled wallet via a listed faucet.",
+        "3. Transfer Sepolia ETH to MPC address 0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55.",
+        "4. Fund preferred Tidepool USDC (or authorize Circle USDC + allowlist change).",
+        "5. Re-run this script; confirm SEPOLIA_FUNDING_CONFIRMED=PASS.",
+        "6. Only then run scripts/j17/mpc-sepolia-broadcast.mjs with J17_SEPOLIA_FUNDING_AUTHORIZED=1."
+      ]
+    },
+    "confirmation_thresholds": {
+      "eth_wei_min": "10000000000000000",
+      "preferred_token_raw_min": "1000000",
+      "token": "0x2e6ad9e6d59bb4585ea0e6762c3b637dde29dad2"
+    }
+  },
+  "authorization": {
+    "env_J17_SEPOLIA_FUNDING_AUTHORIZED": false,
+    "balances_meet_preferred_thresholds": false,
+    "note": "Both env auth AND on-chain balances required before broadcast script may proceed."
+  },
+  "gates": {
+    "SEPOLIA_FUNDING_CONFIRMED": "WAITING_OWNER_FUNDING_AUTH",
+    "AUTHENTIC_MPC_TO_EVM_BROADCAST": "BLOCKED_AT_FUNDING_BOUNDARY",
+    "REAL_SEPOLIA_TOKEN_SETTLEMENT": "BLOCKED_AT_FUNDING_BOUNDARY",
+    "INDEPENDENT_RECONCILIATION": "BLOCKED_AT_FUNDING_BOUNDARY",
+    "UNATTENDED_KEEPER_READINESS": "PASS_SHADOW_FROM_J16",
+    "INTENTS_TESTNET": "NOT_AVAILABLE",
+    "MAINNET_UPGRADE_READINESS": "NO-GO",
+    "MAINNET_FUNDED_AUTONOMY_READINESS": "NO-GO"
+  },
+  "intents_testnet": {
+    "verdict": "NOT_AVAILABLE",
+    "source": "https://docs.near-intents.org/resources/faqs",
+    "quote": "There is no testnet deployment and no plans for one. Official guidance: test on mainnet with separate small amounts under separate approval.",
+    "note": "Not an engineering failure. Mainnet Intents micro-canary requires separate owner approval."
+  },
+  "derived_matches_j16": true,
+  "verdict": "STOP_AT_FUNDING_AUTHORIZATION_BOUNDARY",
+  "j16_cross_check": {
+    "prior_mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+    "prior_path": "trading/v1/portfolio/j16-mpc-6890",
+    "prior_funding": {
+      "eth_wei": "0",
+      "usdc_raw": "0",
+      "funded_for_transfer": false
+    },
+    "prior_mpc_sig_gate": "PASS"
+  },
+  "finished_at": "2026-11-14T11:35:08.352Z"
+}

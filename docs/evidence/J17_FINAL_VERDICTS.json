@@ -1,0 +1,74 @@
+{
+  "kind": "J17_FINAL_VERDICTS",
+  "baseline": "ed2bd79",
+  "finished_at": "2026-11-14T11:35:00.000Z",
+  "hard_stop_mainnet": true,
+  "hard_stop_testnet_transfer_without_funding_auth": true,
+  "gates": {
+    "SEPOLIA_FUNDING_CONFIRMED": {
+      "verdict": "WAITING_OWNER_FUNDING_AUTH",
+      "eth_wei": "0",
+      "tidepool_usdc_raw": "0",
+      "mpc": "0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+      "explorer": "https://sepolia.etherscan.io/address/0x9a82c26b3d158cf4b657ab2a3ef9e5e6c2934d55",
+      "evidence": "docs/evidence/J17_SEPOLIA_FUNDING_BOUNDARY.json"
+    },
+    "AUTHENTIC_MPC_TO_EVM_BROADCAST": {
+      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY",
+      "note": "Broadcast script refuses without J17_SEPOLIA_FUNDING_AUTHORIZED=1 and funded balances"
+    },
+    "REAL_SEPOLIA_TOKEN_SETTLEMENT": {
+      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY"
+    },
+    "INDEPENDENT_RECONCILIATION": {
+      "verdict": "BLOCKED_AT_FUNDING_BOUNDARY",
+      "anvil_prior": "PASS (J16)",
+      "sepolia": "pending funding"
+    },
+    "UNATTENDED_KEEPER_READINESS": {
+      "verdict": "PASS_SHADOW_FROM_J16",
+      "safety_tests": "npm run test:j17",
+      "note": "Pause/revoke/restart/no-resign fixtures PASS; live Sepolia unattended spend awaits funding"
+    },
+    "INTENTS_TESTNET": {
+      "verdict": "NOT_AVAILABLE",
+      "source": "https://docs.near-intents.org/resources/faqs",
+      "note": "Official NEAR Intents/1Click has no testnet — not an engineering failure. Mainnet Intents micro-canary is separately approved."
+    },
+    "MAINNET_UPGRADE_READINESS": {
+      "verdict": "NO-GO",
+      "blockers": [
+        "SEPOLIA_FUNDING_CONFIRMED",
+        "AUTHENTIC_MPC_TO_EVM_BROADCAST",
+        "REAL_SEPOLIA_TOKEN_SETTLEMENT",
+        "mainnet remains paused — separate owner approvals required"
+      ]
+    },
+    "MAINNET_FUNDED_AUTONOMY_READINESS": {
+      "verdict": "NO-GO",
+      "blockers": [
+        "testnet MPC→Sepolia settlement not yet proven",
+        "INTENTS_TESTNET NOT_AVAILABLE → mainnet Intents is separate micro-canary",
+        "no mainnet funding/unpause/activation in this milestone"
+      ]
+    }
+  },
+  "readonly_verify_summary": {
+    "chain_id": 11155111,
+    "derived_matches_j16": true,
+    "path": "trading/v1/portfolio/j16-mpc-6890",
+    "predecessor": "j16f6890.testnet",
+    "preferred_token": {
+      "address": "0x2e6AD9E6D59bB4585ea0E6762c3b637dde29DAD2",
+      "name": "Tidepool Testnet USDC (no value)",
+      "provenance": "Tidepool community testnet — NOT Circle official"
+    },
+    "circle_official_sepolia_usdc": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+  },
+  "next_owner_step": [
+    "Explicitly authorize TESTNET Sepolia funding (this package is not authorization)",
+    "Fund MPC 0x9a82c26b… with ≥0.05 Sepolia ETH + ≥2 Tidepool USDC (or authorize Circle USDC + allowlist change)",
+    "Re-run: npm run j17:funding-boundary",
+    "Then: $env:J17_SEPOLIA_FUNDING_AUTHORIZED=1; npm run j17:mpc-broadcast"
+  ]
+}
