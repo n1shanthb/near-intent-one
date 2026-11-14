@@ -20,6 +20,7 @@ import { runKeeperCycles } from "../../packages/autonomous/keeper.mjs";
 import { LLM_MODE } from "../../packages/autonomous/shadowAgent.mjs";
 import { EXEC_MODE } from "../../packages/autonomous/executorAdapter.mjs";
 import { loadServicesEnv, getLlmConfig } from "../../packages/gate-j/llm.mjs";
+import { createDecisionAuditPublisher } from "../../packages/autonomous/auditPublisher.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const EVIDENCE = join(ROOT, "docs", "evidence");
@@ -227,6 +228,21 @@ async function main() {
   const portfolio_id = `${MAINNET_IDENTITIES.portfolio_id}-demo-${Date.now()}`;
   const journal_dir = join(homedir(), ".nio-secure", "mainnet-keeper", portfolio_id);
 
+  let auditPublishFn = null;
+  const auditOn =
+    process.env.NIO_DECISION_AUDIT_ON_CHAIN === "1" ||
+    process.argv.includes("--audit-on-chain");
+  if (auditOn) {
+    try {
+      const publisher = await createDecisionAuditPublisher({
+        opsKeyPath: process.env.NIO_AGENT_OPS_KEY_PATH,
+      });
+      auditPublishFn = (args) => publisher.publish(args);
+    } catch (e) {
+      console.error("audit_publisher_init_failed:", String(e.message || e));
+    }
+  }
+
   const result = await runKeeperCycles({
     mandate,
     portfolio_id,
@@ -239,6 +255,8 @@ async function main() {
     execMode: canFunded ? EXEC_MODE.MAINNET : EXEC_MODE.SHADOW,
     execAdapters: null, // decision-first; funded adapters attached after mandate+unpause when TRADE
     onChain,
+    auditPublishFn,
+    auditOnChain: auditOn,
   });
 
   const cycle0 = result.cycles?.[0] || {};

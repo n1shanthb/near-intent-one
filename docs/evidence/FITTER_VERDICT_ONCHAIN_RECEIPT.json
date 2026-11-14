@@ -1,0 +1,11 @@
+{
+  "kind": "FITTER_VERDICT_ONCHAIN_RECEIPT",
+  "verdict": "PASS",
+  "fitter_verdict": "REJECTED",
+  "cycle_id": "cyc-nio-mainnet-v1-9b6299b2a82179db-1794666848911-fd8d591e",
+  "near_tx": "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+  "explorer": "https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+  "event": "fitter_evaluated",
+  "standard": "nio_agent_audit",
+  "version": "1.0.0"
+}

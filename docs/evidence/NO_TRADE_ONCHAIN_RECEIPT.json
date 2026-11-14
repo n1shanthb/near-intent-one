@@ -1,0 +1,11 @@
+{
+  "kind": "NO_TRADE_ONCHAIN_RECEIPT",
+  "verdict": "PASS",
+  "cycle_id": "cyc-nio-mainnet-v1-9b6299b2a82179db-1794666848911-fd8d591e",
+  "final_action": "NO_TRADE",
+  "reason_code": "NO_OPPORTUNITY",
+  "evidence_hash": "0df66baea166fc76dfe958993330516efc2d060ec46330264203beb02e588f10",
+  "near_tx": "CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+  "explorer": "https://nearblocks.io/txns/CXR4ey3x2x3scEhGeW8sRLnRAVsPrsYiRYFPcTAAAz1s",
+  "status": "ONCHAIN_VERIFIED"
+}
